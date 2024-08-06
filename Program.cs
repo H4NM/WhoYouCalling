@@ -284,8 +284,9 @@ namespace ApplicationReviewer
                     KernelTraceEventParser.Keywords.Process
                 );
 
-                kernelSession.Source.Kernel.TcpIpConnect += Ipv4TcpConnectionStart;
-                kernelSession.Source.Kernel.TcpIpConnectIPV6 += Ipv6TcpConnectionStart;
+                // TcpIpConnect may be used. However, "send" is used to ensure capturing failed TCP handshakes
+                kernelSession.Source.Kernel.TcpIpSend += Ipv4TcpConnectionStart;
+                kernelSession.Source.Kernel.TcpIpSendIPV6 += Ipv6TcpConnectionStart;
                 kernelSession.Source.Kernel.UdpIpSend += Ipv4UdpIpStart;
                 kernelSession.Source.Kernel.UdpIpSendIPV6 += Ipv6UdpIpStart;
 
@@ -302,7 +303,7 @@ namespace ApplicationReviewer
         NETWORK 
         
         */
-        private static void Ipv4TcpConnectionStart(TcpIpConnectTraceData data)
+        private static void Ipv4TcpConnectionStart(TcpIpSendTraceData data)
         {
             if (trackedProcessId == data.ProcessID || trackedChildProcessIds.Contains(data.ProcessID))
             {
@@ -310,7 +311,7 @@ namespace ApplicationReviewer
             }
         }
 
-        private static void Ipv6TcpConnectionStart(TcpIpV6ConnectTraceData data)
+        private static void Ipv6TcpConnectionStart(TcpIpV6SendTraceData data)
         {
             if (trackedProcessId == data.ProcessID || trackedChildProcessIds.Contains(data.ProcessID))
             {
