@@ -8,11 +8,17 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+//ETW
 using Microsoft.Diagnostics.Symbols;
 using Microsoft.Diagnostics.Tracing;
 using Microsoft.Diagnostics.Tracing.Parsers;
 using Microsoft.Diagnostics.Tracing.Parsers.Kernel;
 using Microsoft.Diagnostics.Tracing.Session;
+
+//FPC
+using SharpPcap;
+using SharpPcap.LibPcap;
+using PacketDotNet;
 
 namespace ApplicationReviewer.Utilities
 { 
@@ -22,10 +28,8 @@ namespace ApplicationReviewer.Utilities
         {
             try
             {
-                // Create a new process start info
                 ProcessStartInfo startInfo = new ProcessStartInfo(binaryPath);
 
-                // Set the arguments if provided
                 if (!string.IsNullOrEmpty(arguments))
                 {
                     startInfo.Arguments = arguments;
@@ -34,7 +38,6 @@ namespace ApplicationReviewer.Utilities
                 startInfo.UseShellExecute = true;
                 startInfo.Verb = "open";
 
-                // Start the process
                 Process process = Process.Start(startInfo);
 
                 if (process != null)
@@ -55,30 +58,150 @@ namespace ApplicationReviewer.Utilities
         }
     }
 
-    public class ETWListener
+    public class EBPFFilter
     {
-        public void ListenToETW()
+        public String GetEBPFFilter()
         {
-            using (var kernelSession = new TraceEventSession(KernelTraceEventParser.KernelSessionName))
+            return "ip";
+        }
+    }
+
+    public class NetworkPackets
+    {
+        private static int packetIndex = 0;
+        private static CaptureFileWriterDevice captureFileWriter;
+
+        public LibPcapLiveDeviceList GetNetworkInterfaces()
+        {
+            // Retrieve the device list
+            var devices = LibPcapLiveDeviceList.Instance;
+
+            // If no devices were found print an error
+            if (devices.Count < 1)
             {
-                Console.CancelKeyPress += delegate (object sender, ConsoleCancelEventArgs e) { kernelSession.Dispose(); };
-
-                kernelSession.EnableKernelProvider(
-                    KernelTraceEventParser.Keywords.NetworkTCPIP |
-                    KernelTraceEventParser.Keywords.Process
-                );
-
-                kernelSession.Source.Kernel.TcpIpConnect += Program.Ipv4TcpConnectionStart;
-                kernelSession.Source.Kernel.TcpIpConnectIPV6 += Program.Ipv6TcpConnectionStart;
-                kernelSession.Source.Kernel.UdpIpSend += Program.Ipv4UdpIpStart;
-                kernelSession.Source.Kernel.UdpIpSendIPV6 += Program.Ipv6UdpIpStart;
-
-                kernelSession.Source.Kernel.ProcessStart += Program.childProcessStarted;
-                kernelSession.Source.Kernel.ProcessStop += Program.processStopped;
-
-
-                kernelSession.Source.Process();
+                Console.WriteLine("No devices were found on this machine");
+                return null;
             }
+            else
+            {
+                return devices;
+            }
+        }
+
+        public void PrintNetworkInterfaces(LibPcapLiveDeviceList devices)
+        {
+            int i = 0;
+            foreach (var dev in devices)
+            {
+                Console.WriteLine("{0}) {1} {2}", i, dev.Name, dev.Description);
+                i++;
+            }
+        }
+
+        public void CaptureNetworkPacketsToPcap(LibPcapLiveDevice device, string pcapFile)
+        {
+            // Register our handler function to the 'packet arrival' event
+            device.OnPacketArrival +=
+                new PacketArrivalEventHandler(device_OnPacketArrival);
+
+            // Open the device for capturing
+            int readTimeoutMilliseconds = 1000;
+
+            device.Open(mode: DeviceModes.Promiscuous | DeviceModes.DataTransferUdp | DeviceModes.NoCaptureLocal, read_timeout: readTimeoutMilliseconds);
+
+            Console.WriteLine();
+            Console.WriteLine("-- Listening on {0} {1}, writing to {2}, hit 'Enter' to stop...",
+                              device.Name, device.Description,
+                              pcapFile);
+
+            // open the output file
+            captureFileWriter = new CaptureFileWriterDevice(pcapFile);
+            captureFileWriter.Open(device);
+
+            // Start the capturing process
+            device.StartCapture();
+            Console.ReadLine();
+
+            // Stop the capturing process
+            device.StopCapture();
+
+        }
+
+        public void ParseNetworkCaptureFile(string EBPFfilter, string pcapFile)
+        {
+            Console.WriteLine("Parsing: opening '{0}'", pcapFile);
+
+            ICaptureDevice device;
+
+            try
+            {
+                // Get an offline device
+                device = new CaptureFileReaderDevice(pcapFile);
+
+                // Open the device
+                device.Open();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Caught exception when opening file" + e.ToString());
+                return;
+            }
+
+            // Register our handler function to the 'packet arrival' event
+            device.Filter = EBPFfilter;
+            device.OnPacketArrival +=
+                 new PacketArrivalEventHandler(parse_device_OnPacketArrival);
+
+            Console.WriteLine();
+            Console.WriteLine
+                ("-- Capturing from '{0}', hit 'Ctrl-C' to exit...",
+                pcapFile);
+
+            var startTime = DateTime.Now;
+
+            // Start capture 'INFINTE' number of packets
+            // This method will return when EOF reached.
+            device.Capture();
+
+            // Close the pcap device
+            device.Close();
+            var endTime = DateTime.Now;
+            Console.WriteLine("-- End of file reached.");
+
+            var duration = endTime - startTime;
+            Console.WriteLine("Read {0} packets in {1}s", packetIndex, duration.TotalSeconds);
+        }
+        private static int parsePacketIndex = 0;
+        private static void parse_device_OnPacketArrival(object sender, PacketCapture e)
+        {
+            parsePacketIndex++;
+
+            var rawPacket = e.GetPacket();
+            var packet = PacketDotNet.Packet.ParsePacket(rawPacket.LinkLayerType, rawPacket.Data);
+
+            var ethernetPacket = packet.Extract<EthernetPacket>();
+            if (ethernetPacket != null)
+            {
+                Console.WriteLine("{0} At: {1}:{2}: MAC:{3} -> MAC:{4}",
+                                  parsePacketIndex,
+                                  e.Header.Timeval.Date.ToString(),
+                                  e.Header.Timeval.Date.Millisecond,
+                                  ethernetPacket.SourceHardwareAddress,
+                                  ethernetPacket.DestinationHardwareAddress);
+            }
+        }
+
+        private static void device_OnPacketArrival(object sender, PacketCapture e)
+        {
+            // write the packet to the file
+            var rawPacket = e.GetPacket();
+            captureFileWriter.Write(rawPacket);
+            //Console.WriteLine("Packet dumped to file.");
+
+            var time = e.Header.Timeval.Date;
+            var len = e.Data.Length;
+            Console.WriteLine("{0}:{1}:{2},{3} Len={4}",
+            time.Hour, time.Minute, time.Second, time.Millisecond, len);
         }
     }
 }
@@ -91,7 +214,8 @@ namespace ApplicationReviewer
         private static int trackedProcessId;
         private static bool trackChildProcesses = true;
         private static List<int> trackedChildProcessIds = new List<int>();
-
+        private static string pcapFile = "NetworkCapture.pcap";
+        private static int networkInterfaceChoice = 4;
 
         static void Main(string[] args)
         {
@@ -115,9 +239,22 @@ namespace ApplicationReviewer
 
 
             Utilities.ProcessStarter processStarter = new Utilities.ProcessStarter();
-            Utilities.ETWListener etwListener = new Utilities.ETWListener();
+            Utilities.NetworkPackets networkPackets = new Utilities.NetworkPackets();
+            Utilities.EBPFFilter ebpfFilter = new Utilities.EBPFFilter();
 
-            Thread etwThread = new Thread(() => etwListener.ListenToETW());
+
+            LibPcapLiveDeviceList devices = networkPackets.GetNetworkInterfaces();
+            networkPackets.PrintNetworkInterfaces(devices);
+            using var device = devices[networkInterfaceChoice];
+
+            networkPackets.CaptureNetworkPacketsToPcap(device, pcapFile);
+
+            string EBPFFilter = ebpfFilter.GetEBPFFilter();
+            networkPackets.ParseNetworkCaptureFile(EBPFFilter, pcapFile);
+            System.Environment.Exit(0);
+
+
+            Thread etwThread = new Thread(() => ListenToETW());
             etwThread.Start();
 
             //Sleep is required to ensure ETW Subscription is timed correctly
@@ -136,12 +273,36 @@ namespace ApplicationReviewer
             }            
         }
 
+        private static void ListenToETW()
+        {
+            using (var kernelSession = new TraceEventSession(KernelTraceEventParser.KernelSessionName))
+            {
+                Console.CancelKeyPress += delegate (object sender, ConsoleCancelEventArgs e) { kernelSession.Dispose(); };
+
+                kernelSession.EnableKernelProvider(
+                    KernelTraceEventParser.Keywords.NetworkTCPIP |
+                    KernelTraceEventParser.Keywords.Process
+                );
+
+                kernelSession.Source.Kernel.TcpIpConnect += Ipv4TcpConnectionStart;
+                kernelSession.Source.Kernel.TcpIpConnectIPV6 += Ipv6TcpConnectionStart;
+                kernelSession.Source.Kernel.UdpIpSend += Ipv4UdpIpStart;
+                kernelSession.Source.Kernel.UdpIpSendIPV6 += Ipv6UdpIpStart;
+
+                kernelSession.Source.Kernel.ProcessStart += childProcessStarted;
+                kernelSession.Source.Kernel.ProcessStop += processStopped;
+
+
+                kernelSession.Source.Process();
+            }
+        }
+
         /*
          
         NETWORK 
         
         */
-        public static void Ipv4TcpConnectionStart(TcpIpConnectTraceData data)
+        private static void Ipv4TcpConnectionStart(TcpIpConnectTraceData data)
         {
             if (trackedProcessId == data.ProcessID || trackedChildProcessIds.Contains(data.ProcessID))
             {
@@ -149,7 +310,7 @@ namespace ApplicationReviewer
             }
         }
 
-        public static void Ipv6TcpConnectionStart(TcpIpV6ConnectTraceData data)
+        private static void Ipv6TcpConnectionStart(TcpIpV6ConnectTraceData data)
         {
             if (trackedProcessId == data.ProcessID || trackedChildProcessIds.Contains(data.ProcessID))
             {
@@ -157,7 +318,7 @@ namespace ApplicationReviewer
             }
         }
 
-        public static void Ipv4UdpIpStart(UdpIpTraceData data)
+        private static void Ipv4UdpIpStart(UdpIpTraceData data)
         {
             if (trackedProcessId == data.ProcessID || trackedChildProcessIds.Contains(data.ProcessID))
             {
@@ -165,7 +326,7 @@ namespace ApplicationReviewer
             }
         }
 
-        public static void Ipv6UdpIpStart(UpdIpV6TraceData data)
+        private static void Ipv6UdpIpStart(UpdIpV6TraceData data)
         {
             if (trackedProcessId == data.ProcessID || trackedChildProcessIds.Contains(data.ProcessID))
             {
@@ -178,7 +339,7 @@ namespace ApplicationReviewer
         PROCESSES
         
         */
-        public static void childProcessStarted(ProcessTraceData data) {
+        private static void childProcessStarted(ProcessTraceData data) {
             if (trackedProcessId == data.ParentID || trackedChildProcessIds.Contains(data.ParentID))
             {
                 Console.WriteLine("Child process started: {0} with pid: {1}", data.ImageFileName, data.ProcessID);
@@ -192,7 +353,7 @@ namespace ApplicationReviewer
             }
         }
 
-        public static void processStopped(ProcessTraceData data) {
+        private static void processStopped(ProcessTraceData data) {
             if (trackedProcessId == data.ProcessID)
             {
                 Console.WriteLine("Stopped main process: {0} with pid: {1}", data.ImageFileName, data.ProcessID);

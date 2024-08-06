@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.1.13" />
+    <PackageReference Include="SharpPcap" Version="6.3.0" />
   </ItemGroup>
 
 </Project>
