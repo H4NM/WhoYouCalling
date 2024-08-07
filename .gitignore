@@ -2,6 +2,7 @@
 # Python application used for testing
 venv/
 dist/
+Caps/
 TestApplication*
 
 

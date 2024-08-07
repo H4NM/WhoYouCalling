@@ -58,18 +58,22 @@ namespace ApplicationReviewer.Utilities
         }
     }
 
-    public class EBPFFilter
+    public class BPFFilter
     {
-        public String GetEBPFFilter()
+        public String GetBPFFilter()
         {
-            return "ip";
+            return "tcp and (dst port 80 or dst port 8080 or dst port 443)";
         }
     }
 
     public class NetworkPackets
     {
+
         private static int packetIndex = 0;
+        private static int filterPacketIndex = 0;
         private static CaptureFileWriterDevice captureFileWriter;
+        private static CaptureFileWriterDevice filteredFileWriter;
+
 
         public LibPcapLiveDeviceList GetNetworkInterfaces()
         {
@@ -127,19 +131,18 @@ namespace ApplicationReviewer.Utilities
 
         }
 
-        public void ParseNetworkCaptureFile(string EBPFfilter, string pcapFile)
+        public void FilterNetworkCaptureFile(string BPFFilter, string fullPcapFile, string filteredPcapFile)
         {
-            Console.WriteLine("Parsing: opening '{0}'", pcapFile);
+            Console.WriteLine("Opening '{0}'", fullPcapFile);
 
-            ICaptureDevice device;
+            ICaptureDevice capturedDevice;
 
             try
             {
                 // Get an offline device
-                device = new CaptureFileReaderDevice(pcapFile);
-
+                capturedDevice = new CaptureFileReaderDevice(fullPcapFile);
                 // Open the device
-                device.Open();
+                capturedDevice.Open();
             }
             catch (Exception e)
             {
@@ -147,48 +150,54 @@ namespace ApplicationReviewer.Utilities
                 return;
             }
 
+            try
+            {
+                filteredFileWriter = new CaptureFileWriterDevice(filteredPcapFile);
+                filteredFileWriter.Open();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Caught exception when writing to file" + e.ToString());
+                return;
+            }
+
             // Register our handler function to the 'packet arrival' event
-            device.Filter = EBPFfilter;
-            device.OnPacketArrival +=
-                 new PacketArrivalEventHandler(parse_device_OnPacketArrival);
+            capturedDevice.Filter = BPFFilter;
+            capturedDevice.OnPacketArrival +=
+                 new PacketArrivalEventHandler(filter_device_OnPacketArrival);
 
             Console.WriteLine();
             Console.WriteLine
                 ("-- Capturing from '{0}', hit 'Ctrl-C' to exit...",
-                pcapFile);
+                fullPcapFile);
 
             var startTime = DateTime.Now;
 
             // Start capture 'INFINTE' number of packets
             // This method will return when EOF reached.
-            device.Capture();
+            capturedDevice.Capture();
 
             // Close the pcap device
-            device.Close();
+            capturedDevice.Close();
             var endTime = DateTime.Now;
             Console.WriteLine("-- End of file reached.");
 
             var duration = endTime - startTime;
-            Console.WriteLine("Read {0} packets in {1}s", packetIndex, duration.TotalSeconds);
+            Console.WriteLine("Read {0} packets in {1}s", filterPacketIndex, duration.TotalSeconds);
         }
-        private static int parsePacketIndex = 0;
-        private static void parse_device_OnPacketArrival(object sender, PacketCapture e)
+        private static void filter_device_OnPacketArrival(object sender, PacketCapture e)
         {
-            parsePacketIndex++;
+            filterPacketIndex++;
 
+            // write the packet to the file
             var rawPacket = e.GetPacket();
-            var packet = PacketDotNet.Packet.ParsePacket(rawPacket.LinkLayerType, rawPacket.Data);
+            filteredFileWriter.Write(rawPacket);
+            //Console.WriteLine("Packet dumped to file.");
 
-            var ethernetPacket = packet.Extract<EthernetPacket>();
-            if (ethernetPacket != null)
-            {
-                Console.WriteLine("{0} At: {1}:{2}: MAC:{3} -> MAC:{4}",
-                                  parsePacketIndex,
-                                  e.Header.Timeval.Date.ToString(),
-                                  e.Header.Timeval.Date.Millisecond,
-                                  ethernetPacket.SourceHardwareAddress,
-                                  ethernetPacket.DestinationHardwareAddress);
-            }
+            var time = e.Header.Timeval.Date;
+            var len = e.Data.Length;
+            Console.WriteLine("{0}:{1}:{2},{3} Len={4}",
+            time.Hour, time.Minute, time.Second, time.Millisecond, len);
         }
 
         private static void device_OnPacketArrival(object sender, PacketCapture e)
@@ -214,7 +223,8 @@ namespace ApplicationReviewer
         private static int trackedProcessId;
         private static bool trackChildProcesses = true;
         private static List<int> trackedChildProcessIds = new List<int>();
-        private static string pcapFile = "NetworkCapture.pcap";
+        private static string filteredPcapFile = "C:\\Users\\Hannes\\Documents\\Git\\AppReviewer\\Caps\\NetworkCapture-Filtered.pcap";
+        private static string fullPcapFile = "C:\\Users\\Hannes\\Documents\\Git\\AppReviewer\\Caps\\NetworkCapture-Full.pcap";
         private static int networkInterfaceChoice = 4;
 
         static void Main(string[] args)
@@ -240,17 +250,17 @@ namespace ApplicationReviewer
 
             Utilities.ProcessStarter processStarter = new Utilities.ProcessStarter();
             Utilities.NetworkPackets networkPackets = new Utilities.NetworkPackets();
-            Utilities.EBPFFilter ebpfFilter = new Utilities.EBPFFilter();
+            Utilities.BPFFilter bpfFIlter = new Utilities.BPFFilter();
 
 
             LibPcapLiveDeviceList devices = networkPackets.GetNetworkInterfaces();
-            networkPackets.PrintNetworkInterfaces(devices);
+            //networkPackets.PrintNetworkInterfaces(devices);
             using var device = devices[networkInterfaceChoice];
 
-            networkPackets.CaptureNetworkPacketsToPcap(device, pcapFile);
+            networkPackets.CaptureNetworkPacketsToPcap(device, fullPcapFile);
 
-            string EBPFFilter = ebpfFilter.GetEBPFFilter();
-            networkPackets.ParseNetworkCaptureFile(EBPFFilter, pcapFile);
+            string computedBPFFilter = bpfFIlter.GetBPFFilter();
+            networkPackets.FilterNetworkCaptureFile(computedBPFFilter, fullPcapFile, filteredPcapFile);
             System.Environment.Exit(0);
 
 
