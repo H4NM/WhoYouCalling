@@ -25,13 +25,7 @@ namespace ApplicationReviewer.Utilities
 {
     public static class Output
     {
-        public static void Debug(bool debug, string message)
-        {
-            if (debug) { 
-                string timestamp = DateTime.Now.ToString("HH:mm:ss");
-                Console.WriteLine($"[DEBUG - {timestamp}] {message}");
-            }
-        }
+      
         public static void Print(string message, string type = "")
         {
             string prefix;
@@ -40,14 +34,40 @@ namespace ApplicationReviewer.Utilities
                 case "info":
                     prefix = "[*]";
                     break;
+                case "warning":
+                    prefix = "[!]";
+                    break;
                 case "error":
                     prefix = "[!!!]";
+                    break;
+                case "debug":
+                    if (Program.debug) { 
+                        string timestamp = DateTime.Now.ToString("HH:mm:ss");
+                        prefix = $"[DEBUG - {timestamp}]";
+                    }
+                    else
+                    {
+                        return;
+                    }
                     break;
                 default:
                     prefix = "";
                     break;
             }
             Console.WriteLine($"{prefix} {message}");
+        }
+    }
+
+    public class FileAndFolders
+    {
+        public void CreateFolder(string folder)
+        {
+
+            System.IO.Directory.CreateDirectory(folder);
+        }
+        public void CreateFile()
+        {
+
         }
     }
 
@@ -141,6 +161,7 @@ namespace ApplicationReviewer.Utilities
         public void StopCapturingNetworkPackets()
         {
             captureDevice.StopCapture();
+            captureFileWriter.Close();
         }
 
         public void CaptureNetworkPacketsToPcap(string pcapFile)
@@ -151,15 +172,15 @@ namespace ApplicationReviewer.Utilities
 
             // Open the device for capturing
             int readTimeoutMilliseconds = 1000;
-            Output.Debug(Program.debug, $"Opening {captureDevice.Name} for reading packets with read timeout of {readTimeoutMilliseconds}");
+            Output.Print($"Opening {captureDevice.Name} for reading packets with read timeout of {readTimeoutMilliseconds}", "debug");
             captureDevice.Open(mode: DeviceModes.Promiscuous | DeviceModes.DataTransferUdp | DeviceModes.NoCaptureLocal, read_timeout: readTimeoutMilliseconds);
 
             // open the output file
-            Output.Debug(Program.debug, $"Opening {pcapFile} to write packets to");
+            Output.Print($"Opening {pcapFile} to write packets to", "debug");
             captureFileWriter = new CaptureFileWriterDevice(pcapFile);
             captureFileWriter.Open(captureDevice);
 
-            Output.Debug(Program.debug, $"Starting capture process");
+            Output.Print($"Starting capture process", "debug");
             captureDevice.StartCapture();
         }
 
@@ -169,7 +190,7 @@ namespace ApplicationReviewer.Utilities
 
             try
             {
-                Output.Debug(Program.debug, $"Opening saved packet capture file {fullPcapFile}");
+                Output.Print($"Opening saved packet capture file {fullPcapFile}", "debug");
                 capturedDevice = new CaptureFileReaderDevice(fullPcapFile);
                 capturedDevice.Open();
             }
@@ -181,7 +202,7 @@ namespace ApplicationReviewer.Utilities
 
             try
             {
-                Output.Debug(Program.debug, $"Opening new packet capture file {filteredPcapFile} to save filtered packets");
+                Output.Print($"Opening new packet capture file {filteredPcapFile} to save filtered packets", "debug");
                 filteredFileWriter = new CaptureFileWriterDevice(filteredPcapFile);
                 filteredFileWriter.Open();
             }
@@ -190,19 +211,20 @@ namespace ApplicationReviewer.Utilities
                 Output.Print("Caught exception when writing to file" + e.ToString(), "error");
                 return;
             }
-
-            Output.Debug(Program.debug, $"Setting BPF filter for reading the saved packets: {BPFFilter}");
+            Output.Print($"Setting BPF filter for reading the saved packets: {BPFFilter}", "debug");
             capturedDevice.Filter = BPFFilter;
             capturedDevice.OnPacketArrival +=
                  new PacketArrivalEventHandler(filter_device_OnPacketArrival);
 
             var startTime = DateTime.Now;
 
-            Output.Debug(Program.debug, $"Starting reading packets from {fullPcapFile}");
+            Output.Print($"Starting reading packets from {fullPcapFile}", "debug");
             capturedDevice.Capture();
 
-            Output.Debug(Program.debug, $"Finished reading packets from {fullPcapFile}. Closing read");
+            Output.Print($"Finished reading packets from {fullPcapFile}. Closing read", "debug");
             capturedDevice.Close();
+            Output.Print($"Finished writing packets to {filteredPcapFile}", "debug");
+            filteredFileWriter.Close();
             var endTime = DateTime.Now;
 
             var duration = endTime - startTime;
@@ -214,7 +236,7 @@ namespace ApplicationReviewer.Utilities
             filterPacketIndex++;
             var rawPacket = e.GetPacket();
             filteredFileWriter.Write(rawPacket);
-            //Output.Debug(Program.debug, $"Filter packets: {filterPacketIndex}");
+            //Output.Print(Program.debug, $"Filter packets: {filterPacketIndex}");
         }
 
         private static void device_OnPacketArrival(object sender, PacketCapture e)
@@ -222,7 +244,7 @@ namespace ApplicationReviewer.Utilities
             packetIndex++;
             var rawPacket = e.GetPacket();
             captureFileWriter.Write(rawPacket);
-            //Output.Debug(Program.debug, $"Captured packets: {packetIndex}");
+            //Output.Print(Program.debug, $"Captured packets: {packetIndex}");
         }
     }
 }
@@ -235,8 +257,8 @@ namespace ApplicationReviewer
         private static int trackedProcessId;
         private static bool trackChildProcesses = true;
         private static Dictionary<int, string> trackedChildProcessIds = new Dictionary<int, string>();
-        private static string filteredPcapFile = "C:\\Users\\Hannes\\Documents\\Git\\WhoYouCalling\\Caps\\NetworkCapture-Filtered.pcap";
-        private static string fullPcapFile = "C:\\Users\\Hannes\\Documents\\Git\\WhoYouCalling\\Caps\\NetworkCapture-Full.pcap";
+        private static string filteredPcapFile;
+        private static string fullPcapFile;
         private static int networkInterfaceChoice = 4;
         private static bool mainProcessEnded = false;
         private static string binaryPath = @"C:\Users\Hannes\Documents\Git\WhoYouCalling\dist\TestApplication.exe";
@@ -265,7 +287,17 @@ namespace ApplicationReviewer
             // Instanciate objects
             Utilities.ProcessStarter processStarter = new Utilities.ProcessStarter();
             Utilities.NetworkPackets networkPackets = new Utilities.NetworkPackets();
+            Utilities.FileAndFolders fileAndFolders = new Utilities.FileAndFolders();
             Utilities.BPFFilter bpfFIlter = new Utilities.BPFFilter();
+
+            string executableFileName = Path.GetFileName(binaryPath);
+            string rootFolderName = GetRunInstanceFolderName(executableFileName);
+
+            Output.Print($"Creating folder {rootFolderName}", "debug");
+            fileAndFolders.CreateFolder(rootFolderName);
+
+            fullPcapFile = $"{rootFolderName}\\{executableFileName}-Full.pcap";
+            filteredPcapFile = $"{rootFolderName}\\{executableFileName}-Filtered.pcap";
 
             //Get network information
             LibPcapLiveDeviceList devices = networkPackets.GetNetworkInterfaces();
@@ -274,9 +306,9 @@ namespace ApplicationReviewer
             networkPackets.SetCaptureDevice(device);
 
             //Start capturing packets and start ETW listener
-            Output.Debug(debug, $"Starting packet capture saved to \"{fullPcapFile}\"");
+            Output.Print($"Starting packet capture saved to \"{fullPcapFile}\"", "debug");
             Thread fpcThread = new Thread(() => networkPackets.CaptureNetworkPacketsToPcap(fullPcapFile));
-            Output.Debug(debug, "Starting ETW session");
+            Output.Print("Starting ETW session", "debug");
             Thread etwThread = new Thread(() => ListenToETW());
             etwThread.Start();
             fpcThread.Start();
@@ -284,9 +316,8 @@ namespace ApplicationReviewer
 
             try
             {
-                Output.Debug(debug, $"Starting executable \"{binaryPath}\" with args \"{arguments}\"");
+                Output.Print($"Starting executable \"{binaryPath}\" with args \"{arguments}\"", "info");
                 trackedProcessId = processStarter.StartProcessAndGetId(binaryPath, arguments);
-                Output.Print($"Started {binaryPath}", "info");
             }
             catch (Exception ex)
             {
@@ -297,25 +328,33 @@ namespace ApplicationReviewer
             while (true)
             {
                 if (mainProcessEnded) {
-                    Output.Debug(debug, $"{binaryPath} process with PID {trackedProcessId} stopped. Finishing...");
-                    Output.Debug(debug, $"Stopping ETW kernel session");
+                    Output.Print($"{binaryPath} process with PID {trackedProcessId} stopped. Finishing...", "debug");
+                    Output.Print($"Stopping ETW kernel session", "debug");
                     StopKernelSession();
                     if (kernelSession.IsActive)
                     {
-                        Output.Debug(debug, $"Kernel still running...");
+                        Output.Print($"Kernel still running...", "warning");
                     }
-                    Output.Debug(debug, $"Stopping packet capture saved to \"{fullPcapFile}\"");
+                    Output.Print($"Stopping packet capture saved to \"{fullPcapFile}\"", "debug");
                     networkPackets.StopCapturingNetworkPackets();
-                    Output.Debug(debug, $"Producing BPF filter");
+                    Output.Print($"Producing BPF filter", "debug");
                     string computedBPFFilter = bpfFIlter.GetBPFFilter();
-                    Output.Debug(debug, $"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilter}\"");
+                    Output.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilter}\"", "debug");
                     networkPackets.FilterNetworkCaptureFile(computedBPFFilter, fullPcapFile, filteredPcapFile);
-                    Output.Debug(debug, $"Done.");
+                    Output.Print($"Done.", "debug");
                     break;
                 }
             }
 
             
+        }
+
+        private static string GetRunInstanceFolderName(string executableName)
+        {
+            string timestamp = DateTime.Now.ToString("HHmmss");
+            string folderName = $"{executableName}-{timestamp}";
+            return folderName;
+
         }
         private static void StopKernelSession()
         {
@@ -353,7 +392,7 @@ namespace ApplicationReviewer
         {
             if (trackedProcessId == data.ProcessID || trackedChildProcessIds.ContainsKey(data.ProcessID))
             {
-                Output.Debug(Program.debug, $"{data.ProcessName} sent a IPv4 TCP packet {data.daddr}:{data.dport}"); //Replace with debug and use statistic print instead
+                Output.Print($"{data.ProcessName} sent a IPv4 TCP packet {data.daddr}:{data.dport}", "debug"); //Replace with debug and use statistic print instead
             }
         }
 
@@ -361,7 +400,7 @@ namespace ApplicationReviewer
         {
             if (trackedProcessId == data.ProcessID || trackedChildProcessIds.ContainsKey(data.ProcessID))
             {
-                Output.Debug(Program.debug, $"{data.ProcessName} sent a IPv6 TCP packet to {data.daddr}:{data.dport}"); //Replace with debug and use statistic print instead
+                Output.Print($"{data.ProcessName} sent a IPv6 TCP packet to {data.daddr}:{data.dport}", "debug"); //Replace with debug and use statistic print instead
             }
         }
 
@@ -369,7 +408,7 @@ namespace ApplicationReviewer
         {
             if (trackedProcessId == data.ProcessID || trackedChildProcessIds.ContainsKey(data.ProcessID))
             {
-                Output.Debug(Program.debug, $"{data.ProcessName} sent a IPv4 UDP packet to {data.daddr}:{data.dport}"); //Replace with debug and use statistic print instead
+                Output.Print($"{data.ProcessName} sent a IPv4 UDP packet to {data.daddr}:{data.dport}", "debug"); //Replace with debug and use statistic print instead
             }
         }
 
@@ -377,7 +416,7 @@ namespace ApplicationReviewer
         {
             if (trackedProcessId == data.ProcessID || trackedChildProcessIds.ContainsKey(data.ProcessID))
             {
-                Output.Debug(Program.debug, $"{data.ProcessName} sent a IPv6 UDP packet to {data.daddr}:{data.dport}"); //Replace with debug and use statistic print instead
+                Output.Print($"{data.ProcessName} sent a IPv6 UDP packet to {data.daddr}:{data.dport}", "debug"); //Replace with debug and use statistic print instead
             }
         }
 
@@ -389,7 +428,7 @@ namespace ApplicationReviewer
         private static void childProcessStarted(ProcessTraceData data) {
             if (trackedProcessId == data.ParentID || trackedChildProcessIds.ContainsKey(data.ParentID))
             {
-                Output.Debug(Program.debug, $"Child process started: {data.ImageFileName} with PID {data.ProcessID} and arguments: {data.CommandLine}"); //Replace with debug and use statistic print instead
+                Output.Print($"Child process started: {data.ImageFileName} with PID {data.ProcessID} and arguments: {data.CommandLine}", "debug"); //Replace with debug and use statistic print instead
                 if (trackChildProcesses) { 
                     trackedChildProcessIds.Add(data.ProcessID, data.ImageFileName);
                 }
@@ -399,11 +438,11 @@ namespace ApplicationReviewer
         private static void processStopped(ProcessTraceData data) {
             if (trackedProcessId == data.ProcessID)
             {
-                Output.Debug(Program.debug, $"Stopped main process: {data.ImageFileName} with PID {data.ProcessID}"); //Replace with debug and use statistic print instead
+                Output.Print($"Stopped main process: {data.ImageFileName} with PID {data.ProcessID}", "debug"); //Replace with debug and use statistic print instead
                 mainProcessEnded = true;
             }else if (trackedChildProcessIds.ContainsKey(data.ProcessID))
             {
-                Output.Debug(Program.debug, $"Stopped child process: {data.ImageFileName} with PID {data.ProcessID}"); //Replace with debug and use statistic print instead
+                Output.Print($"Stopped child process: {data.ImageFileName} with PID {data.ProcessID}", "debug"); //Replace with debug and use statistic print instead
                 trackedChildProcessIds.Remove(data.ProcessID);  
             }
         }
