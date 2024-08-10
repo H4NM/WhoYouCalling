@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Timers;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -20,6 +21,8 @@ using SharpPcap;
 using SharpPcap.LibPcap;
 using PacketDotNet;
 using WhoYouCalling.Utilities;
+using System.Timers;
+using System.Security.Cryptography;
 
 namespace WhoYouCalling.Utilities
 {
@@ -73,7 +76,21 @@ namespace WhoYouCalling.Utilities
 
     public class ProcessManager
     {
-        public string GetProcessFileName(int PID)
+        public static bool IsProcessRunning(int pid)
+        {
+            Process[] processlist = Process.GetProcesses();
+            foreach (Process activePID in processlist)
+            {
+                if (pid == activePID.Id)
+                {
+                    Output.Print($"Provided PID ({pid}) is active on the system", "debug");
+                    return true;
+                }
+            }
+            Output.Print($"Unable to find process with pid {pid}", "warning");
+            return false;
+        }
+        public static string GetProcessFileName(int PID)
         {
             Process runningProcess = Process.GetProcessById(PID);
             return runningProcess.MainModule.FileName;
@@ -249,7 +266,7 @@ namespace WhoYouCalling.Utilities
             filterPacketIndex++;
             var rawPacket = e.GetPacket();
             filteredFileWriter.Write(rawPacket);
-            Output.Print($"Captured packets: {filterPacketIndex}", "debug");
+            //Output.Print($"Captured packets: {filterPacketIndex}", "debug");
 
         }
 
@@ -258,7 +275,7 @@ namespace WhoYouCalling.Utilities
             packetIndex++;
             var rawPacket = e.GetPacket();
             captureFileWriter.Write(rawPacket);
-            Output.Print($"Captured packets: {packetIndex}", "debug");
+            //Output.Print($"Captured packets: {packetIndex}", "debug");
         }
     }
 }
@@ -289,10 +306,10 @@ namespace WhoYouCalling
                 Output.Print("Please run me as Administrator!", "warning");
                 return;
             }
+
             if (!ValidateProvidedArguments(args)) {
                 PrintHelp();
             }
-
 
             // Instanciate objects
             Utilities.ProcessManager processManager = new Utilities.ProcessManager();
@@ -300,16 +317,9 @@ namespace WhoYouCalling
             Utilities.FileAndFolders fileAndFolders = new Utilities.FileAndFolders();
             Utilities.BPFFilter bpfFIlter = new Utilities.BPFFilter();
 
-            string executableFileName = "";
-            if (trackedProcessId != 0) //When a PID was provided rather than the path to an executable
-            {
-                 executableFileName = processManager.GetProcessFileName(trackedProcessId);
-            }
-            else
-            {
-                 executableFileName = Path.GetFileName(executablePath);
-            }
-
+            Output.Print("Retrieving executable filename", "debug");
+            string executableFileName = GetExecutableFileName(trackedProcessId, executablePath);
+            Output.Print($"Retrieved executable filename {executableFileName}", "debug");
             string rootFolderName = GetRunInstanceFolderName(executableFileName);
 
             Output.Print($"Creating folder {rootFolderName}", "debug");
@@ -318,6 +328,7 @@ namespace WhoYouCalling
             string fullPcapFile = $"{rootFolderName}\\{executableFileName}-Full.pcap";
             string filteredPcapFile = $"{rootFolderName}\\{executableFileName}-Filtered.pcap";
 
+            // Retrieve network interface devices
             LibPcapLiveDeviceList devices = networkPackets.GetNetworkInterfaces();
             if (devices == null)
             {
@@ -330,7 +341,7 @@ namespace WhoYouCalling
             Thread fpcThread = new Thread(() => networkPackets.CaptureNetworkPacketsToPcap(fullPcapFile));
             Thread etwThread = new Thread(() => ListenToETW());
 
-            // Start threads
+            // Start ETW and FPC threads
             Output.Print("Starting ETW session", "debug");
             etwThread.Start();
             Output.Print($"Starting packet capture saved to \"{fullPcapFile}\"", "debug");
@@ -342,8 +353,17 @@ namespace WhoYouCalling
                 Thread.Sleep(2000); //Sleep is required to ensure ETW Subscription is timed correctly to capture the execution
                 try
                 {
-                    Output.Print($"Starting executable \"{executablePath}\" with args \"{executableArguments}\"", "info");
+                    Output.Print($"Starting executable \"{executablePath}\" with args \"{executableArguments}\"", "debug");
                     trackedProcessId = processManager.StartProcessAndGetId(executablePath, executableArguments);
+                    
+                    if (processRunTimer != 0)
+                    {
+                        System.Timers.Timer timer = new System.Timers.Timer(processRunTimer);
+                        timer.Elapsed += (sender, e) => TimerKillMainRunningProcess(sender, e, trackedProcessId);
+                        timer.AutoReset = false; 
+                        Output.Print($"Starting timer set to {processRunTimer}", "debug");
+                        timer.Start();
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -352,10 +372,15 @@ namespace WhoYouCalling
                 }
             }
 
+            // Run until main proces has ended
             while (true)
             {
                 if (mainProcessEnded) {
                     Output.Print($"{executablePath} process with PID {trackedProcessId} stopped. Finishing...", "debug");
+                    if (processRunTimer != 0) // If a timer was specified, kill child processes
+                    {
+                        KillRunningChildProcesses();
+                    }
                     Output.Print($"Stopping ETW kernel session", "debug");
                     StopKernelSession();
                     if (kernelSession.IsActive)
@@ -368,6 +393,11 @@ namespace WhoYouCalling
                     string computedBPFFilter = bpfFIlter.GetBPFFilter();
                     Output.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilter}\"", "debug");
                     networkPackets.FilterNetworkCaptureFile(computedBPFFilter, fullPcapFile, filteredPcapFile);
+                    if (!saveFullPcap)
+                    {
+                        Output.Print($"Deleting full pcap file {fullPcapFile}", "debug");
+                        DeleteFullPcapFile(fullPcapFile);
+                    }
                     Output.Print($"Done.", "debug");
                     break;
                 }
@@ -556,12 +586,92 @@ Examples:
             return true;
         }
 
+        private static void TimerKillMainRunningProcess(object source, ElapsedEventArgs e, int pid)
+        {
+            try
+            {
+                Process process = Process.GetProcessById(pid);
+
+                if (!process.HasExited)
+                {
+                    Output.Print($"Timer elapsed. Killing the process with PID {pid}", "debug");
+                    process.Kill();
+                }
+            }
+            catch (ArgumentException)
+            {
+                Output.Print($"Process with PID {pid} has already exited.", "debug");
+            }
+            catch (Exception ex)
+            {
+                Output.Print($"An error occurred when stopping process when timer expired: {ex.Message}", "error");
+            }
+        }
+
+        private static void KillRunningChildProcesses()
+        {
+            foreach (KeyValuePair<int, string> childprocess in trackedChildProcessIds)
+            {
+                try
+                {
+                    Process process = Process.GetProcessById(childprocess.Key);
+
+                    if (!process.HasExited)
+                    {
+                        Output.Print($"Timer elapsed. Killing the child process with pid {childprocess.Key}", "debug");
+                        process.Kill();
+                    }
+                }
+                catch (ArgumentException)
+                {
+                    Output.Print($"Child process with PID {childprocess.Key} has already exited.", "debug");
+                }
+                catch (Exception ex)
+                {
+                    Output.Print($"An error occurred when stopping child process when timer expired: {ex.Message}", "error");
+                }
+            }
+        }
+
+        private static void DeleteFullPcapFile(string fullPcapFile)
+        {
+            if (File.Exists(fullPcapFile))
+            {
+                File.Delete(fullPcapFile);
+                Output.Print($"Deleted full pcap file {fullPcapFile}", "debug");
+            }
+            else
+            {
+                Output.Print("Unable to delete full pcap file. It doesnt exist", "warning");
+            }
+        }
+
+        private static string GetExecutableFileName(int trackedProcessId, string executablePath)
+        {
+            string executableFileName = "";
+            if (trackedProcessId != 0) //When a PID was provided rather than the path to an executable
+            {
+                if (ProcessManager.IsProcessRunning(trackedProcessId)) { 
+                    executableFileName = ProcessManager.GetProcessFileName(trackedProcessId);
+                }
+                else
+                {
+                    Output.Print($"Unable to find active process with pid {trackedProcessId}", "warning");
+                    System.Environment.Exit(1);
+                }
+            }
+            else // When the path to an executable was provided
+            {
+                executableFileName = Path.GetFileName(executablePath);
+            }
+            return executableFileName;
+        }
+
         private static string GetRunInstanceFolderName(string executableName)
         {
             string timestamp = DateTime.Now.ToString("HHmmss");
             string folderName = $"{executableName}-{timestamp}";
             return folderName;
-
         }
 
         private static void ListenToETW()
