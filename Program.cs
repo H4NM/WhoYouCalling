@@ -71,8 +71,14 @@ namespace WhoYouCalling.Utilities
         }
     }
 
-    public class ProcessStarter
+    public class ProcessManager
     {
+        public string GetProcessFileName(int PID)
+        {
+            Process runningProcess = Process.GetProcessById(PID);
+            return runningProcess.MainModule.FileName;
+        }
+
         public int StartProcessAndGetId(string executablePath, string arguments = "")
         {
             try
@@ -243,7 +249,8 @@ namespace WhoYouCalling.Utilities
             filterPacketIndex++;
             var rawPacket = e.GetPacket();
             filteredFileWriter.Write(rawPacket);
-            //Output.Print(Program.debug, $"Filter packets: {filterPacketIndex}");
+            Output.Print($"Captured packets: {filterPacketIndex}", "debug");
+
         }
 
         private static void device_OnPacketArrival(object sender, PacketCapture e)
@@ -251,7 +258,7 @@ namespace WhoYouCalling.Utilities
             packetIndex++;
             var rawPacket = e.GetPacket();
             captureFileWriter.Write(rawPacket);
-            //Output.Print(Program.debug, $"Captured packets: {packetIndex}");
+            Output.Print($"Captured packets: {packetIndex}", "debug");
         }
     }
 }
@@ -279,20 +286,30 @@ namespace WhoYouCalling
         {
             if (!(TraceEventSession.IsElevated() ?? false))
             {
-                Output.Print("Please run me as Administrator!", "error");
+                Output.Print("Please run me as Administrator!", "warning");
                 return;
             }
             if (!ValidateProvidedArguments(args)) {
                 PrintHelp();
             }
 
+
             // Instanciate objects
-            Utilities.ProcessStarter processStarter = new Utilities.ProcessStarter();
+            Utilities.ProcessManager processManager = new Utilities.ProcessManager();
             Utilities.NetworkPackets networkPackets = new Utilities.NetworkPackets();
             Utilities.FileAndFolders fileAndFolders = new Utilities.FileAndFolders();
             Utilities.BPFFilter bpfFIlter = new Utilities.BPFFilter();
 
-            string executableFileName = Path.GetFileName(executablePath);
+            string executableFileName = "";
+            if (trackedProcessId != 0) //When a PID was provided rather than the path to an executable
+            {
+                 executableFileName = processManager.GetProcessFileName(trackedProcessId);
+            }
+            else
+            {
+                 executableFileName = Path.GetFileName(executablePath);
+            }
+
             string rootFolderName = GetRunInstanceFolderName(executableFileName);
 
             Output.Print($"Creating folder {rootFolderName}", "debug");
@@ -309,24 +326,30 @@ namespace WhoYouCalling
             using var device = devices[networkInterfaceChoice];
             networkPackets.SetCaptureDevice(device);
 
-            //Start capturing packets and start ETW listener
-            Output.Print($"Starting packet capture saved to \"{fullPcapFile}\"", "debug");
+            // Create threads for capturing packets and start ETW listener
             Thread fpcThread = new Thread(() => networkPackets.CaptureNetworkPacketsToPcap(fullPcapFile));
-            Output.Print("Starting ETW session", "debug");
             Thread etwThread = new Thread(() => ListenToETW());
-            etwThread.Start();
-            fpcThread.Start();
-            Thread.Sleep(2000); //Sleep is required to ensure ETW Subscription is timed correctly
 
-            try
+            // Start threads
+            Output.Print("Starting ETW session", "debug");
+            etwThread.Start();
+            Output.Print($"Starting packet capture saved to \"{fullPcapFile}\"", "debug");
+            fpcThread.Start();
+
+            // An executable has been provided
+            if (!string.IsNullOrEmpty(executablePath))
             {
-                Output.Print($"Starting executable \"{executablePath}\" with args \"{executableArguments}\"", "info");
-                trackedProcessId = processStarter.StartProcessAndGetId(executablePath, executableArguments);
-            }
-            catch (Exception ex)
-            {
-                Output.Print($"An error occurred while starting the process: {ex.Message}", "error");
-                return;
+                Thread.Sleep(2000); //Sleep is required to ensure ETW Subscription is timed correctly to capture the execution
+                try
+                {
+                    Output.Print($"Starting executable \"{executablePath}\" with args \"{executableArguments}\"", "info");
+                    trackedProcessId = processManager.StartProcessAndGetId(executablePath, executableArguments);
+                }
+                catch (Exception ex)
+                {
+                    Output.Print($"An error occurred while starting the process: {ex.Message}", "error");
+                    return;
+                }
             }
 
             while (true)
@@ -401,7 +424,7 @@ Examples:
                         }
                         else
                         {
-                            Output.Print("No arguments specified after -e/--executable flag", "error");
+                            Output.Print("No arguments specified after -e/--executable flag", "warning");
                         }
                     }
                     else if (args[i] == "-a" || args[i] == "--arguments") // Executable arguments flag
@@ -413,7 +436,7 @@ Examples:
                         }
                         else
                         {
-                            Output.Print("No arguments specified after -a/--arguments flag", "error");
+                            Output.Print("No arguments specified after -a/--arguments flag", "warning");
                             return false;
                         }
                     }
@@ -437,13 +460,13 @@ Examples:
                             }
                             else
                             {
-                                Console.WriteLine($"The provided value for PID ({trackedProcessId}) is not a valid integer", "error");
+                                Console.WriteLine($"The provided value for PID ({trackedProcessId}) is not a valid integer", "warning");
                                 return false;
                             }
                         }
                         else
                         {
-                            Output.Print("No arguments specified after -p/--pid flag", "error");
+                            Output.Print("No arguments specified after -p/--pid flag", "warning");
                             return false;
                         }
                     }
@@ -457,13 +480,13 @@ Examples:
                             }
                             else
                             {
-                                Console.WriteLine($"The provided value for timer ({processRunTimer}) is not a valid integer", "error");
+                                Console.WriteLine($"The provided value for timer ({processRunTimer}) is not a valid integer", "warning");
                                 return false;
                             }
                         }
                         else
                         {
-                            Output.Print("No arguments specified after -t/--timer flag", "error");
+                            Output.Print("No arguments specified after -t/--timer flag", "warning");
                             return false;
                         }
                     }
@@ -477,13 +500,13 @@ Examples:
                             }
                             else
                             {
-                                Console.WriteLine($"The provided value for network device ({networkInterfaceChoice}) is not a valid integer", "error");
+                                Console.WriteLine($"The provided value for network device ({networkInterfaceChoice}) is not a valid integer", "warning");
                                 return false;
                             }
                         }
                         else
                         {
-                            Output.Print("No arguments specified after -i/--interface flag", "error");
+                            Output.Print("No arguments specified after -i/--interface flag", "warning");
                             return false;
                         }
                     }
@@ -491,6 +514,7 @@ Examples:
                     else if (args[i] == "-g" || args[i] == "--getinterfaces") //Print available interfaces
                     {
                         NetworkPackets.PrintNetworkInterfaces();
+                        return false;
                     }
                     else if (args[i] == "-d" || args[i] == "--debug") //Save the full pcap
                     {
@@ -505,31 +529,31 @@ Examples:
             }
             else
             {
-                Output.Print("No arguments were provided.", "error");
+                Output.Print("No arguments were provided.", "warning");
                 return false;
             }
             
-            
-            
-            // Review combination of flags
-            if (!executableFlagSet && !PIDFlagSet) //Must specify PID or executable file
+            // Forbidden combination of flags
+            if (executableFlagSet == PIDFlagSet) //Must specify PID or executable file and not both
             {
-
+                Output.Print("One of -e or -p must be supplied, and not both", "error");
+                return false;
+            }
+            else if (executableArgsFlagSet && !executableFlagSet)
+            {
+                Output.Print("You need to specify an executable when providing with arguments with -a", "error");
+                return false;
+            }else if (timerFlagSet && !executableFlagSet)
+            {
+                Output.Print("You need to specify an executable when using a timer for closing the process", "error");
+                return false;
+            }else if (!networkInterfaceDeviceFlagSet)
+            {
+                Output.Print("You need to specify a network device interface. Run again with -g to view available devices", "error");
+                return false;
             }
 
-                /*
-             bool executableFlagSet = false;
-             bool executableArgsFlagSet = false;
-             bool PIDFlagSet = false;
-             bool timerFlagSet = false;
-             bool networkInterfaceDeviceFlagSet = false;
-             bool fullTrackFlagSet = false;
-             bool saveFullPcapFlagSet = false;
-                 * 
-                 */
-
-
-                return true;
+            return true;
         }
 
         private static string GetRunInstanceFolderName(string executableName)
