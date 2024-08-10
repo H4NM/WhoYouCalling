@@ -277,7 +277,6 @@ namespace WhoYouCalling
 
         static void Main(string[] args)
         {
-            Console.ReadLine();
             if (!(TraceEventSession.IsElevated() ?? false))
             {
                 Output.Print("Please run me as Administrator!", "error");
@@ -360,18 +359,18 @@ namespace WhoYouCalling
 Usage: WhoYouCalling.exe [options]
 Options:
   -e, --executable    : Executes the specified executable.
-  -a, --arguments     : Processes the provided number.
-  -f, --fulltracking  : 
-  -s, --savefullpcap  : 
-  -p, --pid           : 
-  -t, --timer         : 
-  -i, --interface     : 
-  -g, --getinterfaces : 
+  -a, --arguments     : Appends arguments contained within quotes to the executable file
+  -f, --fulltracking  : Monitors and tracks the network activity by child processes
+  -s, --savefullpcap  : Does not delete the full pcap thats not filtered
+  -p, --pid           : The running process id to track rather than executing the binary
+  -t, --timer         : The amount of time the execute binary will run for 
+  -i, --interface     : The network interface number. Retrievable with the -g/--getinterfaces flag
+  -g, --getinterfaces : Prints the network interface devices with corresponding number (usually 0-10)
   -h, --help          : Displays this help information.
 
 Examples:
-  MyApp.exe -e calc.exe
-  MyApp.exe -n 42
+  WhoYouCalling.exe -e calc.exe -f -s -t 120
+  WhoYouCalling.exe -p 4351 -s 
 ";
             Console.WriteLine(helpText);
             System.Environment.Exit(1);
@@ -506,12 +505,31 @@ Examples:
             }
             else
             {
-                Output.Print("No arguments were provided.");
+                Output.Print("No arguments were provided.", "error");
                 return false;
             }
-
+            
+            
+            
             // Review combination of flags
-            return false;
+            if (!executableFlagSet && !PIDFlagSet) //Must specify PID or executable file
+            {
+
+            }
+
+                /*
+             bool executableFlagSet = false;
+             bool executableArgsFlagSet = false;
+             bool PIDFlagSet = false;
+             bool timerFlagSet = false;
+             bool networkInterfaceDeviceFlagSet = false;
+             bool fullTrackFlagSet = false;
+             bool saveFullPcapFlagSet = false;
+                 * 
+                 */
+
+
+                return true;
         }
 
         private static string GetRunInstanceFolderName(string executableName)
