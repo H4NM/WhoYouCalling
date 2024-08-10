@@ -19,9 +19,9 @@ using Microsoft.Diagnostics.Tracing.Session;
 using SharpPcap;
 using SharpPcap.LibPcap;
 using PacketDotNet;
-using ApplicationReviewer.Utilities;
+using WhoYouCalling.Utilities;
 
-namespace ApplicationReviewer.Utilities
+namespace WhoYouCalling.Utilities
 {
     public static class Output
     {
@@ -73,11 +73,11 @@ namespace ApplicationReviewer.Utilities
 
     public class ProcessStarter
     {
-        public int StartProcessAndGetId(string binaryPath, string arguments = "")
+        public int StartProcessAndGetId(string executablePath, string arguments = "")
         {
             try
             {
-                ProcessStartInfo startInfo = new ProcessStartInfo(binaryPath);
+                ProcessStartInfo startInfo = new ProcessStartInfo(executablePath);
 
                 if (!string.IsNullOrEmpty(arguments))
                 {
@@ -141,8 +141,15 @@ namespace ApplicationReviewer.Utilities
             }
         }
 
-        public void PrintNetworkInterfaces(LibPcapLiveDeviceList devices)
+        public static void PrintNetworkInterfaces()
         {
+            var devices = LibPcapLiveDeviceList.Instance;
+            if (devices.Count < 1)
+            {
+                Output.Print("No network interfaces were found on this machine.", "error");
+                System.Environment.Exit(1);
+            }
+
             int i = 0;
             string deviceMsg;
             foreach (var dev in devices)
@@ -249,40 +256,36 @@ namespace ApplicationReviewer.Utilities
     }
 }
 
-namespace ApplicationReviewer
+namespace WhoYouCalling
 {
     class Program
     {
 
-        private static int trackedProcessId;
-        private static bool trackChildProcesses = true;
         private static Dictionary<int, string> trackedChildProcessIds = new Dictionary<int, string>();
-        private static string filteredPcapFile;
-        private static string fullPcapFile;
-        private static int networkInterfaceChoice = 4;
-        private static bool mainProcessEnded = false;
-        private static string binaryPath = @"C:\Users\Hannes\Documents\Git\WhoYouCalling\dist\TestApplication.exe";
-        private static string arguments = ""; // Add any required arguments here
         private static TraceEventSession kernelSession;
-        public static bool debug = true;
+        private static bool mainProcessEnded = false;
+
+        // Arguments
+        private static int trackedProcessId;
+        private static int processRunTimer;
+        private static int networkInterfaceChoice;
+        private static string executablePath;
+        private static string executableArguments = "";
+        private static bool trackChildProcesses = false;
+        private static bool saveFullPcap = false;
+        public static bool debug = false;
 
         static void Main(string[] args)
         {
+            Console.ReadLine();
             if (!(TraceEventSession.IsElevated() ?? false))
             {
-                Output.Print("Please run me as Administrator!", "info");
+                Output.Print("Please run me as Administrator!", "error");
                 return;
             }
-            /*if (args.Length != 1)
-            {
-                Console.WriteLine("Uppge namn på process att övervaka");
-                return;
+            if (!ValidateProvidedArguments(args)) {
+                PrintHelp();
             }
-            Console.WriteLine("[{0}]", string.Join(", ", args));
-            */
-
-            //string binaryPath = @"C:\Program Files (x86)\Steam\steam.exe";
-            //string binaryPath = @"C:\Program Files(x86)\Steam\steamapps\common\SongsOfConquest\SongsOfConquest.exe";
 
             // Instanciate objects
             Utilities.ProcessStarter processStarter = new Utilities.ProcessStarter();
@@ -290,18 +293,20 @@ namespace ApplicationReviewer
             Utilities.FileAndFolders fileAndFolders = new Utilities.FileAndFolders();
             Utilities.BPFFilter bpfFIlter = new Utilities.BPFFilter();
 
-            string executableFileName = Path.GetFileName(binaryPath);
+            string executableFileName = Path.GetFileName(executablePath);
             string rootFolderName = GetRunInstanceFolderName(executableFileName);
 
             Output.Print($"Creating folder {rootFolderName}", "debug");
             fileAndFolders.CreateFolder(rootFolderName);
 
-            fullPcapFile = $"{rootFolderName}\\{executableFileName}-Full.pcap";
-            filteredPcapFile = $"{rootFolderName}\\{executableFileName}-Filtered.pcap";
+            string fullPcapFile = $"{rootFolderName}\\{executableFileName}-Full.pcap";
+            string filteredPcapFile = $"{rootFolderName}\\{executableFileName}-Filtered.pcap";
 
-            //Get network information
             LibPcapLiveDeviceList devices = networkPackets.GetNetworkInterfaces();
-            //networkPackets.PrintNetworkInterfaces(devices);
+            if (devices == null)
+            {
+                System.Environment.Exit(1);
+            }
             using var device = devices[networkInterfaceChoice];
             networkPackets.SetCaptureDevice(device);
 
@@ -316,8 +321,8 @@ namespace ApplicationReviewer
 
             try
             {
-                Output.Print($"Starting executable \"{binaryPath}\" with args \"{arguments}\"", "info");
-                trackedProcessId = processStarter.StartProcessAndGetId(binaryPath, arguments);
+                Output.Print($"Starting executable \"{executablePath}\" with args \"{executableArguments}\"", "info");
+                trackedProcessId = processStarter.StartProcessAndGetId(executablePath, executableArguments);
             }
             catch (Exception ex)
             {
@@ -328,7 +333,7 @@ namespace ApplicationReviewer
             while (true)
             {
                 if (mainProcessEnded) {
-                    Output.Print($"{binaryPath} process with PID {trackedProcessId} stopped. Finishing...", "debug");
+                    Output.Print($"{executablePath} process with PID {trackedProcessId} stopped. Finishing...", "debug");
                     Output.Print($"Stopping ETW kernel session", "debug");
                     StopKernelSession();
                     if (kernelSession.IsActive)
@@ -346,7 +351,167 @@ namespace ApplicationReviewer
                 }
             }
 
-            
+
+        }
+
+        private static void PrintHelp()
+        {
+            string helpText = @"
+Usage: WhoYouCalling.exe [options]
+Options:
+  -e, --executable    : Executes the specified executable.
+  -a, --arguments     : Processes the provided number.
+  -f, --fulltracking  : 
+  -s, --savefullpcap  : 
+  -p, --pid           : 
+  -t, --timer         : 
+  -i, --interface     : 
+  -g, --getinterfaces : 
+  -h, --help          : Displays this help information.
+
+Examples:
+  MyApp.exe -e calc.exe
+  MyApp.exe -n 42
+";
+            Console.WriteLine(helpText);
+            System.Environment.Exit(1);
+        }
+
+        private static bool ValidateProvidedArguments(string[] args){
+            bool executableFlagSet = false;
+            bool executableArgsFlagSet = false;
+            bool PIDFlagSet = false;
+            bool timerFlagSet = false;
+            bool networkInterfaceDeviceFlagSet = false;
+            bool fullTrackFlagSet = false;
+            bool saveFullPcapFlagSet = false;
+
+            // Check if no args are provided
+            if (args.Length > 0)
+            {
+                // Iterate args
+                for (int i = 0; i < args.Length; i++)
+                {
+                    if (args[i] == "-e" || args[i] == "--executable") // Executable flag
+                    {
+                        // Ensure there's a subsequent argument that represents the executable
+                        if (i + 1 < args.Length)
+                        {
+                            executablePath = args[i + 1];
+                            executableFlagSet = true;
+                        }
+                        else
+                        {
+                            Output.Print("No arguments specified after -e/--executable flag", "error");
+                        }
+                    }
+                    else if (args[i] == "-a" || args[i] == "--arguments") // Executable arguments flag
+                    {
+                        if (i + 1 < args.Length)
+                        {
+                            executableArguments = args[i + 1];
+                            executableArgsFlagSet = true;
+                        }
+                        else
+                        {
+                            Output.Print("No arguments specified after -a/--arguments flag", "error");
+                            return false;
+                        }
+                    }
+                    else if (args[i] == "-f" || args[i] == "--fulltracking") // Track the network activity by child processes
+                    {
+                        trackChildProcesses = true;
+                        fullTrackFlagSet = true;
+                    }
+                    else if (args[i] == "-s" || args[i] == "--savefullpcap") //Save the full pcap
+                    {
+                        saveFullPcap = true;
+                        saveFullPcapFlagSet = true;
+                    }
+                    else if (args[i] == "-p" || args[i] == "--pid") // Running process id
+                    {
+                        if (i + 1 < args.Length)
+                        {
+                            if (int.TryParse(args[i + 1], out trackedProcessId))
+                            {
+                                PIDFlagSet = true;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"The provided value for PID ({trackedProcessId}) is not a valid integer", "error");
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            Output.Print("No arguments specified after -p/--pid flag", "error");
+                            return false;
+                        }
+                    }
+                    else if (args[i] == "-t" || args[i] == "--timer") // Executable run timer
+                    {
+                        if (i + 1 < args.Length)
+                        {
+                            if (int.TryParse(args[i + 1], out processRunTimer))
+                            {
+                                timerFlagSet = true;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"The provided value for timer ({processRunTimer}) is not a valid integer", "error");
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            Output.Print("No arguments specified after -t/--timer flag", "error");
+                            return false;
+                        }
+                    }
+                    else if (args[i] == "-i" || args[i] == "--interface") // Network interface device flag
+                    {
+                        if (i + 1 < args.Length)
+                        {
+                            if (int.TryParse(args[i + 1], out networkInterfaceChoice))
+                            {
+                                networkInterfaceDeviceFlagSet = true;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"The provided value for network device ({networkInterfaceChoice}) is not a valid integer", "error");
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            Output.Print("No arguments specified after -i/--interface flag", "error");
+                            return false;
+                        }
+                    }
+
+                    else if (args[i] == "-g" || args[i] == "--getinterfaces") //Print available interfaces
+                    {
+                        NetworkPackets.PrintNetworkInterfaces();
+                    }
+                    else if (args[i] == "-d" || args[i] == "--debug") //Save the full pcap
+                    {
+                        Program.debug = true;
+                    }
+                    else if (args[i] == "-h" || args[i] == "--help") //Output help instructions
+                    {
+                        PrintHelp();
+                    }
+
+                }
+            }
+            else
+            {
+                Output.Print("No arguments were provided.");
+                return false;
+            }
+
+            // Review combination of flags
+            return false;
         }
 
         private static string GetRunInstanceFolderName(string executableName)
@@ -355,10 +520,6 @@ namespace ApplicationReviewer
             string folderName = $"{executableName}-{timestamp}";
             return folderName;
 
-        }
-        private static void StopKernelSession()
-        {
-            kernelSession.Dispose();
         }
 
         private static void ListenToETW()
@@ -382,12 +543,11 @@ namespace ApplicationReviewer
                 kernelSession.Source.Process();
             }
         }
+        private static void StopKernelSession()
+        {
+            kernelSession.Dispose();
+        }
 
-        /*
-         
-        NETWORK 
-        
-        */
         private static void Ipv4TcpStart(TcpIpSendTraceData data)
         {
             if (trackedProcessId == data.ProcessID || trackedChildProcessIds.ContainsKey(data.ProcessID))
@@ -420,11 +580,6 @@ namespace ApplicationReviewer
             }
         }
 
-        /*
-         
-        PROCESSES
-        
-        */
         private static void childProcessStarted(ProcessTraceData data) {
             if (trackedProcessId == data.ParentID || trackedChildProcessIds.ContainsKey(data.ParentID))
             {
