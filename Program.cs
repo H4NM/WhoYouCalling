@@ -23,6 +23,8 @@ using PacketDotNet;
 using WhoYouCalling.Utilities;
 using System.Timers;
 using System.Security.Cryptography;
+using System.Runtime.Intrinsics.Arm;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace WhoYouCalling.Utilities
 {
@@ -65,12 +67,11 @@ namespace WhoYouCalling.Utilities
     {
         public void CreateFolder(string folder)
         {
-
             System.IO.Directory.CreateDirectory(folder);
         }
-        public void CreateFile()
+        public void CreateTextFile(string filePath, List<string> listWithStrings)
         {
-
+            File.WriteAllLines(filePath, listWithStrings);
         }
     }
 
@@ -285,9 +286,12 @@ namespace WhoYouCalling
     class Program
     {
 
-        private static Dictionary<int, string> trackedChildProcessIds = new Dictionary<int, string>();
+        private static Dictionary<int, string> trackedChildProcessIds = new Dictionary<int, string>(); // Used for tracking the corresponding executable name to the spawned processes
+        private static List<string> etwActivityHistory = new List<String>(); // Summary of the network activities made
+        private static Dictionary<int, HashSet<string>> bpfFilterBasedActivity = new Dictionary<int, HashSet<string>>();
         private static TraceEventSession kernelSession;
         private static bool mainProcessEnded = false;
+        private static string mainExecutableFileName;
 
         // Arguments
         private static int trackedProcessId;
@@ -318,15 +322,16 @@ namespace WhoYouCalling
             Utilities.BPFFilter bpfFIlter = new Utilities.BPFFilter();
 
             Output.Print("Retrieving executable filename", "debug");
-            string executableFileName = GetExecutableFileName(trackedProcessId, executablePath);
-            Output.Print($"Retrieved executable filename {executableFileName}", "debug");
-            string rootFolderName = GetRunInstanceFolderName(executableFileName);
-
+            mainExecutableFileName = GetExecutableFileName(trackedProcessId, executablePath);
+            Output.Print($"Retrieved executable filename {mainExecutableFileName}", "debug");
+            string rootFolderName = GetRunInstanceFolderName(mainExecutableFileName);
+         
             Output.Print($"Creating folder {rootFolderName}", "debug");
             fileAndFolders.CreateFolder(rootFolderName);
 
-            string fullPcapFile = $"{rootFolderName}\\{executableFileName}-Full.pcap";
-            string filteredPcapFile = $"{rootFolderName}\\{executableFileName}-Filtered.pcap";
+            string fullPcapFile = $"{rootFolderName}\\{mainExecutableFileName}-Full.pcap";
+            string filteredPcapFile = $"{rootFolderName}\\{mainExecutableFileName}-Filtered.pcap";
+            string etwHistoryFile = $"{rootFolderName}\\{mainExecutableFileName}-History.txt";
 
             // Retrieve network interface devices
             LibPcapLiveDeviceList devices = networkPackets.GetNetworkInterfaces();
@@ -355,7 +360,9 @@ namespace WhoYouCalling
                 {
                     Output.Print($"Starting executable \"{executablePath}\" with args \"{executableArguments}\"", "debug");
                     trackedProcessId = processManager.StartProcessAndGetId(executablePath, executableArguments);
-                    
+                    AddActivityToETWHistory(eventType: "process", executable: mainExecutableFileName, execType: "Main", execAction: "started", execPID: trackedProcessId);
+                    bpfFilterBasedActivity[trackedProcessId] = new HashSet<string> {}; // Add the main executable processname
+
                     if (processRunTimer != 0)
                     {
                         System.Timers.Timer timer = new System.Timers.Timer(processRunTimer);
@@ -376,9 +383,11 @@ namespace WhoYouCalling
             while (true)
             {
                 if (mainProcessEnded) {
+                    // Shutdown
                     Output.Print($"{executablePath} process with PID {trackedProcessId} stopped. Finishing...", "debug");
                     if (processRunTimer != 0) // If a timer was specified, kill child processes
                     {
+                        Output.Print($"Killing child processes from main process", "debug");
                         KillRunningChildProcesses();
                     }
                     Output.Print($"Stopping ETW kernel session", "debug");
@@ -389,10 +398,24 @@ namespace WhoYouCalling
                     }
                     Output.Print($"Stopping packet capture saved to \"{fullPcapFile}\"", "debug");
                     networkPackets.StopCapturingNetworkPackets();
+
+                    // Action
+                    if (etwActivityHistory.Count > 0)
+                    {
+                        Output.Print($"Creating ETW history file \"{etwHistoryFile}\"", "debug");
+                        fileAndFolders.CreateTextFile(etwHistoryFile, etwActivityHistory);
+                    }
+                    else
+                    {
+                        Output.Print($"Not creating ETW history file since no activity was recorded", "warning");
+                    }
+
                     Output.Print($"Producing BPF filter", "debug");
                     string computedBPFFilter = bpfFIlter.GetBPFFilter();
                     Output.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilter}\"", "debug");
                     networkPackets.FilterNetworkCaptureFile(computedBPFFilter, fullPcapFile, filteredPcapFile);
+                    
+                    // Cleanup 
                     if (!saveFullPcap)
                     {
                         Output.Print($"Deleting full pcap file {fullPcapFile}", "debug");
@@ -402,8 +425,6 @@ namespace WhoYouCalling
                     break;
                 }
             }
-
-
         }
 
         private static void PrintHelp()
@@ -422,7 +443,7 @@ Options:
   -h, --help          : Displays this help information.
 
 Examples:
-  WhoYouCalling.exe -e calc.exe -f -s -t 120
+  WhoYouCalling.exe -e calc.exe -f -s --timer 120
   WhoYouCalling.exe -p 4351 -s 
 ";
             Console.WriteLine(helpText);
@@ -586,6 +607,48 @@ Examples:
             return true;
         }
 
+        private static void AddActivityToETWHistory(string executable = "N/A",
+                                             string execType = "N/A", // Main or child process
+                                             string execAction = "started",
+                                             string execObject = "N/A",
+                                             int execPID = 0,
+                                             int parentExecPID = 0,
+                                             string eventType = "network",
+                                             string ipVersion = "IPv4",
+                                             string transportProto = "TCP",
+                                             IPAddress dstAddr = null, 
+                                             int dstPort = 0)
+        {
+            string timestamp = DateTime.Now.ToString("HH:mm:ss");
+            
+            string historyMsg = "";
+            if (eventType == "network") // If its a network related actvitiy
+            {
+                historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) sent a {ipVersion} {transportProto} packet to {dstAddr}:{dstPort}";
+                // Create BPF filter objects
+                string bpfBasedProto = transportProto.ToLower();
+                string bpfBasedIPVersion = "";
+                if (ipVersion == "IPv4")
+                {
+                    bpfBasedIPVersion = "ip";
+                }
+                else
+                {
+                    bpfBasedIPVersion = "ip6";
+                }
+                bpfFilterBasedActivity[execPID].Add($"({bpfBasedIPVersion} and {bpfBasedProto} and dst host {dstAddr} and dst port {dstPort})");
+            }
+            else if (eventType == "process") // If its a process related activity
+            {
+                historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) {execAction}";
+            }else if (eventType == "childprocess") // If its a process starting another process
+            {
+                historyMsg = $"{timestamp} - {executable}[{parentExecPID}]({execType}) {execAction} {execObject}[{execPID}]";
+            }
+            Output.Print(historyMsg, "debug");
+            etwActivityHistory.Add(historyMsg);
+        }
+
         private static void TimerKillMainRunningProcess(object source, ElapsedEventArgs e, int pid)
         {
             try
@@ -618,8 +681,17 @@ Examples:
 
                     if (!process.HasExited)
                     {
-                        Output.Print($"Timer elapsed. Killing the child process with pid {childprocess.Key}", "debug");
-                        process.Kill();
+                        
+                        if (Path.GetFileName(process.MainModule.FileName) == childprocess.Value) // Checks if the running process file name is the same as in the asserted file name for the child process that started
+                        {
+                            Output.Print($"Timer elapsed. Killing the child process with pid {childprocess.Key}", "debug");
+                            process.Kill();
+                        }
+                        else
+                        {
+                            Output.Print($"ChildProcessMissMatch?? {process.MainModule.FileName} AND {childprocess.Value}", "info");
+                        }
+
                     }
                 }
                 catch (ArgumentException)
@@ -702,54 +774,166 @@ Examples:
 
         private static void Ipv4TcpStart(TcpIpSendTraceData data)
         {
-            if (trackedProcessId == data.ProcessID || trackedChildProcessIds.ContainsKey(data.ProcessID))
+            if (trackedProcessId == data.ProcessID)
             {
-                Output.Print($"{data.ProcessName} sent a IPv4 TCP packet {data.daddr}:{data.dport}", "debug"); //Replace with debug and use statistic print instead
+                AddActivityToETWHistory(eventType: "network", 
+                                        executable: mainExecutableFileName, 
+                                        execPID: data.ProcessID,
+                                        execType: "Main", 
+                                        ipVersion: "IPv4",
+                                        transportProto: "TCP",
+                                        dstAddr: data.daddr,
+                                        dstPort: data.dport);
+            }
+            else if (trackedChildProcessIds.ContainsKey(data.ProcessID))
+            {
+                string childExecutable = trackedChildProcessIds[data.ProcessID];
+                AddActivityToETWHistory(eventType: "network",
+                                        executable: childExecutable,
+                                        execPID: data.ProcessID,
+                                        execType: "Child",
+                                        ipVersion: "IPv4",
+                                        transportProto: "TCP",
+                                        dstAddr: data.daddr,
+                                        dstPort: data.dport);
             }
         }
 
         private static void Ipv6TcpStart(TcpIpV6SendTraceData data)
         {
-            if (trackedProcessId == data.ProcessID || trackedChildProcessIds.ContainsKey(data.ProcessID))
+            if (trackedProcessId == data.ProcessID)
             {
-                Output.Print($"{data.ProcessName} sent a IPv6 TCP packet to {data.daddr}:{data.dport}", "debug"); //Replace with debug and use statistic print instead
+                AddActivityToETWHistory(eventType: "network",
+                                        executable: mainExecutableFileName,
+                                        execPID: data.ProcessID,
+                                        execType: "Main",
+                                        ipVersion: "IPv6",
+                                        transportProto: "TCP",
+                                        dstAddr: data.daddr,
+                                        dstPort: data.dport);
+            }
+            else if (trackedChildProcessIds.ContainsKey(data.ProcessID))
+            {
+                string childExecutable = trackedChildProcessIds[data.ProcessID];
+                AddActivityToETWHistory(eventType: "network",
+                                        executable: childExecutable,
+                                        execPID: data.ProcessID,
+                                        execType: "Child",
+                                        ipVersion: "IPv6",
+                                        transportProto: "TCP",
+                                        dstAddr: data.daddr,
+                                        dstPort: data.dport);
             }
         }
 
         private static void Ipv4UdpIpStart(UdpIpTraceData data)
         {
-            if (trackedProcessId == data.ProcessID || trackedChildProcessIds.ContainsKey(data.ProcessID))
+            if (trackedProcessId == data.ProcessID)
             {
-                Output.Print($"{data.ProcessName} sent a IPv4 UDP packet to {data.daddr}:{data.dport}", "debug"); //Replace with debug and use statistic print instead
+                AddActivityToETWHistory(eventType: "network",
+                                        executable: mainExecutableFileName,
+                                        execPID: data.ProcessID,
+                                        execType: "Main",
+                                        ipVersion: "IPv4",
+                                        transportProto: "UDP",
+                                        dstAddr: data.daddr,
+                                        dstPort: data.dport);
+            }
+            else if (trackedChildProcessIds.ContainsKey(data.ProcessID))
+            {
+                string childExecutable = trackedChildProcessIds[data.ProcessID];
+                AddActivityToETWHistory(eventType: "network",
+                                        executable: childExecutable,
+                                        execPID: data.ProcessID,
+                                        execType: "Child",
+                                        ipVersion: "IPv4",
+                                        transportProto: "UDP",
+                                        dstAddr: data.daddr,
+                                        dstPort: data.dport);
             }
         }
 
         private static void Ipv6UdpIpStart(UpdIpV6TraceData data)
         {
-            if (trackedProcessId == data.ProcessID || trackedChildProcessIds.ContainsKey(data.ProcessID))
+            if (trackedProcessId == data.ProcessID)
             {
-                Output.Print($"{data.ProcessName} sent a IPv6 UDP packet to {data.daddr}:{data.dport}", "debug"); //Replace with debug and use statistic print instead
+                AddActivityToETWHistory(eventType: "network",
+                                        executable: mainExecutableFileName,
+                                        execPID: data.ProcessID,
+                                        execType: "Main",
+                                        ipVersion: "IPv6",
+                                        transportProto: "UDP",
+                                        dstAddr: data.daddr,
+                                        dstPort: data.dport);
+            }
+            else if (trackedChildProcessIds.ContainsKey(data.ProcessID))
+            {
+                string childExecutable = trackedChildProcessIds[data.ProcessID];
+                AddActivityToETWHistory(eventType: "network",
+                                        executable: childExecutable,
+                                        execPID: data.ProcessID,
+                                        execType: "Child",
+                                        ipVersion: "IPv6",
+                                        transportProto: "UDP",
+                                        dstAddr: data.daddr,
+                                        dstPort: data.dport);
             }
         }
 
         private static void childProcessStarted(ProcessTraceData data) {
-            if (trackedProcessId == data.ParentID || trackedChildProcessIds.ContainsKey(data.ParentID))
+
+            if (trackedProcessId == data.ParentID) //Tracks child processes by main process
             {
-                Output.Print($"Child process started: {data.ImageFileName} with PID {data.ProcessID} and arguments: {data.CommandLine}", "debug"); //Replace with debug and use statistic print instead
-                if (trackChildProcesses) { 
+                AddActivityToETWHistory(eventType: "childprocess",
+                                        executable: mainExecutableFileName,
+                                        execType: "Main",
+                                        execAction: "started",
+                                        execObject: data.ImageFileName,
+                                        execPID: data.ProcessID,
+                                        parentExecPID: data.ParentID);
+
+                if (trackChildProcesses)
+                {
                     trackedChildProcessIds.Add(data.ProcessID, data.ImageFileName);
+                    bpfFilterBasedActivity[data.ProcessID] = new HashSet<string> { }; // Add child processname
+
                 }
             }
+            else if (trackedChildProcessIds.ContainsKey(data.ParentID)) //Tracks child processes by child processes
+            {
+                string childExecutable = trackedChildProcessIds[data.ParentID];
+                AddActivityToETWHistory(eventType: "childprocess",
+                                        executable: childExecutable,
+                                        execType: "Child",
+                                        execAction: "started",
+                                        execObject: data.ImageFileName,
+                                        execPID: data.ProcessID,
+                                        parentExecPID: data.ParentID);
+                if (trackChildProcesses)
+                {
+                    trackedChildProcessIds.Add(data.ProcessID, data.ImageFileName);
+                    bpfFilterBasedActivity[data.ProcessID] = new HashSet<string> { }; // Add child processname
+                }
+            }
+
         }
 
         private static void processStopped(ProcessTraceData data) {
-            if (trackedProcessId == data.ProcessID)
+            if (trackedProcessId == data.ProcessID) // Main process stopped
             {
-                Output.Print($"Stopped main process: {data.ImageFileName} with PID {data.ProcessID}", "debug"); //Replace with debug and use statistic print instead
+                AddActivityToETWHistory(eventType: "process",
+                                        executable: data.ImageFileName,
+                                        execType: "Main",
+                                        execAction: "stopped",
+                                        execPID: data.ProcessID);
                 mainProcessEnded = true;
-            }else if (trackedChildProcessIds.ContainsKey(data.ProcessID))
+            }else if (trackedChildProcessIds.ContainsKey(data.ProcessID)) // Child process stopped
             {
-                Output.Print($"Stopped child process: {data.ImageFileName} with PID {data.ProcessID}", "debug"); //Replace with debug and use statistic print instead
+                AddActivityToETWHistory(eventType: "process",
+                                        executable: data.ImageFileName,
+                                        execType: "Child",
+                                        execAction: "stopped",
+                                        execPID: data.ProcessID);
                 trackedChildProcessIds.Remove(data.ProcessID);  
             }
         }
