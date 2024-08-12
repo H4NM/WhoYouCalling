@@ -25,6 +25,7 @@ using System.Timers;
 using System.Security.Cryptography;
 using System.Runtime.Intrinsics.Arm;
 using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Numerics;
 
 namespace WhoYouCalling.Utilities
 {
@@ -133,8 +134,36 @@ namespace WhoYouCalling.Utilities
 
     public class BPFFilter
     {
-        public String GetBPFFilter()
+        public string GetBPFFilter(Dictionary<int, HashSet<string>> bpfFilterBasedDict)
         {
+
+            //bpfFilterBasedActivity[execPID].Add($"{bpfBasedIPVersion},{bpfBasedProto},{dstAddr},{dstPort}");
+
+            Dictionary<string, string> bpfFilterPerExecutable = new Dictionary<string, string>;
+
+            foreach (KeyValuePair<int, HashSet<string>> entry in bpfFilterBasedDict) //For each Process 
+            {
+                string tempFullBPFstring = "(";
+                foreach (string entryCSV in entry.Value) //For each recorded unique network activity
+                {
+                    string[] parts = entryCSV.Split(',');
+
+                    string ipVersion = parts[0];
+                    string transportProto = parts[1];
+                    string dstAddr = parts[2];
+                    string dstPort = parts[3];
+
+                    string tempPartialBPFstring = $"({ipVersion} and {transportProto} and dst host {dstAddr} and dst port {dstPort})";
+                    if (entry.Value.Count > 1)
+                    {
+
+                    }
+                }
+                string executableNameByPID = Program.executableByPIDTable[entry.Key]; //Lookup the executable name
+                bpfFilterPerExecutable[executableNameByPID] = tempFullBPFstring; // Add BPF filter for executable
+                //executableByPIDTable
+            }
+
             return "tcp and (dst port 80 or dst port 8080 or dst port 443)";
         }
     }
@@ -286,8 +315,10 @@ namespace WhoYouCalling
     class Program
     {
 
-        private static Dictionary<int, string> trackedChildProcessIds = new Dictionary<int, string>(); // Used for tracking the corresponding executable name to the spawned processes
-        private static List<string> etwActivityHistory = new List<String>(); // Summary of the network activities made
+        private static Dictionary<int, string> trackedChildProcessIds = new Dictionary<int, string>(); // TODO : Used for tracking the corresponding executable name to the spawned processes - Must change to List instead. Otherwise redundant to executableByPIDTable - TODO
+        public static Dictionary<int, string> executableByPIDTable = new Dictionary<int, string>();
+
+        private static List<string> etwActivityHistory = new List<string>(); // Summary of the network activities made
         private static Dictionary<int, HashSet<string>> bpfFilterBasedActivity = new Dictionary<int, HashSet<string>>();
         private static TraceEventSession kernelSession;
         private static bool mainProcessEnded = false;
@@ -362,7 +393,7 @@ namespace WhoYouCalling
                     trackedProcessId = processManager.StartProcessAndGetId(executablePath, executableArguments);
                     AddActivityToETWHistory(eventType: "process", executable: mainExecutableFileName, execType: "Main", execAction: "started", execPID: trackedProcessId);
                     bpfFilterBasedActivity[trackedProcessId] = new HashSet<string> {}; // Add the main executable processname
-
+                    executableByPIDTable.Add(trackedProcessId, mainExecutableFileName);
                     if (processRunTimer != 0)
                     {
                         System.Timers.Timer timer = new System.Timers.Timer(processRunTimer);
@@ -411,7 +442,7 @@ namespace WhoYouCalling
                     }
 
                     Output.Print($"Producing BPF filter", "debug");
-                    string computedBPFFilter = bpfFIlter.GetBPFFilter();
+                    string computedBPFFilter = bpfFIlter.GetBPFFilter(bpfFilterBasedActivity);
                     Output.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilter}\"", "debug");
                     networkPackets.FilterNetworkCaptureFile(computedBPFFilter, fullPcapFile, filteredPcapFile);
                     
@@ -636,7 +667,7 @@ Examples:
                 {
                     bpfBasedIPVersion = "ip6";
                 }
-                bpfFilterBasedActivity[execPID].Add($"({bpfBasedIPVersion} and {bpfBasedProto} and dst host {dstAddr} and dst port {dstPort})");
+                bpfFilterBasedActivity[execPID].Add($"{bpfBasedIPVersion},{bpfBasedProto},{dstAddr},{dstPort}");
             }
             else if (eventType == "process") // If its a process related activity
             {
@@ -891,10 +922,11 @@ Examples:
                                         execObject: data.ImageFileName,
                                         execPID: data.ProcessID,
                                         parentExecPID: data.ParentID);
-
                 if (trackChildProcesses)
                 {
                     trackedChildProcessIds.Add(data.ProcessID, data.ImageFileName);
+                    executableByPIDTable.Add(data.ProcessID, data.ImageFileName);
+
                     bpfFilterBasedActivity[data.ProcessID] = new HashSet<string> { }; // Add child processname
 
                 }
@@ -912,6 +944,8 @@ Examples:
                 if (trackChildProcesses)
                 {
                     trackedChildProcessIds.Add(data.ProcessID, data.ImageFileName);
+                    executableByPIDTable.Add(data.ProcessID, data.ImageFileName);
+
                     bpfFilterBasedActivity[data.ProcessID] = new HashSet<string> { }; // Add child processname
                 }
             }
