@@ -44,12 +44,14 @@ namespace WhoYouCalling.Utilities
                     prefix = "[!]";
                     break;
                 case "error":
+                    prefix = "[?]";
+                    break;
+                case "fatal":
                     prefix = "[!!!]";
                     break;
                 case "debug":
                     if (Program.debug) { 
-                        string timestamp = DateTime.Now.ToString("HH:mm:ss");
-                        prefix = $"[DEBUG - {timestamp}]";
+                        prefix = $"[DEBUG]";
                     }
                     else
                     {
@@ -134,16 +136,23 @@ namespace WhoYouCalling.Utilities
 
     public class BPFFilter
     {
-        public string GetBPFFilter(Dictionary<int, HashSet<string>> bpfFilterBasedDict)
+        public Dictionary<string, string> GetBPFFilter(Dictionary<int, HashSet<string>> bpfFilterBasedDict)
         {
 
             //bpfFilterBasedActivity[execPID].Add($"{bpfBasedIPVersion},{bpfBasedProto},{dstAddr},{dstPort}");
 
-            Dictionary<string, string> bpfFilterPerExecutable = new Dictionary<string, string>;
+            Dictionary<string, string> bpfFilterPerExecutable = new Dictionary<string, string>();
 
             foreach (KeyValuePair<int, HashSet<string>> entry in bpfFilterBasedDict) //For each Process 
             {
-                string tempFullBPFstring = "(";
+                string executableNameByPID = Program.executableByPIDTable[entry.Key]; //Lookup the executable name
+
+                if (entry.Value.Count == 0) // Check if the executable has any recorded network activity
+                {
+                    Output.Print($"Not calculating BPFFilter for {executableNameByPID}. No recored network activity", "debug");
+                    continue;
+                }
+                List<string> FullBPFlistForProcess = new List<string>();
                 foreach (string entryCSV in entry.Value) //For each recorded unique network activity
                 {
                     string[] parts = entryCSV.Split(',');
@@ -153,18 +162,20 @@ namespace WhoYouCalling.Utilities
                     string dstAddr = parts[2];
                     string dstPort = parts[3];
 
-                    string tempPartialBPFstring = $"({ipVersion} and {transportProto} and dst host {dstAddr} and dst port {dstPort})";
-                    if (entry.Value.Count > 1)
-                    {
-
-                    }
+                    string partialBPFstring = $"({ipVersion} and {transportProto} and dst host {dstAddr} and dst port {dstPort})";
+                    FullBPFlistForProcess.Add(partialBPFstring);
                 }
-                string executableNameByPID = Program.executableByPIDTable[entry.Key]; //Lookup the executable name
-                bpfFilterPerExecutable[executableNameByPID] = tempFullBPFstring; // Add BPF filter for executable
-                //executableByPIDTable
+                string BPFFilter = string.Join(" or ", FullBPFlistForProcess);
+                bpfFilterPerExecutable[executableNameByPID] = BPFFilter; // Add BPF filter for executable
             }
 
-            return "tcp and (dst port 80 or dst port 8080 or dst port 443)";
+            List<string> tempBPFList = new List<string>();
+            foreach (KeyValuePair<string, string> processBPFFilter in bpfFilterPerExecutable)
+            {
+                tempBPFList.Add($"({processBPFFilter.Value})");
+            }
+            bpfFilterPerExecutable["Combined"] = string.Join(" or ", tempBPFList);
+            return bpfFilterPerExecutable;
         }
     }
 
@@ -322,16 +333,19 @@ namespace WhoYouCalling
         private static Dictionary<int, HashSet<string>> bpfFilterBasedActivity = new Dictionary<int, HashSet<string>>();
         private static TraceEventSession kernelSession;
         private static bool mainProcessEnded = false;
+        private static bool shutDownMonitoring = false;
+
         private static string mainExecutableFileName;
 
         // Arguments
         private static int trackedProcessId;
-        private static int processRunTimer;
+        private static double processRunTimer;
         private static int networkInterfaceChoice;
         private static string executablePath;
         private static string executableArguments = "";
         private static bool trackChildProcesses = false;
         private static bool saveFullPcap = false;
+        private static bool noPacketCapture = false;
         public static bool debug = false;
 
         static void Main(string[] args)
@@ -345,6 +359,12 @@ namespace WhoYouCalling
             if (!ValidateProvidedArguments(args)) {
                 PrintHelp();
             }
+
+            Console.CancelKeyPress += (sender, e) => // For manual cancellation of application
+            {
+                shutDownMonitoring = true;
+                e.Cancel = true;
+            };
 
             // Instanciate objects
             Utilities.ProcessManager processManager = new Utilities.ProcessManager();
@@ -373,20 +393,23 @@ namespace WhoYouCalling
             using var device = devices[networkInterfaceChoice];
             networkPackets.SetCaptureDevice(device);
 
-            // Create threads for capturing packets and start ETW listener
-            Thread fpcThread = new Thread(() => networkPackets.CaptureNetworkPacketsToPcap(fullPcapFile));
-            Thread etwThread = new Thread(() => ListenToETW());
+            // Create and start thread for capturing packets if enabled
+            if (!noPacketCapture) { 
+                Thread fpcThread = new Thread(() => networkPackets.CaptureNetworkPacketsToPcap(fullPcapFile));
+                Output.Print($"Starting packet capture saved to \"{fullPcapFile}\"", "debug");
+                fpcThread.Start();
+            }
 
-            // Start ETW and FPC threads
+            // Create and start thread for ETW
+            Thread etwThread = new Thread(() => ListenToETW());
             Output.Print("Starting ETW session", "debug");
             etwThread.Start();
-            Output.Print($"Starting packet capture saved to \"{fullPcapFile}\"", "debug");
-            fpcThread.Start();
+   
 
             // An executable has been provided
             if (!string.IsNullOrEmpty(executablePath))
             {
-                Thread.Sleep(2000); //Sleep is required to ensure ETW Subscription is timed correctly to capture the execution
+                Thread.Sleep(4000); //Sleep is required to ensure ETW Subscription is timed correctly to capture the execution
                 try
                 {
                     Output.Print($"Starting executable \"{executablePath}\" with args \"{executableArguments}\"", "debug");
@@ -396,10 +419,11 @@ namespace WhoYouCalling
                     executableByPIDTable.Add(trackedProcessId, mainExecutableFileName);
                     if (processRunTimer != 0)
                     {
-                        System.Timers.Timer timer = new System.Timers.Timer(processRunTimer);
+                        double processRunTimerInMilliseconds = ConvertToMiliseconds(processRunTimer);
+                        System.Timers.Timer timer = new System.Timers.Timer(processRunTimerInMilliseconds);
                         timer.Elapsed += (sender, e) => TimerKillMainRunningProcess(sender, e, trackedProcessId);
                         timer.AutoReset = false; 
-                        Output.Print($"Starting timer set to {processRunTimer}", "debug");
+                        Output.Print($"Starting timer set to {processRunTimer} seconds", "debug");
                         timer.Start();
                     }
                 }
@@ -413,10 +437,19 @@ namespace WhoYouCalling
             // Run until main proces has ended
             while (true)
             {
-                if (mainProcessEnded) {
+                if (shutDownMonitoring)
+                { //mainProcessEnded || removed TEMPORARELY
                     // Shutdown
-                    Output.Print($"{executablePath} process with PID {trackedProcessId} stopped. Finishing...", "debug");
-                    if (processRunTimer != 0) // If a timer was specified, kill child processes
+                    if (mainProcessEnded)
+                    {
+                        Output.Print($"{mainExecutableFileName} process with PID {trackedProcessId} stopped. Finishing...", "debug");
+                    }
+                    else
+                    {
+                        Output.Print($"Monitoring was aborted. Finishing...", "debug");
+                    }
+
+                    if (processRunTimer != 0 && string.IsNullOrEmpty(executablePath)) // If a timer was specified and not an executeable, kill child processes
                     {
                         Output.Print($"Killing child processes from main process", "debug");
                         KillRunningChildProcesses();
@@ -427,8 +460,24 @@ namespace WhoYouCalling
                     {
                         Output.Print($"Kernel still running...", "warning");
                     }
-                    Output.Print($"Stopping packet capture saved to \"{fullPcapFile}\"", "debug");
-                    networkPackets.StopCapturingNetworkPackets();
+
+
+                    if (!noPacketCapture)
+                    {
+                        Output.Print($"Stopping packet capture saved to \"{fullPcapFile}\"", "debug");
+                        networkPackets.StopCapturingNetworkPackets();
+                        Output.Print($"Producing BPF filter", "debug");
+                        Dictionary<string, string> computedBPFFilter = bpfFIlter.GetBPFFilter(bpfFilterBasedActivity);
+                        Output.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilter["Combined"]}\"", "debug");
+                        networkPackets.FilterNetworkCaptureFile(computedBPFFilter["Combined"], fullPcapFile, filteredPcapFile);
+
+                        // Cleanup 
+                        if (!saveFullPcap)
+                        {
+                            Output.Print($"Deleting full pcap file {fullPcapFile}", "debug");
+                            DeleteFullPcapFile(fullPcapFile);
+                        }
+                    }
 
                     // Action
                     if (etwActivityHistory.Count > 0)
@@ -440,24 +489,18 @@ namespace WhoYouCalling
                     {
                         Output.Print($"Not creating ETW history file since no activity was recorded", "warning");
                     }
-
-                    Output.Print($"Producing BPF filter", "debug");
-                    string computedBPFFilter = bpfFIlter.GetBPFFilter(bpfFilterBasedActivity);
-                    Output.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilter}\"", "debug");
-                    networkPackets.FilterNetworkCaptureFile(computedBPFFilter, fullPcapFile, filteredPcapFile);
                     
-                    // Cleanup 
-                    if (!saveFullPcap)
-                    {
-                        Output.Print($"Deleting full pcap file {fullPcapFile}", "debug");
-                        DeleteFullPcapFile(fullPcapFile);
-                    }
                     Output.Print($"Done.", "debug");
                     break;
                 }
             }
         }
-
+        private static double ConvertToMiliseconds(double providedSeconds)
+        {
+            TimeSpan timeSpan = TimeSpan.FromSeconds(providedSeconds);
+            double milliseconds = timeSpan.TotalMilliseconds;
+            return milliseconds;
+        }
         private static void PrintHelp()
         {
             string helpText = @"
@@ -468,14 +511,15 @@ Options:
   -f, --fulltracking  : Monitors and tracks the network activity by child processes
   -s, --savefullpcap  : Does not delete the full pcap thats not filtered
   -p, --pid           : The running process id to track rather than executing the binary
-  -t, --timer         : The amount of time the execute binary will run for 
+  -t, --timer         : The number of seconds the execute binary will run for. Is a double variable so can take floating-point values 
   -i, --interface     : The network interface number. Retrievable with the -g/--getinterfaces flag
   -g, --getinterfaces : Prints the network interface devices with corresponding number (usually 0-10)
+  -n, --nopcap        : Skips collecting full packet capture
   -h, --help          : Displays this help information.
 
 Examples:
-  WhoYouCalling.exe -e calc.exe -f -s --timer 120
-  WhoYouCalling.exe -p 4351 -s 
+  WhoYouCalling.exe -e calc.exe -f -s --timer 10.5
+  WhoYouCalling.exe -p 4351 -n 
 ";
             Console.WriteLine(helpText);
             System.Environment.Exit(1);
@@ -487,6 +531,7 @@ Examples:
             bool PIDFlagSet = false;
             bool timerFlagSet = false;
             bool networkInterfaceDeviceFlagSet = false;
+            bool noPCAPFlagSet = false;
             bool fullTrackFlagSet = false;
             bool saveFullPcapFlagSet = false;
 
@@ -532,6 +577,11 @@ Examples:
                         saveFullPcap = true;
                         saveFullPcapFlagSet = true;
                     }
+                    else if (args[i] == "-n" || args[i] == "--nopcap") // Don't collect pcap
+                    {
+                        noPacketCapture = true;
+                        noPCAPFlagSet = true;
+                    }
                     else if (args[i] == "-p" || args[i] == "--pid") // Running process id
                     {
                         if (i + 1 < args.Length)
@@ -556,7 +606,7 @@ Examples:
                     {
                         if (i + 1 < args.Length)
                         {
-                            if (int.TryParse(args[i + 1], out processRunTimer))
+                            if (double.TryParse(args[i + 1], out processRunTimer))
                             {
                                 timerFlagSet = true;
                             }
@@ -629,9 +679,9 @@ Examples:
             {
                 Output.Print("You need to specify an executable when using a timer for closing the process", "error");
                 return false;
-            }else if (!networkInterfaceDeviceFlagSet)
+            }else if (networkInterfaceDeviceFlagSet == noPCAPFlagSet)
             {
-                Output.Print("You need to specify a network device interface. Run again with -g to view available devices", "error");
+                Output.Print("You need to specify a network device interface or specify -n/--nopcap to skip packet capture. Run again with -g to view available network devices", "error");
                 return false;
             }
 
@@ -948,6 +998,10 @@ Examples:
 
                     bpfFilterBasedActivity[data.ProcessID] = new HashSet<string> { }; // Add child processname
                 }
+            }
+            else
+            {
+                Output.Print($"DEBUG PROC START: {data.ImageFileName}:{data.ProcessID} started by Parent PID {data.ParentID}");
             }
 
         }
