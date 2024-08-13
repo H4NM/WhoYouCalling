@@ -26,6 +26,7 @@ using System.Security.Cryptography;
 using System.Runtime.Intrinsics.Arm;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Numerics;
+using System.Globalization;
 
 namespace WhoYouCalling.Utilities
 {
@@ -99,6 +100,27 @@ namespace WhoYouCalling.Utilities
             Process runningProcess = Process.GetProcessById(PID);
             return runningProcess.MainModule.FileName;
         }
+        public void KillProcess(int pid)
+        {
+            try
+            {
+                Process process = Process.GetProcessById(pid);
+
+                if (!process.HasExited)
+                {
+                    Output.Print($"Timer elapsed. Killing the process with PID {pid}", "debug");
+                    process.Kill();
+                }
+            }
+            catch (ArgumentException)
+            {
+                Output.Print($"Process with PID {pid} has already exited.", "debug");
+            }
+            catch (Exception ex)
+            {
+                Output.Print($"An error occurred when stopping process when timer expired: {ex.Message}", "error");
+            }
+        }
 
         public int StartProcessAndGetId(string executablePath, string arguments = "")
         {
@@ -146,10 +168,10 @@ namespace WhoYouCalling.Utilities
             foreach (KeyValuePair<int, HashSet<string>> entry in bpfFilterBasedDict) //For each Process 
             {
                 string executableNameByPID = Program.executableByPIDTable[entry.Key]; //Lookup the executable name
-
+                string executabelNameAndPID = $"{executableNameByPID}-{entry.Key}";
                 if (entry.Value.Count == 0) // Check if the executable has any recorded network activity
                 {
-                    Output.Print($"Not calculating BPFFilter for {executableNameByPID}. No recored network activity", "debug");
+                    Output.Print($"Not calculating BPFFilter for {executabelNameAndPID}. No recored network activity", "debug");
                     continue;
                 }
                 List<string> FullBPFlistForProcess = new List<string>();
@@ -166,7 +188,7 @@ namespace WhoYouCalling.Utilities
                     FullBPFlistForProcess.Add(partialBPFstring);
                 }
                 string BPFFilter = string.Join(" or ", FullBPFlistForProcess);
-                bpfFilterPerExecutable[executableNameByPID] = BPFFilter; // Add BPF filter for executable
+                bpfFilterPerExecutable[executabelNameAndPID] = BPFFilter; // Add BPF filter for executable
             }
 
             List<string> tempBPFList = new List<string>();
@@ -174,7 +196,7 @@ namespace WhoYouCalling.Utilities
             {
                 tempBPFList.Add($"({processBPFFilter.Value})");
             }
-            bpfFilterPerExecutable["Combined"] = string.Join(" or ", tempBPFList);
+            bpfFilterPerExecutable["Combined-BPF"] = string.Join(" or ", tempBPFList);
             return bpfFilterPerExecutable;
         }
     }
@@ -326,15 +348,13 @@ namespace WhoYouCalling
     class Program
     {
 
-        private static Dictionary<int, string> trackedChildProcessIds = new Dictionary<int, string>(); // TODO : Used for tracking the corresponding executable name to the spawned processes - Must change to List instead. Otherwise redundant to executableByPIDTable - TODO
+        private static List<int> trackedChildProcessIds = new List<int>(); // Used for tracking the corresponding executable name to the spawned processes
         public static Dictionary<int, string> executableByPIDTable = new Dictionary<int, string>();
-
         private static List<string> etwActivityHistory = new List<string>(); // Summary of the network activities made
         private static Dictionary<int, HashSet<string>> bpfFilterBasedActivity = new Dictionary<int, HashSet<string>>();
         private static TraceEventSession kernelSession;
         private static bool mainProcessEnded = false;
         private static bool shutDownMonitoring = false;
-
         private static string mainExecutableFileName;
 
         // Arguments
@@ -343,6 +363,7 @@ namespace WhoYouCalling
         private static int networkInterfaceChoice;
         private static string executablePath;
         private static string executableArguments = "";
+        private static bool killProcesses = false;
         private static bool trackChildProcesses = false;
         private static bool saveFullPcap = false;
         private static bool noPacketCapture = false;
@@ -381,7 +402,6 @@ namespace WhoYouCalling
             fileAndFolders.CreateFolder(rootFolderName);
 
             string fullPcapFile = $"{rootFolderName}\\{mainExecutableFileName}-Full.pcap";
-            string filteredPcapFile = $"{rootFolderName}\\{mainExecutableFileName}-Filtered.pcap";
             string etwHistoryFile = $"{rootFolderName}\\{mainExecutableFileName}-History.txt";
 
             // Retrieve network interface devices
@@ -419,9 +439,9 @@ namespace WhoYouCalling
                     executableByPIDTable.Add(trackedProcessId, mainExecutableFileName);
                     if (processRunTimer != 0)
                     {
-                        double processRunTimerInMilliseconds = ConvertToMiliseconds(processRunTimer);
+                        double processRunTimerInMilliseconds = ConvertToMilliseconds(processRunTimer);
                         System.Timers.Timer timer = new System.Timers.Timer(processRunTimerInMilliseconds);
-                        timer.Elapsed += (sender, e) => TimerKillMainRunningProcess(sender, e, trackedProcessId);
+                        timer.Elapsed += (sender, e) => TimerShutDownMonitoring(sender, e);
                         timer.AutoReset = false; 
                         Output.Print($"Starting timer set to {processRunTimer} seconds", "debug");
                         timer.Start();
@@ -449,10 +469,15 @@ namespace WhoYouCalling
                         Output.Print($"Monitoring was aborted. Finishing...", "debug");
                     }
 
-                    if (processRunTimer != 0 && string.IsNullOrEmpty(executablePath)) // If a timer was specified and not an executeable, kill child processes
+                    if (processRunTimer != 0 && killProcesses) // If a timer was specified and that processes should be killed
                     {
-                        Output.Print($"Killing child processes from main process", "debug");
-                        KillRunningChildProcesses();
+                        Output.Print($"Killing main process with PID {trackedProcessId}", "debug");
+                        processManager.KillProcess(trackedProcessId);
+                        foreach (int childPID in trackedChildProcessIds)
+                        {
+                            Output.Print($"Killing child process with PID {childPID}", "debug");
+                            processManager.KillProcess(childPID);
+                        }
                     }
                     Output.Print($"Stopping ETW kernel session", "debug");
                     StopKernelSession();
@@ -466,10 +491,17 @@ namespace WhoYouCalling
                     {
                         Output.Print($"Stopping packet capture saved to \"{fullPcapFile}\"", "debug");
                         networkPackets.StopCapturingNetworkPackets();
+
                         Output.Print($"Producing BPF filter", "debug");
                         Dictionary<string, string> computedBPFFilter = bpfFIlter.GetBPFFilter(bpfFilterBasedActivity);
-                        Output.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilter["Combined"]}\"", "debug");
-                        networkPackets.FilterNetworkCaptureFile(computedBPFFilter["Combined"], fullPcapFile, filteredPcapFile);
+
+                        string filteredPcapFile = $"{rootFolderName}\\{mainExecutableFileName}-Filtered.pcap";
+                        foreach (KeyValuePair<string, string> processAndBPFFilter in computedBPFFilter)
+                        {
+                            filteredPcapFile = $"{rootFolderName}\\{processAndBPFFilter.Key}-Filtered.pcap";
+                            Output.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilter["Combined-BPF"]}\"", "debug");
+                            networkPackets.FilterNetworkCaptureFile(computedBPFFilter[processAndBPFFilter.Key], fullPcapFile, filteredPcapFile);
+                        }
 
                         // Cleanup 
                         if (!saveFullPcap)
@@ -495,7 +527,7 @@ namespace WhoYouCalling
                 }
             }
         }
-        private static double ConvertToMiliseconds(double providedSeconds)
+        private static double ConvertToMilliseconds(double providedSeconds)
         {
             TimeSpan timeSpan = TimeSpan.FromSeconds(providedSeconds);
             double milliseconds = timeSpan.TotalMilliseconds;
@@ -507,14 +539,16 @@ namespace WhoYouCalling
 Usage: WhoYouCalling.exe [options]
 Options:
   -e, --executable    : Executes the specified executable.
-  -a, --arguments     : Appends arguments contained within quotes to the executable file
-  -f, --fulltracking  : Monitors and tracks the network activity by child processes
-  -s, --savefullpcap  : Does not delete the full pcap thats not filtered
-  -p, --pid           : The running process id to track rather than executing the binary
-  -t, --timer         : The number of seconds the execute binary will run for. Is a double variable so can take floating-point values 
-  -i, --interface     : The network interface number. Retrievable with the -g/--getinterfaces flag
-  -g, --getinterfaces : Prints the network interface devices with corresponding number (usually 0-10)
-  -n, --nopcap        : Skips collecting full packet capture
+  -a, --arguments     : Appends arguments contained within quotes to the executable file.
+  -f, --fulltracking  : Monitors and tracks the network activity by child processes.
+  -s, --savefullpcap  : Does not delete the full pcap thats not filtered.
+  -p, --pid           : The running process id to track rather than executing the binary.
+  -t, --timer         : The number of seconds the execute binary will run for. Is a double variable so can take floating-point values.
+  -k, --killprocesses : Used in conjunction with the timer in which the main process is killed. 
+                        If full tracking flag is set, childprocesses are also killed.
+  -i, --interface     : The network interface number. Retrievable with the -g/--getinterfaces flag.
+  -g, --getinterfaces : Prints the network interface devices with corresponding number (usually 0-10).
+  -n, --nopcap        : Skips collecting full packet capture.
   -h, --help          : Displays this help information.
 
 Examples:
@@ -534,6 +568,7 @@ Examples:
             bool noPCAPFlagSet = false;
             bool fullTrackFlagSet = false;
             bool saveFullPcapFlagSet = false;
+            bool killProcessesFlagSet = false;
 
             // Check if no args are provided
             if (args.Length > 0)
@@ -572,6 +607,11 @@ Examples:
                         trackChildProcesses = true;
                         fullTrackFlagSet = true;
                     }
+                    else if (args[i] == "-k" || args[i] == "--killprocesses") // Track the network activity by child processes
+                    {
+                        killProcesses = true;
+                        killProcessesFlagSet = true;
+                    }
                     else if (args[i] == "-s" || args[i] == "--savefullpcap") //Save the full pcap
                     {
                         saveFullPcap = true;
@@ -606,13 +646,13 @@ Examples:
                     {
                         if (i + 1 < args.Length)
                         {
-                            if (double.TryParse(args[i + 1], out processRunTimer))
+                            if (double.TryParse(args[i + 1], NumberStyles.Any, CultureInfo.InvariantCulture, out processRunTimer))
                             {
                                 timerFlagSet = true;
                             }
                             else
                             {
-                                Console.WriteLine($"The provided value for timer ({processRunTimer}) is not a valid integer", "warning");
+                                Console.WriteLine($"The provided value for timer ({processRunTimer}) is not a valid double", "warning");
                                 return false;
                             }
                         }
@@ -679,7 +719,12 @@ Examples:
             {
                 Output.Print("You need to specify an executable when using a timer for closing the process", "error");
                 return false;
-            }else if (networkInterfaceDeviceFlagSet == noPCAPFlagSet)
+            }else if (killProcessesFlagSet && !timerFlagSet)
+            {
+                Output.Print("You need to use the timer (-t/--timer) flag if you want to kill the process.", "error");
+                return false;
+            }
+            else if (networkInterfaceDeviceFlagSet == noPCAPFlagSet)
             {
                 Output.Print("You need to specify a network device interface or specify -n/--nopcap to skip packet capture. Run again with -g to view available network devices", "error");
                 return false;
@@ -730,61 +775,13 @@ Examples:
             etwActivityHistory.Add(historyMsg);
         }
 
-        private static void TimerKillMainRunningProcess(object source, ElapsedEventArgs e, int pid)
+        private static void TimerShutDownMonitoring(object source, ElapsedEventArgs e)
         {
-            try
-            {
-                Process process = Process.GetProcessById(pid);
-
-                if (!process.HasExited)
-                {
-                    Output.Print($"Timer elapsed. Killing the process with PID {pid}", "debug");
-                    process.Kill();
-                }
-            }
-            catch (ArgumentException)
-            {
-                Output.Print($"Process with PID {pid} has already exited.", "debug");
-            }
-            catch (Exception ex)
-            {
-                Output.Print($"An error occurred when stopping process when timer expired: {ex.Message}", "error");
-            }
+            shutDownMonitoring = true;
         }
 
-        private static void KillRunningChildProcesses()
-        {
-            foreach (KeyValuePair<int, string> childprocess in trackedChildProcessIds)
-            {
-                try
-                {
-                    Process process = Process.GetProcessById(childprocess.Key);
 
-                    if (!process.HasExited)
-                    {
-                        
-                        if (Path.GetFileName(process.MainModule.FileName) == childprocess.Value) // Checks if the running process file name is the same as in the asserted file name for the child process that started
-                        {
-                            Output.Print($"Timer elapsed. Killing the child process with pid {childprocess.Key}", "debug");
-                            process.Kill();
-                        }
-                        else
-                        {
-                            Output.Print($"ChildProcessMissMatch?? {process.MainModule.FileName} AND {childprocess.Value}", "info");
-                        }
-
-                    }
-                }
-                catch (ArgumentException)
-                {
-                    Output.Print($"Child process with PID {childprocess.Key} has already exited.", "debug");
-                }
-                catch (Exception ex)
-                {
-                    Output.Print($"An error occurred when stopping child process when timer expired: {ex.Message}", "error");
-                }
-            }
-        }
+        
 
         private static void DeleteFullPcapFile(string fullPcapFile)
         {
@@ -822,7 +819,7 @@ Examples:
 
         private static string GetRunInstanceFolderName(string executableName)
         {
-            string timestamp = DateTime.Now.ToString("HHmmss");
+            string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
             string folderName = $"{executableName}-{timestamp}";
             return folderName;
         }
@@ -866,9 +863,9 @@ Examples:
                                         dstAddr: data.daddr,
                                         dstPort: data.dport);
             }
-            else if (trackedChildProcessIds.ContainsKey(data.ProcessID))
+            else if (trackedChildProcessIds.Contains(data.ProcessID))
             {
-                string childExecutable = trackedChildProcessIds[data.ProcessID];
+                string childExecutable = executableByPIDTable[data.ProcessID];
                 AddActivityToETWHistory(eventType: "network",
                                         executable: childExecutable,
                                         execPID: data.ProcessID,
@@ -893,9 +890,9 @@ Examples:
                                         dstAddr: data.daddr,
                                         dstPort: data.dport);
             }
-            else if (trackedChildProcessIds.ContainsKey(data.ProcessID))
+            else if (trackedChildProcessIds.Contains(data.ProcessID))
             {
-                string childExecutable = trackedChildProcessIds[data.ProcessID];
+                string childExecutable = executableByPIDTable[data.ProcessID];
                 AddActivityToETWHistory(eventType: "network",
                                         executable: childExecutable,
                                         execPID: data.ProcessID,
@@ -920,9 +917,9 @@ Examples:
                                         dstAddr: data.daddr,
                                         dstPort: data.dport);
             }
-            else if (trackedChildProcessIds.ContainsKey(data.ProcessID))
+            else if (trackedChildProcessIds.Contains(data.ProcessID))
             {
-                string childExecutable = trackedChildProcessIds[data.ProcessID];
+                string childExecutable = executableByPIDTable[data.ProcessID];
                 AddActivityToETWHistory(eventType: "network",
                                         executable: childExecutable,
                                         execPID: data.ProcessID,
@@ -947,9 +944,9 @@ Examples:
                                         dstAddr: data.daddr,
                                         dstPort: data.dport);
             }
-            else if (trackedChildProcessIds.ContainsKey(data.ProcessID))
+            else if (trackedChildProcessIds.Contains(data.ProcessID))
             {
-                string childExecutable = trackedChildProcessIds[data.ProcessID];
+                string childExecutable = executableByPIDTable[data.ProcessID];
                 AddActivityToETWHistory(eventType: "network",
                                         executable: childExecutable,
                                         execPID: data.ProcessID,
@@ -974,16 +971,16 @@ Examples:
                                         parentExecPID: data.ParentID);
                 if (trackChildProcesses)
                 {
-                    trackedChildProcessIds.Add(data.ProcessID, data.ImageFileName);
+                    trackedChildProcessIds.Add(data.ProcessID);
                     executableByPIDTable.Add(data.ProcessID, data.ImageFileName);
 
                     bpfFilterBasedActivity[data.ProcessID] = new HashSet<string> { }; // Add child processname
 
                 }
             }
-            else if (trackedChildProcessIds.ContainsKey(data.ParentID)) //Tracks child processes by child processes
+            else if (trackedChildProcessIds.Contains(data.ParentID)) //Tracks child processes by child processes
             {
-                string childExecutable = trackedChildProcessIds[data.ParentID];
+                string childExecutable = executableByPIDTable[data.ParentID];
                 AddActivityToETWHistory(eventType: "childprocess",
                                         executable: childExecutable,
                                         execType: "Child",
@@ -993,17 +990,12 @@ Examples:
                                         parentExecPID: data.ParentID);
                 if (trackChildProcesses)
                 {
-                    trackedChildProcessIds.Add(data.ProcessID, data.ImageFileName);
+                    trackedChildProcessIds.Add(data.ProcessID);
                     executableByPIDTable.Add(data.ProcessID, data.ImageFileName);
 
                     bpfFilterBasedActivity[data.ProcessID] = new HashSet<string> { }; // Add child processname
                 }
             }
-            else
-            {
-                Output.Print($"DEBUG PROC START: {data.ImageFileName}:{data.ProcessID} started by Parent PID {data.ParentID}");
-            }
-
         }
 
         private static void processStopped(ProcessTraceData data) {
@@ -1015,7 +1007,7 @@ Examples:
                                         execAction: "stopped",
                                         execPID: data.ProcessID);
                 mainProcessEnded = true;
-            }else if (trackedChildProcessIds.ContainsKey(data.ProcessID)) // Child process stopped
+            }else if (trackedChildProcessIds.Contains(data.ProcessID)) // Child process stopped
             {
                 AddActivityToETWHistory(eventType: "process",
                                         executable: data.ImageFileName,
