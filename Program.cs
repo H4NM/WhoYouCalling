@@ -883,7 +883,7 @@ Examples:
 
         private static void ListenToETW()
         {
-            using (kernelSession = new TraceEventSession(KernelTraceEventParser.KernelSessionName))
+            using (kernelSession = new TraceEventSession(KernelTraceEventParser.KernelSessionName)) //KernelTraceEventParser
             {
                 kernelSession.EnableKernelProvider(
                     KernelTraceEventParser.Keywords.NetworkTCPIP |
