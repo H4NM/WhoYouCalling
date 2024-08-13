@@ -27,6 +27,7 @@ using System.Runtime.Intrinsics.Arm;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Numerics;
 using System.Globalization;
+using System.IO;
 
 namespace WhoYouCalling.Utilities
 {
@@ -73,9 +74,13 @@ namespace WhoYouCalling.Utilities
         {
             System.IO.Directory.CreateDirectory(folder);
         }
-        public void CreateTextFile(string filePath, List<string> listWithStrings)
+        public void CreateTextFileListOfStrings(string filePath, List<string> listWithStrings)
         {
             File.WriteAllLines(filePath, listWithStrings);
+        }
+        public void CreateTextFileString(string filePath, string text)
+        {
+            File.WriteAllText(filePath, text);
         }
     }
 
@@ -98,7 +103,7 @@ namespace WhoYouCalling.Utilities
         public static string GetProcessFileName(int PID)
         {
             Process runningProcess = Process.GetProcessById(PID);
-            return runningProcess.MainModule.FileName;
+            return Path.GetFileName(runningProcess.MainModule.FileName);
         }
         public void KillProcess(int pid)
         {
@@ -161,8 +166,6 @@ namespace WhoYouCalling.Utilities
         public Dictionary<string, string> GetBPFFilter(Dictionary<int, HashSet<string>> bpfFilterBasedDict)
         {
 
-            //bpfFilterBasedActivity[execPID].Add($"{bpfBasedIPVersion},{bpfBasedProto},{dstAddr},{dstPort}");
-
             Dictionary<string, string> bpfFilterPerExecutable = new Dictionary<string, string>();
 
             foreach (KeyValuePair<int, HashSet<string>> entry in bpfFilterBasedDict) //For each Process 
@@ -184,19 +187,23 @@ namespace WhoYouCalling.Utilities
                     string dstAddr = parts[2];
                     string dstPort = parts[3];
 
-                    string partialBPFstring = $"({ipVersion} and {transportProto} and dst host {dstAddr} and dst port {dstPort})";
+                    string partialBPFstring = $"({ipVersion} and {transportProto} and dst host {dstAddr} and dst port {dstPort})"; 
                     FullBPFlistForProcess.Add(partialBPFstring);
                 }
                 string BPFFilter = string.Join(" or ", FullBPFlistForProcess);
                 bpfFilterPerExecutable[executabelNameAndPID] = BPFFilter; // Add BPF filter for executable
             }
 
-            List<string> tempBPFList = new List<string>();
-            foreach (KeyValuePair<string, string> processBPFFilter in bpfFilterPerExecutable)
+            if (bpfFilterPerExecutable.Count > 1)
             {
-                tempBPFList.Add($"({processBPFFilter.Value})");
+                List<string> tempBPFList = new List<string>();
+                foreach (KeyValuePair<string, string> processBPFFilter in bpfFilterPerExecutable)
+                {
+                    tempBPFList.Add($"({processBPFFilter.Value})");
+                }
+                bpfFilterPerExecutable[$"All {bpfFilterPerExecutable.Count} processes"] = string.Join(" or ", tempBPFList);
             }
-            bpfFilterPerExecutable["Combined-BPF"] = string.Join(" or ", tempBPFList);
+
             return bpfFilterPerExecutable;
         }
     }
@@ -363,6 +370,7 @@ namespace WhoYouCalling
         private static int networkInterfaceChoice;
         private static string executablePath;
         private static string executableArguments = "";
+        private static string outputDirectory;
         private static bool killProcesses = false;
         private static bool trackChildProcesses = false;
         private static bool saveFullPcap = false;
@@ -394,20 +402,25 @@ namespace WhoYouCalling
             Utilities.BPFFilter bpfFIlter = new Utilities.BPFFilter();
 
             Output.Print("Retrieving executable filename", "debug");
+
             mainExecutableFileName = GetExecutableFileName(trackedProcessId, executablePath);
-            Output.Print($"Retrieved executable filename {mainExecutableFileName}", "debug");
+
             string rootFolderName = GetRunInstanceFolderName(mainExecutableFileName);
-         
+            if (!string.IsNullOrEmpty(outputDirectory)) // If catalog to save data is specified
+            {
+                rootFolderName = $"{outputDirectory}{rootFolderName}";
+            }
             Output.Print($"Creating folder {rootFolderName}", "debug");
             fileAndFolders.CreateFolder(rootFolderName);
 
-            string fullPcapFile = $"{rootFolderName}\\{mainExecutableFileName}-Full.pcap";
-            string etwHistoryFile = $"{rootFolderName}\\{mainExecutableFileName}-History.txt";
+            string fullPcapFile = @$"{rootFolderName}\{mainExecutableFileName}-Full.pcap";
+            string etwHistoryFile = @$"{rootFolderName}\{mainExecutableFileName}-History.txt";
 
             // Retrieve network interface devices
             LibPcapLiveDeviceList devices = networkPackets.GetNetworkInterfaces();
             if (devices == null)
             {
+                Output.Print($"No network devices were found..", "fatal");
                 System.Environment.Exit(1);
             }
             using var device = devices[networkInterfaceChoice];
@@ -426,48 +439,45 @@ namespace WhoYouCalling
             etwThread.Start();
    
 
-            // An executable has been provided
-            if (!string.IsNullOrEmpty(executablePath))
+            if (!string.IsNullOrEmpty(executablePath)) // An executable has been provided
             {
                 Thread.Sleep(4000); //Sleep is required to ensure ETW Subscription is timed correctly to capture the execution
                 try
                 {
                     Output.Print($"Starting executable \"{executablePath}\" with args \"{executableArguments}\"", "debug");
                     trackedProcessId = processManager.StartProcessAndGetId(executablePath, executableArguments);
-                    AddActivityToETWHistory(eventType: "process", executable: mainExecutableFileName, execType: "Main", execAction: "started", execPID: trackedProcessId);
                     bpfFilterBasedActivity[trackedProcessId] = new HashSet<string> {}; // Add the main executable processname
                     executableByPIDTable.Add(trackedProcessId, mainExecutableFileName);
-                    if (processRunTimer != 0)
-                    {
-                        double processRunTimerInMilliseconds = ConvertToMilliseconds(processRunTimer);
-                        System.Timers.Timer timer = new System.Timers.Timer(processRunTimerInMilliseconds);
-                        timer.Elapsed += (sender, e) => TimerShutDownMonitoring(sender, e);
-                        timer.AutoReset = false; 
-                        Output.Print($"Starting timer set to {processRunTimer} seconds", "debug");
-                        timer.Start();
-                    }
+                    AddActivityToETWHistory(eventType: "process", executable: mainExecutableFileName, execType: "Main", execAction: "started", execPID: trackedProcessId);
                 }
                 catch (Exception ex)
                 {
-                    Output.Print($"An error occurred while starting the process: {ex.Message}", "error");
-                    return;
+                    Output.Print($"An error occurred while starting the process: {ex.Message}", "fatal");
+                    System.Environment.Exit(1);
                 }
+            }
+            else // PID to an existing process is running
+            {
+                bpfFilterBasedActivity[trackedProcessId] = new HashSet<string> { }; // Add the main executable processname
+                executableByPIDTable.Add(trackedProcessId, mainExecutableFileName);
+                AddActivityToETWHistory(eventType: "process", executable: mainExecutableFileName, execType: "Main", execAction: "being listened to", execPID: trackedProcessId);
+            }
+            if (processRunTimer != 0)
+            {
+                double processRunTimerInMilliseconds = ConvertToMilliseconds(processRunTimer);
+                System.Timers.Timer timer = new System.Timers.Timer(processRunTimerInMilliseconds);
+                timer.Elapsed += (sender, e) => TimerShutDownMonitoring(sender, e);
+                timer.AutoReset = false;
+                Output.Print($"Starting timer set to {processRunTimer} seconds", "debug");
+                timer.Start();
             }
 
             // Run until main proces has ended
             while (true)
             {
                 if (shutDownMonitoring)
-                { //mainProcessEnded || removed TEMPORARELY
-                    // Shutdown
-                    if (mainProcessEnded)
-                    {
-                        Output.Print($"{mainExecutableFileName} process with PID {trackedProcessId} stopped. Finishing...", "debug");
-                    }
-                    else
-                    {
-                        Output.Print($"Monitoring was aborted. Finishing...", "debug");
-                    }
+                {
+                    Output.Print($"Monitoring was aborted. Finishing...", "debug");
 
                     if (processRunTimer != 0 && killProcesses) // If a timer was specified and that processes should be killed
                     {
@@ -495,12 +505,20 @@ namespace WhoYouCalling
                         Output.Print($"Producing BPF filter", "debug");
                         Dictionary<string, string> computedBPFFilter = bpfFIlter.GetBPFFilter(bpfFilterBasedActivity);
 
-                        string filteredPcapFile = $"{rootFolderName}\\{mainExecutableFileName}-Filtered.pcap";
                         foreach (KeyValuePair<string, string> processAndBPFFilter in computedBPFFilter)
                         {
-                            filteredPcapFile = $"{rootFolderName}\\{processAndBPFFilter.Key}-Filtered.pcap";
-                            Output.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilter["Combined-BPF"]}\"", "debug");
-                            networkPackets.FilterNetworkCaptureFile(computedBPFFilter[processAndBPFFilter.Key], fullPcapFile, filteredPcapFile);
+                            if (!string.IsNullOrEmpty(computedBPFFilter[processAndBPFFilter.Key]))
+                            {
+                                string filteredPcapFile = $"{rootFolderName}\\{processAndBPFFilter.Key}.pcap";
+                                string processBPFFilterTextFile = $"{rootFolderName}\\{processAndBPFFilter.Key} BPF-Filter.txt";
+                                Output.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilter[processAndBPFFilter.Key]}\"", "debug");
+                                networkPackets.FilterNetworkCaptureFile(computedBPFFilter[processAndBPFFilter.Key], fullPcapFile, filteredPcapFile);
+                                fileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilter[processAndBPFFilter.Key]);
+                            }
+                            else
+                            {
+                                Output.Print($"Skipping creating dedicated PCAP file for {processAndBPFFilter.Key}. No recorded BPF filter", "debug");
+                            }
                         }
 
                         // Cleanup 
@@ -515,7 +533,7 @@ namespace WhoYouCalling
                     if (etwActivityHistory.Count > 0)
                     {
                         Output.Print($"Creating ETW history file \"{etwHistoryFile}\"", "debug");
-                        fileAndFolders.CreateTextFile(etwHistoryFile, etwActivityHistory);
+                        fileAndFolders.CreateTextFileListOfStrings(etwHistoryFile, etwActivityHistory);
                     }
                     else
                     {
@@ -549,6 +567,7 @@ Options:
   -i, --interface     : The network interface number. Retrievable with the -g/--getinterfaces flag.
   -g, --getinterfaces : Prints the network interface devices with corresponding number (usually 0-10).
   -n, --nopcap        : Skips collecting full packet capture.
+  -c, --catalog       : Output directory, full path.
   -h, --help          : Displays this help information.
 
 Examples:
@@ -569,6 +588,7 @@ Examples:
             bool fullTrackFlagSet = false;
             bool saveFullPcapFlagSet = false;
             bool killProcessesFlagSet = false;
+            bool outputDirectoryFlagSet = false;
 
             // Check if no args are provided
             if (args.Length > 0)
@@ -616,6 +636,41 @@ Examples:
                     {
                         saveFullPcap = true;
                         saveFullPcapFlagSet = true;
+                    }
+                    else if (args[i] == "-c" || args[i] == "--catalog") //Save the full pcap
+                    {
+                        if (i + 1 < args.Length)
+                        {
+                            string path = args[i + 1];
+
+                            if (Path.IsPathRooted(path) && System.IO.Directory.Exists(path))
+                            {
+                                outputDirectoryFlagSet = true;
+                                if (path.Substring(path.Length - 2) == @"\\")
+                                {
+                                    outputDirectory = path;
+                                }
+                                else if (path.Substring(path.Length - 1) == @"\")
+                                {
+                                    outputDirectory = path + @"\";
+                                }
+                                else
+                                {
+                                    outputDirectory = path + @"\\";
+                                }
+                            }
+                            else
+                            {
+                                Output.Print("Provide full path to an existing catalog.", "warning");
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            Output.Print("No arguments specified after -c/--catalog flag", "warning");
+                            return false;
+                        }
+                 
                     }
                     else if (args[i] == "-n" || args[i] == "--nopcap") // Don't collect pcap
                     {
@@ -701,10 +756,9 @@ Examples:
             }
             else
             {
-                Output.Print("No arguments were provided.", "warning");
                 return false;
             }
-            
+
             // Forbidden combination of flags
             if (executableFlagSet == PIDFlagSet) //Must specify PID or executable file and not both
             {
@@ -715,13 +769,15 @@ Examples:
             {
                 Output.Print("You need to specify an executable when providing with arguments with -a", "error");
                 return false;
-            }else if (timerFlagSet && !executableFlagSet)
-            {
-                Output.Print("You need to specify an executable when using a timer for closing the process", "error");
-                return false;
-            }else if (killProcessesFlagSet && !timerFlagSet)
+            }
+            else if (killProcessesFlagSet && !timerFlagSet)
             {
                 Output.Print("You need to use the timer (-t/--timer) flag if you want to kill the process.", "error");
+                return false;
+            }
+            else if (killProcessesFlagSet && PIDFlagSet)
+            {
+                Output.Print("You can only specify -k for killing process that's been started and in conjunction with the -t flag for setting a timer.", "error");
                 return false;
             }
             else if (networkInterfaceDeviceFlagSet == noPCAPFlagSet)
@@ -801,12 +857,13 @@ Examples:
             string executableFileName = "";
             if (trackedProcessId != 0) //When a PID was provided rather than the path to an executable
             {
-                if (ProcessManager.IsProcessRunning(trackedProcessId)) { 
+                if (ProcessManager.IsProcessRunning(trackedProcessId)) {
                     executableFileName = ProcessManager.GetProcessFileName(trackedProcessId);
+                    Console.WriteLine("DEBUGING {0}", executableFileName);
                 }
                 else
                 {
-                    Output.Print($"Unable to find active process with pid {trackedProcessId}", "warning");
+                    Output.Print($"Unable to find active process with pid {trackedProcessId}", "fatal");
                     System.Environment.Exit(1);
                 }
             }

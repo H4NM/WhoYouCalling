@@ -11,12 +11,13 @@ Reviews the network activity made by an executable through the use of Windows Ev
 	- [X] ~~Retrieve ImageName from PID~~
 	- [X] ~~Remove Full PCAP when done~~
 - [X] ~~Add decent way of asserting the processed data for generating a BPF Filter~~
+	- [ ] The current state of BPF Filters strictly reflect the actions of the process of reading sent, and not received packets. This may not be preferred when doing application analys, except if you only want to inspect what the applications says...
 - [ ] When debugging is inactive, have the output be statistically based and updated with ANSII(?) to clear the previous output to prevent polluting the terminal
 - [X] Enable creating PCAPs for each child process and main process only / Create text-files with defined BPF filters per process
 		- Side note: Discovered that some binaries may utilize calling an already running process (such as steam games), in which tracking the child process is not possible UNLESS the running steam process is terminated beforehand in which calling the binary directly also invokes steam which in turn is classfied as a child process etc. 
 - [ ] Possibly add check if the defined network device is not localhost, in which network activity of localhost should not define the BPF filter since they're redundant
 - [X] ~~Make root folder name include date~~
-- [ ] Features
+- [X] ~~Features~~
   - [X] ~~specifing an existing PID to listen to rather than starting an executable~~
-  - [ ] Specifying directory in which the captured root folder is created
+  - [X] ~~Specifying directory in which the captured root folder is created~~
   - [X] ~~Specifying a Timer for which the executable runs where its terminated afterwards to enable automating the process~~
