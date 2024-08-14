@@ -402,7 +402,6 @@ namespace WhoYouCalling
             Utilities.BPFFilter bpfFIlter = new Utilities.BPFFilter();
 
             Output.Print("Retrieving executable filename", "debug");
-
             mainExecutableFileName = GetExecutableFileName(trackedProcessId, executablePath);
 
             string rootFolderName = GetRunInstanceFolderName(mainExecutableFileName);
@@ -509,8 +508,13 @@ namespace WhoYouCalling
                         {
                             if (!string.IsNullOrEmpty(computedBPFFilter[processAndBPFFilter.Key]))
                             {
-                                string filteredPcapFile = $"{rootFolderName}\\{processAndBPFFilter.Key}.pcap";
-                                string processBPFFilterTextFile = $"{rootFolderName}\\{processAndBPFFilter.Key} BPF-Filter.txt";
+                                string processFolderInRootFolder = @$"{rootFolderName}\{processAndBPFFilter.Key}";
+                                string filteredPcapFile = @$"{processFolderInRootFolder}\{processAndBPFFilter.Key}.pcap";
+                                string processBPFFilterTextFile = @$"{processFolderInRootFolder}\{processAndBPFFilter.Key} BPF-Filter.txt";
+
+                                Output.Print($"Creating folder {processFolderInRootFolder}", "debug");
+                                fileAndFolders.CreateFolder(processFolderInRootFolder);
+
                                 Output.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilter[processAndBPFFilter.Key]}\"", "debug");
                                 networkPackets.FilterNetworkCaptureFile(computedBPFFilter[processAndBPFFilter.Key], fullPcapFile, filteredPcapFile);
                                 fileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilter[processAndBPFFilter.Key]);
