@@ -2,12 +2,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Eventing;
 using System.Timers;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
 
 //ETW
 using Microsoft.Diagnostics.Symbols;
@@ -28,6 +30,7 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Numerics;
 using System.Globalization;
 using System.IO;
+using Microsoft.Diagnostics.Tracing.Parsers.ClrPrivate;
 
 namespace WhoYouCalling.Utilities
 {
@@ -360,6 +363,7 @@ namespace WhoYouCalling
         private static List<string> etwActivityHistory = new List<string>(); // Summary of the network activities made
         private static Dictionary<int, HashSet<string>> bpfFilterBasedActivity = new Dictionary<int, HashSet<string>>();
         private static TraceEventSession kernelSession;
+        private static TraceEventSession dnsClientSession;
         private static bool mainProcessEnded = false;
         private static bool shutDownMonitoring = false;
         private static string mainExecutableFileName;
@@ -389,6 +393,11 @@ namespace WhoYouCalling
                 PrintHelp();
             }
 
+            // Just playing around with colors
+            //ConsoleColor currentBackground = Console.BackgroundColor;
+            //ConsoleColor currentForeground = Console.ForegroundColor;
+            //Console.ForegroundColor = ConsoleColor.Red;
+            
             Console.CancelKeyPress += (sender, e) => // For manual cancellation of application
             {
                 shutDownMonitoring = true;
@@ -432,11 +441,15 @@ namespace WhoYouCalling
                 fpcThread.Start();
             }
 
-            // Create and start thread for ETW
-            Thread etwThread = new Thread(() => ListenToETW());
-            Output.Print("Starting ETW session", "debug");
-            etwThread.Start();
-   
+            // Create and start threads for ETW. Had to make two separate functions for a dedicated thread for interoperability
+            Thread etwKernelThread = new Thread(() => ListenToETWKernel());
+            Thread etwDNSClientThread = new Thread(() => ListenToETWDNSClient());
+
+            Output.Print("Starting ETW sessions", "debug");
+            etwKernelThread.Start();
+            etwDNSClientThread.Start();
+
+
 
             if (!string.IsNullOrEmpty(executablePath)) // An executable has been provided
             {
@@ -477,7 +490,6 @@ namespace WhoYouCalling
                 if (shutDownMonitoring)
                 {
                     Output.Print($"Monitoring was aborted. Finishing...", "debug");
-
                     if (processRunTimer != 0 && killProcesses) // If a timer was specified and that processes should be killed
                     {
                         Output.Print($"Killing main process with PID {trackedProcessId}", "debug");
@@ -488,11 +500,19 @@ namespace WhoYouCalling
                             processManager.KillProcess(childPID);
                         }
                     }
-                    Output.Print($"Stopping ETW kernel session", "debug");
-                    StopKernelSession();
+                    Output.Print($"Stopping ETW sessions", "debug");
+                    StopKernelETWSession();
+                    StopDnsClientSession();
                     if (kernelSession.IsActive)
                     {
-                        Output.Print($"Kernel still running...", "warning");
+                        Output.Print($"Kernel ETW session still running...", "warning");
+                    }else if (dnsClientSession.IsActive)
+                    {
+                        Output.Print($"DNS Client ETW session still running...", "warning");
+                    }
+                    else
+                    {
+                        Output.Print($"Successfully stopped ETW sessions", "debug");
                     }
 
 
@@ -799,11 +819,13 @@ Examples:
                                              string execObject = "N/A",
                                              int execPID = 0,
                                              int parentExecPID = 0,
-                                             string eventType = "network",
+                                             string eventType = "network", // process, childprocess, network, dnsquery, dnsresponse
                                              string ipVersion = "IPv4",
                                              string transportProto = "TCP",
                                              IPAddress dstAddr = null, 
-                                             int dstPort = 0)
+                                             int dstPort = 0,
+                                             string dnsQuery = "N/A",
+                                             string dnsResult = "N/A")
         {
             string timestamp = DateTime.Now.ToString("HH:mm:ss");
             
@@ -830,6 +852,13 @@ Examples:
             }else if (eventType == "childprocess") // If its a process starting another process
             {
                 historyMsg = $"{timestamp} - {executable}[{parentExecPID}]({execType}) {execAction} {execObject}[{execPID}]";
+            }else if (eventType == "dnsquery")
+            {
+                historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) made a DNS lookup for {dnsQuery}";
+            }
+            else if (eventType == "dnsresponse")
+            {
+                historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) received response {dnsResult}";
             }
             Output.Print(historyMsg, "debug");
             etwActivityHistory.Add(historyMsg);
@@ -839,9 +868,6 @@ Examples:
         {
             shutDownMonitoring = true;
         }
-
-
-        
 
         private static void DeleteFullPcapFile(string fullPcapFile)
         {
@@ -885,7 +911,17 @@ Examples:
             return folderName;
         }
 
-        private static void ListenToETW()
+        private static void ListenToETWDNSClient()
+        {
+            using (dnsClientSession = new TraceEventSession("WhoYouCallingDNSClientSession"))
+            {
+                dnsClientSession.EnableProvider("Microsoft-Windows-DNS-Client");
+                dnsClientSession.Source.Dynamic.All += DnsClientEvent;
+                dnsClientSession.Source.Process();
+            }
+
+        }
+        private static void ListenToETWKernel()
         {
             using (kernelSession = new TraceEventSession(KernelTraceEventParser.KernelSessionName)) //KernelTraceEventParser
             {
@@ -894,21 +930,82 @@ Examples:
                     KernelTraceEventParser.Keywords.Process
                 );
 
-                // TcpIpConnect may be used. However, "send" is used to ensure capturing failed TCP handshakes
-                kernelSession.Source.Kernel.TcpIpSend += Ipv4TcpStart;
+                // TCP/IP
+                kernelSession.Source.Kernel.TcpIpSend += Ipv4TcpStart; // TcpIpConnect may be used. However, "send" is used to ensure capturing failed TCP handshakes
                 kernelSession.Source.Kernel.TcpIpSendIPV6 += Ipv6TcpStart;
                 kernelSession.Source.Kernel.UdpIpSend += Ipv4UdpIpStart;
                 kernelSession.Source.Kernel.UdpIpSendIPV6 += Ipv6UdpIpStart;
 
+                // Process
                 kernelSession.Source.Kernel.ProcessStart += childProcessStarted;
                 kernelSession.Source.Kernel.ProcessStop += processStopped;
 
+                // Start Kernel ETW session
                 kernelSession.Source.Process();
             }
         }
-        private static void StopKernelSession()
+        private static void StopKernelETWSession()
         {
             kernelSession.Dispose();
+        }
+
+        private static void StopDnsClientSession()
+        {
+            dnsClientSession.Dispose();
+        }
+
+        private static void DnsClientEvent(TraceEvent data)
+        {
+            if (trackedProcessId == data.ProcessID)
+            {
+                if (data.EventName == "EventID(3006)") // DNS Lookup
+                {
+                    string dnsQuery = data.PayloadByName("QueryName").ToString();
+                    AddActivityToETWHistory(eventType: "dnsquery",
+                        executable: mainExecutableFileName,
+                        execPID: data.ProcessID,
+                        execType: "Main",
+                        dnsQuery: dnsQuery);
+                }
+                else if (data.EventName == "EventID(3020)") // DNS Response
+                {
+                    string dnsResult = data.PayloadByName("QueryResults").ToString();
+                    AddActivityToETWHistory(eventType: "dnsresponse",
+                        executable: mainExecutableFileName,
+                        execPID: data.ProcessID,
+                        execType: "Main",
+                        dnsResult: dnsResult);
+                }
+
+            }
+            else if (trackedChildProcessIds.Contains(data.ProcessID) && data.EventName == "EventID(3006)")
+            {
+
+                string childExecutable = executableByPIDTable[data.ProcessID];
+                if (data.EventName == "EventID(3006)") // DNS Lookup
+                {
+                    string dnsQuery = data.PayloadByName("QueryName").ToString();
+                    AddActivityToETWHistory(eventType: "dnsquery",
+                        executable: childExecutable,
+                        execPID: data.ProcessID,
+                        execType: "Child",
+                        dnsQuery: dnsQuery);
+                }
+                else if (data.EventName == "EventID(3020)") // DNS Response
+                {
+                    string dnsResult = data.PayloadByName("QueryResults").ToString();
+                    AddActivityToETWHistory(eventType: "dnsresponse",
+                        executable: childExecutable,
+                        execPID: data.ProcessID,
+                        execType: "Child",
+                        dnsResult: dnsResult);
+                }
+            }
+
+            // Data.ProcessID works! 
+            // data.FormattedMessage semi works - is entire message - quite dull. Only require action, query and perhaps answer. 
+            //Output.Print($"DNS {data.EventName} - {data.FormattedMessage}", "debug");
+            //Output.Print($"PAYLOAD {data.PayloadByName("QueryName")}", "debug");
         }
 
         private static void Ipv4TcpStart(TcpIpSendTraceData data)
@@ -1033,6 +1130,7 @@ Examples:
                 if (trackChildProcesses)
                 {
                     trackedChildProcessIds.Add(data.ProcessID);
+
                     executableByPIDTable.Add(data.ProcessID, data.ImageFileName);
 
                     bpfFilterBasedActivity[data.ProcessID] = new HashSet<string> { }; // Add child processname
@@ -1052,6 +1150,7 @@ Examples:
                 if (trackChildProcesses)
                 {
                     trackedChildProcessIds.Add(data.ProcessID);
+
                     executableByPIDTable.Add(data.ProcessID, data.ImageFileName);
 
                     bpfFilterBasedActivity[data.ProcessID] = new HashSet<string> { }; // Add child processname
