@@ -31,13 +31,39 @@ using System.Numerics;
 using System.Globalization;
 using System.IO;
 using Microsoft.Diagnostics.Tracing.Parsers.ClrPrivate;
+using System.Collections;
 
 namespace WhoYouCalling.Utilities
 {
+
+    public class Statistics
+    {
+        private static int origRow;
+        private static int origCol;
+
+        public void SetCursorPositions(int x_start, int y_start)
+        {
+            origCol = x_start;
+            origRow = y_start;
+        }
+
+        public void ConsoleWriteAt(string s, int x, int y)
+        {
+            try
+            {
+                Console.SetCursorPosition(origCol + x, origRow + y);
+                Console.Write(s);
+            }
+            catch (ArgumentOutOfRangeException e)
+            {
+                Console.Clear();
+                Console.WriteLine(e.Message);
+            }
+        }
+    }
     public static class Output
     {
-      
-        public static void Print(string message, string type = "")
+            public static void Print(string message, string type = "")
         {
             string prefix;
             switch (type)
@@ -362,6 +388,7 @@ namespace WhoYouCalling
         public static Dictionary<int, string> executableByPIDTable = new Dictionary<int, string>();
         private static List<string> etwActivityHistory = new List<string>(); // Summary of the network activities made
         private static Dictionary<int, HashSet<string>> bpfFilterBasedActivity = new Dictionary<int, HashSet<string>>();
+        private static Dictionary<string, int> runTimeStatistics = new Dictionary<string, int>(); // Used for printing the statistics
         private static TraceEventSession kernelSession;
         private static TraceEventSession dnsClientSession;
         private static bool mainProcessEnded = false;
@@ -397,7 +424,10 @@ namespace WhoYouCalling
             //ConsoleColor currentBackground = Console.BackgroundColor;
             //ConsoleColor currentForeground = Console.ForegroundColor;
             //Console.ForegroundColor = ConsoleColor.Red;
+
+
             
+
             Console.CancelKeyPress += (sender, e) => // For manual cancellation of application
             {
                 shutDownMonitoring = true;
@@ -409,7 +439,8 @@ namespace WhoYouCalling
             Utilities.NetworkPackets networkPackets = new Utilities.NetworkPackets();
             Utilities.FileAndFolders fileAndFolders = new Utilities.FileAndFolders();
             Utilities.BPFFilter bpfFIlter = new Utilities.BPFFilter();
-
+            Utilities.Statistics runtimeOutput = new Utilities.Statistics();
+       
             Output.Print("Retrieving executable filename", "debug");
             mainExecutableFileName = GetExecutableFileName(trackedProcessId, executablePath);
 
@@ -484,10 +515,27 @@ namespace WhoYouCalling
                 timer.Start();
             }
 
-            // Run until main proces has ended
-            while (true)
+
+            // runtime statistics output - this is reset when shutdown is initiated
+            Console.Clear();
+            Console.CursorVisible = false; // Due to flickering effect of the cursor jumping when outputting the text it had to made invisible
+            runtimeOutput.SetCursorPositions(y_start: Console.CursorTop, x_start: Console.CursorLeft);
+            runtimeOutput.ConsoleWriteAt($"Monitoring {mainExecutableFileName}[{trackedProcessId}]", 0, 0);
+
+
+            while (true) // Continue monitoring 
             {
-                if (shutDownMonitoring)
+                AssertRuntimeStatistics();
+                if (!debug) // If no debug is supplied writeout runtime statistics
+                {
+                    int consoleRow = 1;
+                    foreach (var stat in runTimeStatistics)
+                    {
+                        runtimeOutput.ConsoleWriteAt($"{stat.Key}: {stat.Value}", 0, consoleRow);
+                        consoleRow++;
+                    }
+                }
+                if (shutDownMonitoring) // If shutdown monitoring is true, finish last actions with cleanup and generate data
                 {
                     Output.Print($"Monitoring was aborted. Finishing...", "debug");
                     if (processRunTimer != 0 && killProcesses) // If a timer was specified and that processes should be killed
@@ -563,18 +611,36 @@ namespace WhoYouCalling
                     {
                         Output.Print($"Not creating ETW history file since no activity was recorded", "warning");
                     }
-                    
+
+                    Output.Print("Resetting terminal settings"); 
+                    Console.CursorVisible = true;
+
                     Output.Print($"Done.", "debug");
                     break;
                 }
             }
         }
+
+        private static void AssertRuntimeStatistics()
+        {
+            if (trackedChildProcessIds.Count > 0)
+            {
+                runTimeStatistics["Child processes"] = trackedChildProcessIds.Count;
+            }
+        }
+
         private static double ConvertToMilliseconds(double providedSeconds)
         {
             TimeSpan timeSpan = TimeSpan.FromSeconds(providedSeconds);
             double milliseconds = timeSpan.TotalMilliseconds;
             return milliseconds;
         }
+
+        private static void PrintStats()
+        {
+            Console.WriteLine("");
+        }
+
         private static void PrintHelp()
         {
             string helpText = @"
