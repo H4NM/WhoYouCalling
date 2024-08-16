@@ -35,32 +35,6 @@ using System.Collections;
 
 namespace WhoYouCalling.Utilities
 {
-
-    public class Statistics
-    {
-        private static int origRow;
-        private static int origCol;
-
-        public void SetCursorPositions(int x_start, int y_start)
-        {
-            origCol = x_start;
-            origRow = y_start;
-        }
-
-        public void ConsoleWriteAt(string s, int x, int y)
-        {
-            try
-            {
-                Console.SetCursorPosition(origCol + x, origRow + y);
-                Console.Write(s);
-            }
-            catch (ArgumentOutOfRangeException e)
-            {
-                Console.Clear();
-                Console.WriteLine(e.Message);
-            }
-        }
-    }
     public static class Output
     {
             public static void Print(string message, string type = "")
@@ -388,7 +362,6 @@ namespace WhoYouCalling
         public static Dictionary<int, string> executableByPIDTable = new Dictionary<int, string>();
         private static List<string> etwActivityHistory = new List<string>(); // Summary of the network activities made
         private static Dictionary<int, HashSet<string>> bpfFilterBasedActivity = new Dictionary<int, HashSet<string>>();
-        private static Dictionary<string, int> runTimeStatistics = new Dictionary<string, int>(); // Used for printing the statistics
         private static TraceEventSession kernelSession;
         private static TraceEventSession dnsClientSession;
         private static bool mainProcessEnded = false;
@@ -417,16 +390,13 @@ namespace WhoYouCalling
             }
 
             if (!ValidateProvidedArguments(args)) {
+                PrintHeader();
                 PrintHelp();
             }
 
+            Console.Clear();
             // Just playing around with colors
-            //ConsoleColor currentBackground = Console.BackgroundColor;
-            //ConsoleColor currentForeground = Console.ForegroundColor;
-            //Console.ForegroundColor = ConsoleColor.Red;
-
-
-            
+            PrintHeader();
 
             Console.CancelKeyPress += (sender, e) => // For manual cancellation of application
             {
@@ -439,7 +409,6 @@ namespace WhoYouCalling
             Utilities.NetworkPackets networkPackets = new Utilities.NetworkPackets();
             Utilities.FileAndFolders fileAndFolders = new Utilities.FileAndFolders();
             Utilities.BPFFilter bpfFIlter = new Utilities.BPFFilter();
-            Utilities.Statistics runtimeOutput = new Utilities.Statistics();
        
             Output.Print("Retrieving executable filename", "debug");
             mainExecutableFileName = GetExecutableFileName(trackedProcessId, executablePath);
@@ -516,25 +485,10 @@ namespace WhoYouCalling
             }
 
 
-            // runtime statistics output - this is reset when shutdown is initiated
-            Console.Clear();
-            Console.CursorVisible = false; // Due to flickering effect of the cursor jumping when outputting the text it had to made invisible
-            runtimeOutput.SetCursorPositions(y_start: Console.CursorTop, x_start: Console.CursorLeft);
-            runtimeOutput.ConsoleWriteAt($"Monitoring {mainExecutableFileName}[{trackedProcessId}]", 0, 0);
-
 
             while (true) // Continue monitoring 
             {
-                AssertRuntimeStatistics();
-                if (!debug) // If no debug is supplied writeout runtime statistics
-                {
-                    int consoleRow = 1;
-                    foreach (var stat in runTimeStatistics)
-                    {
-                        runtimeOutput.ConsoleWriteAt($"{stat.Key}: {stat.Value}", 0, consoleRow);
-                        consoleRow++;
-                    }
-                }
+               
                 if (shutDownMonitoring) // If shutdown monitoring is true, finish last actions with cleanup and generate data
                 {
                     Output.Print($"Monitoring was aborted. Finishing...", "debug");
@@ -612,20 +566,9 @@ namespace WhoYouCalling
                         Output.Print($"Not creating ETW history file since no activity was recorded", "warning");
                     }
 
-                    Output.Print("Resetting terminal settings"); 
-                    Console.CursorVisible = true;
-
                     Output.Print($"Done.", "debug");
                     break;
                 }
-            }
-        }
-
-        private static void AssertRuntimeStatistics()
-        {
-            if (trackedChildProcessIds.Count > 0)
-            {
-                runTimeStatistics["Child processes"] = trackedChildProcessIds.Count;
             }
         }
 
@@ -639,6 +582,44 @@ namespace WhoYouCalling
         private static void PrintStats()
         {
             Console.WriteLine("");
+        }
+
+        private static void PrintHeader()
+        {
+            string headerText = @"
+  __      ___      __   __         ___      _ _ _           
+  \ \    / / |_  __\ \ / /__ _  _ / __|__ _| | (_)_ _  __ _ 
+   \ \/\/ /| ' \/ _ \ V / _ \ || | (__/ _` | | | | ' \/ _` |
+    \_/\_/ |_||_\___/|_|\___/\_,_|\___\__,_|_|_|_|_||_\__, |
+                                                     |___/ 
+";
+            string headerIcon = @"
+               _.===========================._
+            .'`  .-  - __- - - -- --__--- -.  `'.
+        __ / ,'`     _|--|_________|--|_     `'. \
+      /'--| ;    _.'\ |  '         '  | /'._    ; |
+     //   | |_.-' .-'.'    -  -- -    '.'-. '-._| |
+    (\)   \""` _.-` /                     \ `-._""/
+    (\)    `-`    /      .---------.      \    `-`
+    (\)           |      ||1||2||3||      |
+   (\)            |      ||4||5||6||      |
+  (\)             |      ||7||8||9||      |
+ (\)           ___|      ||*||0||#||      |
+ (\)          /.--|      '---------'      |
+  (\)        (\)  |\_  _  __   _   __  __/|
+ (\)        (\)   |                       |
+(\)_._._.__(\)    |                       |
+ (\\\\jgs\\\)      '.___________________.'
+  '-'-'-'--'
+            ";
+
+            ConsoleColor initialForeground = Console.ForegroundColor;
+
+            Console.ForegroundColor = ConsoleColor.Magenta;
+            Console.Write(headerText);
+            Console.ForegroundColor = ConsoleColor.DarkMagenta;
+            Console.Write(headerIcon);
+            Console.ForegroundColor = initialForeground;
         }
 
         private static void PrintHelp()
