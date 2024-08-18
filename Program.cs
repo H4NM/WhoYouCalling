@@ -579,42 +579,19 @@ namespace WhoYouCalling
             return milliseconds;
         }
 
-        private static void PrintStats()
-        {
-            Console.WriteLine("");
-        }
-
         private static void PrintHeader()
         {
-            string headerText = @"
-  __      ___      __   __         ___      _ _ _           
-  \ \    / / |_  __\ \ / /__ _  _ / __|__ _| | (_)_ _  __ _  
-   \ \/\/ /| ' \/ _ \ V / _ \ || | (__/ _` | | | | ' \/ _` |
-    \_/\_/ |_||_\___/|_|\___/\_,_|\___\__,_|_|_|_|_||_\__, |
-                                                      |___/";
-
-
-            string headerIcon = @"
-          .-''''-..                       ,'"".
-        .' .'''.   `.                     )  ,|
-       /    \   \    `.                  /  /,'-.
-       \    '   |     |                 /  //  /.`.
-        `--'   /     /                ,'  //  /  `.`.
-             .'  ,-''                (    )--.`.   //|
-             |  /                    |`--'|   `.`.// |
-             | ' ------------.        `--'      `./  /
-             '-'              `.________+__+      | /
-             .-.                        |_________|/ 
-            |   |     
-             `-' ";
-
-
+            string headerText = @"                                  ?
+                                                                    | 
+  __      ___      __   __         ___      _ _ _               .===:
+  \ \    / / |_  __\ \ / /__ _  _ / __|__ _| | (_)_ _  __ _     |[_]|
+   \ \/\/ /| ' \/ _ \ V / _ \ || | (__/ _` | | | | ' \/ _` |    |:::|
+    \_/\_/ |_||_\___/|_|\___/\_,_|\___\__,_|_|_|_|_||_\__, |    |:::|
+                                                      |___/      \___\
+";
             ConsoleColor initialForeground = Console.ForegroundColor;
-
             Console.ForegroundColor = ConsoleColor.Magenta;
             Console.Write(headerText);
-            Console.ForegroundColor = ConsoleColor.DarkMagenta;
-            Console.Write(headerIcon);
             Console.ForegroundColor = initialForeground;
         }
 
@@ -634,7 +611,7 @@ Options:
   -i, --interface     : The network interface number. Retrievable with the -g/--getinterfaces flag.
   -g, --getinterfaces : Prints the network interface devices with corresponding number (usually 0-10).
   -n, --nopcap        : Skips collecting full packet capture.
-  -c, --catalog       : Output directory, full path.
+  -o, --output        : Output directory, full path.
   -h, --help          : Displays this help information.
 
 Examples:
@@ -704,7 +681,7 @@ Examples:
                         saveFullPcap = true;
                         saveFullPcapFlagSet = true;
                     }
-                    else if (args[i] == "-c" || args[i] == "--catalog") //Save the full pcap
+                    else if (args[i] == "-o" || args[i] == "--output") //Save the full pcap
                     {
                         if (i + 1 < args.Length)
                         {
@@ -734,7 +711,7 @@ Examples:
                         }
                         else
                         {
-                            Output.Print("No arguments specified after -c/--catalog flag", "warning");
+                            Output.Print("No arguments specified after -o/--output flag", "warning");
                             return false;
                         }
                  
@@ -999,50 +976,25 @@ Examples:
 
         private static void DnsClientEvent(TraceEvent data)
         {
-            if (trackedProcessId == data.ProcessID)
+            if (trackedProcessId == data.ProcessID && data.EventName == "EventID(3006)") // DNS Lookup made by main tracked PID
             {
-                if (data.EventName == "EventID(3006)") // DNS Lookup
-                {
-                    string dnsQuery = data.PayloadByName("QueryName").ToString();
-                    AddActivityToETWHistory(eventType: "dnsquery",
-                        executable: mainExecutableFileName,
-                        execPID: data.ProcessID,
-                        execType: "Main",
-                        dnsQuery: dnsQuery);
-                }
-                else if (data.EventName == "EventID(3020)") // DNS Response
-                {
-                    string dnsResult = data.PayloadByName("QueryResults").ToString();
-                    AddActivityToETWHistory(eventType: "dnsresponse",
-                        executable: mainExecutableFileName,
-                        execPID: data.ProcessID,
-                        execType: "Main",
-                        dnsResult: dnsResult);
-                }
-
+                string dnsQuery = data.PayloadByName("QueryName").ToString();
+                AddActivityToETWHistory(eventType: "dnsquery",
+                    executable: mainExecutableFileName,
+                    execPID: data.ProcessID,
+                    execType: "Main",
+                    dnsQuery: dnsQuery);
             }
-            else if (trackedChildProcessIds.Contains(data.ProcessID) && data.EventName == "EventID(3006)")
+            else if (trackedChildProcessIds.Contains(data.ProcessID) && data.EventName == "EventID(3006)") // DNS Lookup made by child tracked PID
             {
-
                 string childExecutable = executableByPIDTable[data.ProcessID];
-                if (data.EventName == "EventID(3006)") // DNS Lookup
-                {
-                    string dnsQuery = data.PayloadByName("QueryName").ToString();
-                    AddActivityToETWHistory(eventType: "dnsquery",
-                        executable: childExecutable,
-                        execPID: data.ProcessID,
-                        execType: "Child",
-                        dnsQuery: dnsQuery);
-                }
-                else if (data.EventName == "EventID(3020)") // DNS Response
-                {
-                    string dnsResult = data.PayloadByName("QueryResults").ToString();
-                    AddActivityToETWHistory(eventType: "dnsresponse",
-                        executable: childExecutable,
-                        execPID: data.ProcessID,
-                        execType: "Child",
-                        dnsResult: dnsResult);
-                }
+                string dnsQuery = data.PayloadByName("QueryName").ToString();
+
+                AddActivityToETWHistory(eventType: "dnsquery",
+                    executable: childExecutable,
+                    execPID: data.ProcessID,
+                    execType: "Child",
+                    dnsQuery: dnsQuery);
             }
 
             // Data.ProcessID works! 
