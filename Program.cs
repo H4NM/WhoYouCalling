@@ -166,18 +166,16 @@ namespace WhoYouCalling.Utilities
 
     public class BPFFilter
     {
-        public Dictionary<string, string> GetBPFFilter(Dictionary<int, HashSet<string>> bpfFilterBasedDict)
+        public Dictionary<int, string> GetBPFFilter(Dictionary<int, HashSet<string>> bpfFilterBasedDict)
         {
 
-            Dictionary<string, string> bpfFilterPerExecutable = new Dictionary<string, string>();
+            Dictionary<int, string> bpfFilterPerExecutable = new Dictionary<int, string>();
 
             foreach (KeyValuePair<int, HashSet<string>> entry in bpfFilterBasedDict) //For each Process 
             {
-                string executableNameByPID = Program.executableByPIDTable[entry.Key]; //Lookup the executable name
-                string executabelNameAndPID = $"{executableNameByPID}-{entry.Key}";
                 if (entry.Value.Count == 0) // Check if the executable has any recorded network activity
                 {
-                    Output.Print($"Not calculating BPFFilter for {executabelNameAndPID}. No recored network activity", "debug");
+                    Output.Print($"Not calculating BPFFilter for PID {entry.Key}. No recored network activity", "debug");
                     continue;
                 }
                 List<string> FullBPFlistForProcess = new List<string>();
@@ -196,19 +194,18 @@ namespace WhoYouCalling.Utilities
                     FullBPFlistForProcess.Add(partialBPFstring);
                 }
                 string BPFFilter = string.Join(" or ", FullBPFlistForProcess);
-                bpfFilterPerExecutable[executabelNameAndPID] = BPFFilter; // Add BPF filter for executable
+                bpfFilterPerExecutable[entry.Key] = BPFFilter; // Add BPF filter for executable
             }
 
             if (bpfFilterPerExecutable.Count > 1)
             {
                 List<string> tempBPFList = new List<string>();
-                foreach (KeyValuePair<string, string> processBPFFilter in bpfFilterPerExecutable)
+                foreach (KeyValuePair<int, string> processBPFFilter in bpfFilterPerExecutable)
                 {
                     tempBPFList.Add($"({processBPFFilter.Value})");
                 }
-                bpfFilterPerExecutable[$"All {bpfFilterPerExecutable.Count} processes"] = string.Join(" or ", tempBPFList);
+                bpfFilterPerExecutable[0] = string.Join(" or ", tempBPFList); //0 is the combined PID number for all
             }
-
             return bpfFilterPerExecutable;
         }
     }
@@ -364,9 +361,11 @@ namespace WhoYouCalling
         public static Dictionary<int, string> executableByPIDTable = new Dictionary<int, string>();
         private static List<string> etwActivityHistory = new List<string>(); // Summary of the network activities made
         private static Dictionary<int, HashSet<string>> bpfFilterBasedActivity = new Dictionary<int, HashSet<string>>();
+        private static Dictionary<int, HashSet<string>> dnsActivityByPID = new Dictionary<int, HashSet<string>>();
+        private static Dictionary<int, HashSet<string>> tcpipAdressesByPID = new Dictionary<int, HashSet<string>>();
+
         private static TraceEventSession kernelSession;
         private static TraceEventSession dnsClientSession;
-        private static bool mainProcessEnded = false;
         private static bool shutDownMonitoring = false;
         private static string mainExecutableFileName;
 
@@ -453,16 +452,14 @@ namespace WhoYouCalling
 
 
 
-            if (!string.IsNullOrEmpty(executablePath)) // An executable has been provided
+            if (!string.IsNullOrEmpty(executablePath)) // An executable path has been provided and will be executed
             {
-                Thread.Sleep(4000); //Sleep is required to ensure ETW Subscription is timed correctly to capture the execution
+                Thread.Sleep(3000); //Sleep is required to ensure ETW Subscription is timed correctly to capture the execution
                 try
                 {
                     Output.Print($"Starting executable \"{executablePath}\" with args \"{executableArguments}\"", "debug");
                     trackedProcessId = processManager.StartProcessAndGetId(executablePath, executableArguments);
-                    bpfFilterBasedActivity[trackedProcessId] = new HashSet<string> {}; // Add the main executable processname
-                    executableByPIDTable.Add(trackedProcessId, mainExecutableFileName);
-                    AddActivityToETWHistory(eventType: "process", executable: mainExecutableFileName, execType: "Main", execAction: "started", execPID: trackedProcessId);
+                    CatalogETWActivity(eventType: "process", executable: mainExecutableFileName, execType: "Main", execAction: "started", execPID: trackedProcessId);
                 }
                 catch (Exception ex)
                 {
@@ -472,10 +469,11 @@ namespace WhoYouCalling
             }
             else // PID to an existing process is running
             {
-                bpfFilterBasedActivity[trackedProcessId] = new HashSet<string> { }; // Add the main executable processname
-                executableByPIDTable.Add(trackedProcessId, mainExecutableFileName);
-                AddActivityToETWHistory(eventType: "process", executable: mainExecutableFileName, execType: "Main", execAction: "being listened to", execPID: trackedProcessId);
+                CatalogETWActivity(eventType: "process", executable: mainExecutableFileName, execType: "Main", execAction: "being listened to", execPID: trackedProcessId);
             }
+
+            InstantiateProcessVariables(pid: trackedProcessId, executable: mainExecutableFileName);
+
             if (processRunTimer != 0)
             {
                 double processRunTimerInMilliseconds = ConvertToMilliseconds(processRunTimer);
@@ -490,7 +488,6 @@ namespace WhoYouCalling
 
             while (true) // Continue monitoring 
             {
-               
                 if (shutDownMonitoring) // If shutdown monitoring is true, finish last actions with cleanup and generate data
                 {
                     Output.Print($"Monitoring was aborted. Finishing...", "debug");
@@ -519,6 +516,7 @@ namespace WhoYouCalling
                         Output.Print($"Successfully stopped ETW sessions", "debug");
                     }
 
+                    Dictionary<int, string> computedBPFFilterByPID = [];
 
                     if (!noPacketCapture)
                     {
@@ -526,36 +524,51 @@ namespace WhoYouCalling
                         networkPackets.StopCapturingNetworkPackets();
 
                         Output.Print($"Producing BPF filter", "debug");
-                        Dictionary<string, string> computedBPFFilter = bpfFIlter.GetBPFFilter(bpfFilterBasedActivity);
+                        computedBPFFilterByPID = bpfFIlter.GetBPFFilter(bpfFilterBasedActivity);
+                    }
 
-                        foreach (KeyValuePair<string, string> processAndBPFFilter in computedBPFFilter)
+                    foreach (KeyValuePair<int, string> pidAndExecutableName in executableByPIDTable)
+                    {
+                        int pid = pidAndExecutableName.Key;
+                        string executable = pidAndExecutableName.Value;
+
+                        string executabelNameAndPID = $"{executable}-{pid}";
+                        string processFolderInRootFolder = @$"{rootFolderName}\{executabelNameAndPID}";
+
+                        Output.Print($"Creating folder {processFolderInRootFolder}", "debug");
+                        fileAndFolders.CreateFolder(processFolderInRootFolder);
+
+                        if (computedBPFFilterByPID.ContainsKey(pid) && !string.IsNullOrEmpty(computedBPFFilterByPID[pid])) // Creating filtered FPC based on application activity
                         {
-                            if (!string.IsNullOrEmpty(computedBPFFilter[processAndBPFFilter.Key]))
-                            {
-                                string processFolderInRootFolder = @$"{rootFolderName}\{processAndBPFFilter.Key}";
-                                string filteredPcapFile = @$"{processFolderInRootFolder}\{processAndBPFFilter.Key}.pcap";
-                                string processBPFFilterTextFile = @$"{processFolderInRootFolder}\{processAndBPFFilter.Key} BPF-Filter.txt";
+                            string filteredPcapFile = @$"{processFolderInRootFolder}\{executabelNameAndPID}.pcap";
+                            string processBPFFilterTextFile = @$"{processFolderInRootFolder}\{executabelNameAndPID} BPF-Filter.txt";
 
-                                Output.Print($"Creating folder {processFolderInRootFolder}", "debug");
-                                fileAndFolders.CreateFolder(processFolderInRootFolder);
-
-                                Output.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilter[processAndBPFFilter.Key]}\"", "debug");
-                                networkPackets.FilterNetworkCaptureFile(computedBPFFilter[processAndBPFFilter.Key], fullPcapFile, filteredPcapFile);
-                                fileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilter[processAndBPFFilter.Key]);
-                            }
-                            else
-                            {
-                                Output.Print($"Skipping creating dedicated PCAP file for {processAndBPFFilter.Key}. No recorded BPF filter", "debug");
-                            }
+                            Output.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilterByPID[pid]}\"", "debug");
+                            networkPackets.FilterNetworkCaptureFile(computedBPFFilterByPID[pid], fullPcapFile, filteredPcapFile);
+                            fileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[pid]); // Create textfile containing used BPF filter
                         }
-
-                        // Cleanup 
-                        if (!saveFullPcap)
+                        else if (computedBPFFilterByPID.ContainsKey(0) && !string.IsNullOrEmpty(computedBPFFilterByPID[0])) // 0 represents the combined BPF filter for all applications
                         {
-                            Output.Print($"Deleting full pcap file {fullPcapFile}", "debug");
-                            DeleteFullPcapFile(fullPcapFile);
+                            string filteredPcapFile = @$"{rootFolderName}\All {computedBPFFilterByPID.Count} processes filter.pcap";
+                            string processBPFFilterTextFile = @$"{rootFolderName}\All {computedBPFFilterByPID.Count} processes filter.txt";
+
+                            Output.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilterByPID[pid]}\"", "debug");
+                            networkPackets.FilterNetworkCaptureFile(computedBPFFilterByPID[pid], fullPcapFile, filteredPcapFile);
+                            fileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[pid]); // Create textfile containing used BPF filter
+                        }
+                        else
+                        {
+                            Output.Print($"Skipping creating dedicated PCAP file for {executable}. No recorded BPF filter", "debug");
                         }
                     }
+
+                    // Cleanup 
+                    if (!saveFullPcap)
+                    {
+                        Output.Print($"Deleting full pcap file {fullPcapFile}", "debug");
+                        DeleteFullPcapFile(fullPcapFile);
+                    }
+                    
 
                     // Action
                     if (etwActivityHistory.Count > 0)
@@ -835,21 +848,20 @@ Examples:
             return true;
         }
 
-        private static void AddActivityToETWHistory(string executable = "N/A",
+        private static void CatalogETWActivity(string executable = "N/A",
                                              string execType = "N/A", // Main or child process
                                              string execAction = "started",
                                              string execObject = "N/A",
                                              int execPID = 0,
                                              int parentExecPID = 0,
-                                             string eventType = "network", // process, childprocess, network, dnsquery, dnsresponse
+                                             string eventType = "network", // process, childprocess, network, dnsquery
                                              string ipVersion = "IPv4",
                                              string transportProto = "TCP",
                                              IPAddress srcAddr = null,
                                              int srcPort = 0,
                                              IPAddress dstAddr = null, 
                                              int dstPort = 0,
-                                             string dnsQuery = "N/A",
-                                             string dnsResult = "N/A")
+                                             string dnsQuery = "N/A")
         {
             string timestamp = DateTime.Now.ToString("HH:mm:ss");
             
@@ -868,6 +880,7 @@ Examples:
                 {
                     bpfBasedIPVersion = "ip6";
                 }
+                tcpipAdressesByPID[execPID].Add($"{dstAddr}:{dstPort}");
                 bpfFilterBasedActivity[execPID].Add($"{bpfBasedIPVersion},{bpfBasedProto},{srcAddr},{srcPort},{dstAddr},{dstPort}");
             }
             else if (eventType == "process") // If its a process related activity
@@ -878,12 +891,10 @@ Examples:
                 historyMsg = $"{timestamp} - {executable}[{parentExecPID}]({execType}) {execAction} {execObject}[{execPID}]";
             }else if (eventType == "dnsquery")
             {
+                dnsActivityByPID[execPID].Add(dnsQuery);
                 historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) made a DNS lookup for {dnsQuery}";
             }
-            else if (eventType == "dnsresponse")
-            {
-                historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) received response {dnsResult}";
-            }
+
             Output.Print(historyMsg, "debug");
             etwActivityHistory.Add(historyMsg);
         }
@@ -935,6 +946,14 @@ Examples:
             return folderName;
         }
 
+        private static void InstantiateProcessVariables(int pid, string executable)
+        {
+            executableByPIDTable.Add(pid, executable);
+            bpfFilterBasedActivity[pid] = new HashSet<string> { }; // Add the main executable processname
+            dnsActivityByPID[pid] = new HashSet<string> { };
+            tcpipAdressesByPID[pid] = new HashSet<string> { };
+        }
+
         private static void ListenToETWDNSClient()
         {
             using (dnsClientSession = new TraceEventSession("WhoYouCallingDNSClientSession"))
@@ -983,7 +1002,7 @@ Examples:
             if (trackedProcessId == data.ProcessID && data.EventName == "EventID(3006)") // DNS Lookup made by main tracked PID
             {
                 string dnsQuery = data.PayloadByName("QueryName").ToString();
-                AddActivityToETWHistory(eventType: "dnsquery",
+                CatalogETWActivity(eventType: "dnsquery",
                     executable: mainExecutableFileName,
                     execPID: data.ProcessID,
                     execType: "Main",
@@ -994,7 +1013,7 @@ Examples:
                 string childExecutable = executableByPIDTable[data.ProcessID];
                 string dnsQuery = data.PayloadByName("QueryName").ToString();
 
-                AddActivityToETWHistory(eventType: "dnsquery",
+                CatalogETWActivity(eventType: "dnsquery",
                     executable: childExecutable,
                     execPID: data.ProcessID,
                     execType: "Child",
@@ -1011,7 +1030,7 @@ Examples:
         {
             if (trackedProcessId == data.ProcessID)
             {
-                AddActivityToETWHistory(eventType: "network", 
+                CatalogETWActivity(eventType: "network", 
                                         executable: mainExecutableFileName, 
                                         execPID: data.ProcessID,
                                         execType: "Main", 
@@ -1025,7 +1044,7 @@ Examples:
             else if (trackedChildProcessIds.Contains(data.ProcessID))
             {
                 string childExecutable = executableByPIDTable[data.ProcessID];
-                AddActivityToETWHistory(eventType: "network",
+                CatalogETWActivity(eventType: "network",
                                         executable: childExecutable,
                                         execPID: data.ProcessID,
                                         execType: "Child",
@@ -1042,7 +1061,7 @@ Examples:
         {
             if (trackedProcessId == data.ProcessID)
             {
-                AddActivityToETWHistory(eventType: "network",
+                CatalogETWActivity(eventType: "network",
                                         executable: mainExecutableFileName,
                                         execPID: data.ProcessID,
                                         execType: "Main",
@@ -1056,7 +1075,7 @@ Examples:
             else if (trackedChildProcessIds.Contains(data.ProcessID))
             {
                 string childExecutable = executableByPIDTable[data.ProcessID];
-                AddActivityToETWHistory(eventType: "network",
+                CatalogETWActivity(eventType: "network",
                                         executable: childExecutable,
                                         execPID: data.ProcessID,
                                         execType: "Child",
@@ -1073,7 +1092,7 @@ Examples:
         {
             if (trackedProcessId == data.ProcessID)
             {
-                AddActivityToETWHistory(eventType: "network",
+                CatalogETWActivity(eventType: "network",
                                         executable: mainExecutableFileName,
                                         execPID: data.ProcessID,
                                         execType: "Main",
@@ -1087,7 +1106,7 @@ Examples:
             else if (trackedChildProcessIds.Contains(data.ProcessID))
             {
                 string childExecutable = executableByPIDTable[data.ProcessID];
-                AddActivityToETWHistory(eventType: "network",
+                CatalogETWActivity(eventType: "network",
                                         executable: childExecutable,
                                         execPID: data.ProcessID,
                                         execType: "Child",
@@ -1104,7 +1123,7 @@ Examples:
         {
             if (trackedProcessId == data.ProcessID)
             {
-                AddActivityToETWHistory(eventType: "network",
+                CatalogETWActivity(eventType: "network",
                                         executable: mainExecutableFileName,
                                         execPID: data.ProcessID,
                                         execType: "Main",
@@ -1118,7 +1137,7 @@ Examples:
             else if (trackedChildProcessIds.Contains(data.ProcessID))
             {
                 string childExecutable = executableByPIDTable[data.ProcessID];
-                AddActivityToETWHistory(eventType: "network",
+                CatalogETWActivity(eventType: "network",
                                         executable: childExecutable,
                                         execPID: data.ProcessID,
                                         execType: "Child",
@@ -1135,7 +1154,7 @@ Examples:
 
             if (trackedProcessId == data.ParentID) //Tracks child processes by main process
             {
-                AddActivityToETWHistory(eventType: "childprocess",
+                CatalogETWActivity(eventType: "childprocess",
                                         executable: mainExecutableFileName,
                                         execType: "Main",
                                         execAction: "started",
@@ -1145,17 +1164,13 @@ Examples:
                 if (trackChildProcesses)
                 {
                     trackedChildProcessIds.Add(data.ProcessID);
-
-                    executableByPIDTable.Add(data.ProcessID, data.ImageFileName);
-
-                    bpfFilterBasedActivity[data.ProcessID] = new HashSet<string> { }; // Add child processname
-
+                    InstantiateProcessVariables(pid: trackedProcessId, executable: data.ImageFileName);
                 }
             }
             else if (trackedChildProcessIds.Contains(data.ParentID)) //Tracks child processes by child processes
             {
                 string childExecutable = executableByPIDTable[data.ParentID];
-                AddActivityToETWHistory(eventType: "childprocess",
+                CatalogETWActivity(eventType: "childprocess",
                                         executable: childExecutable,
                                         execType: "Child",
                                         execAction: "started",
@@ -1165,10 +1180,7 @@ Examples:
                 if (trackChildProcesses)
                 {
                     trackedChildProcessIds.Add(data.ProcessID);
-
-                    executableByPIDTable.Add(data.ProcessID, data.ImageFileName);
-
-                    bpfFilterBasedActivity[data.ProcessID] = new HashSet<string> { }; // Add child processname
+                    InstantiateProcessVariables(pid: trackedProcessId, executable: data.ImageFileName);
                 }
             }
         }
@@ -1176,15 +1188,14 @@ Examples:
         private static void processStopped(ProcessTraceData data) {
             if (trackedProcessId == data.ProcessID) // Main process stopped
             {
-                AddActivityToETWHistory(eventType: "process",
+                CatalogETWActivity(eventType: "process",
                                         executable: data.ImageFileName,
                                         execType: "Main",
                                         execAction: "stopped",
                                         execPID: data.ProcessID);
-                mainProcessEnded = true;
             }else if (trackedChildProcessIds.Contains(data.ProcessID)) // Child process stopped
             {
-                AddActivityToETWHistory(eventType: "process",
+                CatalogETWActivity(eventType: "process",
                                         executable: data.ImageFileName,
                                         execType: "Child",
                                         execAction: "stopped",
