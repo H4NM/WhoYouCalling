@@ -568,13 +568,9 @@ namespace WhoYouCalling
                             Output.Print($"Not creating TCP IP communication file, none found for {pid}", "debug");
                         }
 
-                        Console.WriteLine("----------- BOGUS 1");
-                        Console.WriteLine(string.Join(", ", computedBPFFilterByPID.Keys));
-                        Console.WriteLine("----------- BOGUS 2");
                         // FPC 
                         if (computedBPFFilterByPID.ContainsKey(pid)) // Creating filtered FPC based on application activity
                         {
-                            Console.WriteLine("----------- BOGUS INSIDE 1");
 
                             string filteredPcapFile = @$"{processFolderInRootFolder}\{executabelNameAndPID}.pcap";
                             string processBPFFilterTextFile = @$"{processFolderInRootFolder}\{executabelNameAndPID} BPF-Filter.txt";
@@ -585,13 +581,10 @@ namespace WhoYouCalling
                         }
                         else if (computedBPFFilterByPID.ContainsKey(combinedBPFprocid)) // 0 represents the combined BPF filter for all applications
                         {
-                            Console.WriteLine("----------- BOGUS INSIDE 2");
                             string filteredPcapFile = @$"{rootFolderName}\All {computedBPFFilterByPID.Count} processes filter.pcap";
                             string processBPFFilterTextFile = @$"{rootFolderName}\All {computedBPFFilterByPID.Count} processes filter.txt";
-                            Console.WriteLine("----------- BOGUS INSIDE 3");
 
                             Output.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilterByPID[combinedBPFprocid]}\"", "debug");
-                            Console.WriteLine("----------- BOGUS INSIDE 4");
 
                             networkPackets.FilterNetworkCaptureFile(computedBPFFilterByPID[combinedBPFprocid], fullPcapFile, filteredPcapFile);
                             fileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[combinedBPFprocid]); // Create textfile containing used BPF filter
@@ -600,7 +593,6 @@ namespace WhoYouCalling
                         {
                             Output.Print($"Skipping creating dedicated PCAP file for {executable}. No recorded BPF filter", "debug");
                         }
-                        Console.WriteLine("----------- BOGUS 3");
 
                     }
 
