@@ -43,7 +43,7 @@ namespace WhoYouCalling.Utilities
             switch (type)
             {
                 case "info":
-                    prefix = "[*]";
+                    prefix = "[i]";
                     break;
                 case "warning":
                     prefix = "[!]";
@@ -187,10 +187,12 @@ namespace WhoYouCalling.Utilities
 
                     string ipVersion = parts[0];
                     string transportProto = parts[1];
-                    string dstAddr = parts[2];
-                    string dstPort = parts[3];
+                    string srcAddr = parts[2];
+                    string srcPort = parts[3];
+                    string dstAddr = parts[4];
+                    string dstPort = parts[5];
 
-                    string partialBPFstring = $"({ipVersion} and {transportProto} and dst host {dstAddr} and dst port {dstPort})"; 
+                    string partialBPFstring = $"({ipVersion} and {transportProto} and ((host {srcAddr} and host {dstAddr}) and ((dst port {dstPort} and src port {srcPort}) or (dst port {srcPort} and src port {dstPort}))))"; 
                     FullBPFlistForProcess.Add(partialBPFstring);
                 }
                 string BPFFilter = string.Join(" or ", FullBPFlistForProcess);
@@ -842,6 +844,8 @@ Examples:
                                              string eventType = "network", // process, childprocess, network, dnsquery, dnsresponse
                                              string ipVersion = "IPv4",
                                              string transportProto = "TCP",
+                                             IPAddress srcAddr = null,
+                                             int srcPort = 0,
                                              IPAddress dstAddr = null, 
                                              int dstPort = 0,
                                              string dnsQuery = "N/A",
@@ -864,7 +868,7 @@ Examples:
                 {
                     bpfBasedIPVersion = "ip6";
                 }
-                bpfFilterBasedActivity[execPID].Add($"{bpfBasedIPVersion},{bpfBasedProto},{dstAddr},{dstPort}");
+                bpfFilterBasedActivity[execPID].Add($"{bpfBasedIPVersion},{bpfBasedProto},{srcAddr},{srcPort},{dstAddr},{dstPort}");
             }
             else if (eventType == "process") // If its a process related activity
             {
@@ -1013,6 +1017,8 @@ Examples:
                                         execType: "Main", 
                                         ipVersion: "IPv4",
                                         transportProto: "TCP",
+                                        srcAddr: data.saddr,
+                                        srcPort: data.sport,
                                         dstAddr: data.daddr,
                                         dstPort: data.dport);
             }
@@ -1025,6 +1031,8 @@ Examples:
                                         execType: "Child",
                                         ipVersion: "IPv4",
                                         transportProto: "TCP",
+                                        srcAddr: data.saddr,
+                                        srcPort: data.sport,
                                         dstAddr: data.daddr,
                                         dstPort: data.dport);
             }
@@ -1040,6 +1048,8 @@ Examples:
                                         execType: "Main",
                                         ipVersion: "IPv6",
                                         transportProto: "TCP",
+                                        srcAddr: data.saddr,
+                                        srcPort: data.sport,
                                         dstAddr: data.daddr,
                                         dstPort: data.dport);
             }
@@ -1052,6 +1062,8 @@ Examples:
                                         execType: "Child",
                                         ipVersion: "IPv6",
                                         transportProto: "TCP",
+                                        srcAddr: data.saddr,
+                                        srcPort: data.sport,
                                         dstAddr: data.daddr,
                                         dstPort: data.dport);
             }
@@ -1067,6 +1079,8 @@ Examples:
                                         execType: "Main",
                                         ipVersion: "IPv4",
                                         transportProto: "UDP",
+                                        srcAddr: data.saddr,
+                                        srcPort: data.sport,
                                         dstAddr: data.daddr,
                                         dstPort: data.dport);
             }
@@ -1079,6 +1093,8 @@ Examples:
                                         execType: "Child",
                                         ipVersion: "IPv4",
                                         transportProto: "UDP",
+                                        srcAddr: data.saddr,
+                                        srcPort: data.sport,
                                         dstAddr: data.daddr,
                                         dstPort: data.dport);
             }
@@ -1094,6 +1110,8 @@ Examples:
                                         execType: "Main",
                                         ipVersion: "IPv6",
                                         transportProto: "UDP",
+                                        srcAddr: data.saddr,
+                                        srcPort: data.sport,
                                         dstAddr: data.daddr,
                                         dstPort: data.dport);
             }
@@ -1106,6 +1124,8 @@ Examples:
                                         execType: "Child",
                                         ipVersion: "IPv6",
                                         transportProto: "UDP",
+                                        srcAddr: data.saddr,
+                                        srcPort: data.sport,
                                         dstAddr: data.daddr,
                                         dstPort: data.dport);
             }
