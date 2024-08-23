@@ -1,24 +1,32 @@
-# WhoYouCalling
-Reviews the network activity made by an executable through the use of Windows Event Tracing (ETW) and by conducting a Full Packet Capture that's subjected to BPF filtering based on the detected network activity made by the process. 
+![WhoYouCalling?](imgs/headeroutput.png)
+Reviews the network activity made by an executable through the use of Windows Event Tracing (ETW) and by Full Packet Capture that's subjected to BPF filtering based on the detected network activity made by the process. 
+
+## Features: 
+- Can execute a binary and records all the network activity or listen to already running process
+- Records TCPIP activities made by a processes (IPv4, IPv6 and localhost)
+- Creates a fullpacket capture pcap file per process
+- Records DNS requests made by applications
+- Can be automated with a specified timer to monitor network activites
+- Can ensure all monitoring is applied to all spawned child processes from the origintating executable.
+- Results can be exported to JSON
+
+## Usage:
+(*Must be run as administrator - for packet capture and listening to the ETW*) 
+
+**Execute a binary with arguments and track all child processes made by it. Output the results to a folder on the user desktop**:
+`WhoYouCalling.exe -e C:\Users\Desktop\TestApplication.exe -a "--pass=ETph0n3H0m3" -f -i 4 -o C:\Users\H4NM\Desktop`
+
+**Listen to process with PID 1337 and output the results to json. Skip FPC (Which will only log the ETW activity)**:
+`WhoYouCalling.exe --pid 1337 --nopcap --json --output C:\Users\H4NM\AppData\Local\Temp`
+
+**Run sus.exe for 60 seconds and monitor all the child processes with FPC on the 8th enumerated interface. When the timer expires, kill all tracked pprocesses - including child processes**:
+`WhoYouCalling.exe -e C:\Users\H4NM\Desktop\sus.exe -f -t 60 -k -i 8 -o C:\Users\H4NM\Desktop`
+
+### Example results
+![WhoYouCalling?](imgs/exampleoutput.png)
+
 
 ### To do:
-- [X] ~~Remove debugging function and only have one in which the type is debug~~
-- [X] ~~Add cmdline flags~~ 
-- [X] ~~Add check for if the Process with provided PID is running~~
-- [X] ~~Add functionality to enable~~
-	- [X] ~~timer of function executed~~ 
-	- [X] ~~PID provided only~~ 
-	- [X] ~~Retrieve ImageName from PID~~
-	- [X] ~~Remove Full PCAP when done~~
-- [X] ~~Add decent way of asserting the processed data for generating a BPF Filter~~
-- [X] Make JSON export possible
-- [X] Make the bpfBasedFilters a whole new Dict that takes multiple different types of data for each PID. This will be harder to maintain but due to the increase of interesting data to store and to the potential need of having output to JSON format it would be beneficial. Will be painful to change.
-	- [X] The current state of BPF Filters strictly reflect the actions of the process of reading sent, and not received packets. This may not be preferred when doing application analys, except if you only want to inspect what the applications says...
-- [X] Enable creating PCAPs for each child process and main process only / Create text-files with defined BPF filters per process
-		- Side note: Discovered that some binaries may utilize calling an already running process (such as steam games), in which tracking the child process is not possible UNLESS the running steam process is terminated beforehand in which calling the binary directly also invokes steam which in turn is classfied as a child process etc. 
-- [ ] Possibly add check if the defined network device is not localhost, in which network activity of localhost should not define the BPF filter since they're redundant
-- [ ] Add flag to only filter one way communication for FPC. Default will include response as well.
-- [X] ~~Features~~
-  - [X] ~~specifing an existing PID to listen to rather than starting an executable~~
-  - [X] ~~Specifying directory in which the captured root folder is created~~
-  - [X] ~~Specifying a Timer for which the executable runs where its terminated afterwards to enable automating the process~~
+- [ ] Sort the output addresses
+- [ ] Console write when process start and finish. 
+- [ ] Only create a results folder for processes that has any data within them.
