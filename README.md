@@ -11,7 +11,7 @@ Reviews the network activity made by an executable through the use of Windows Ev
 	- [X] ~~Retrieve ImageName from PID~~
 	- [X] ~~Remove Full PCAP when done~~
 - [X] ~~Add decent way of asserting the processed data for generating a BPF Filter~~
-- [ ] Make JSON export possible
+- [X] Make JSON export possible
 - [X] Make the bpfBasedFilters a whole new Dict that takes multiple different types of data for each PID. This will be harder to maintain but due to the increase of interesting data to store and to the potential need of having output to JSON format it would be beneficial. Will be painful to change.
 	- [X] The current state of BPF Filters strictly reflect the actions of the process of reading sent, and not received packets. This may not be preferred when doing application analys, except if you only want to inspect what the applications says...
 - [X] Enable creating PCAPs for each child process and main process only / Create text-files with defined BPF filters per process
