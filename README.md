@@ -1,4 +1,13 @@
-![WhoYouCalling?](imgs/headeroutput.png)
+
+```
+                                                                   ?
+                                                                   | 
+  __      ___      __   __         ___      _ _ _              .===:
+  \ \    / / |_  __\ \ / /__ _  _ / __|__ _| | (_)_ _  __ _    |[_]|
+   \ \/\/ /| ' \/ _ \ V / _ \ || | (__/ _` | | | | ' \/ _` |   |:::|
+    \_/\_/ |_||_\___/|_|\___/\_,_|\___\__,_|_|_|_|_||_\__, |   |:::|
+                                                      |___/     \___\
+```
 
 Reviews the network activity made by an executable through the use of Windows Event Tracing (ETW) and by Full Packet Capture that's subjected to BPF filtering based on the detected network activity made by the process. 
 
