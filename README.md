@@ -1,4 +1,5 @@
 ![WhoYouCalling?](imgs/headeroutput.png)
+
 Reviews the network activity made by an executable through the use of Windows Event Tracing (ETW) and by Full Packet Capture that's subjected to BPF filtering based on the detected network activity made by the process. 
 
 ## Features: 
@@ -23,7 +24,7 @@ Reviews the network activity made by an executable through the use of Windows Ev
 `WhoYouCalling.exe -e C:\Users\H4NM\Desktop\sus.exe -f -t 60 -k -i 8 -o C:\Users\H4NM\Desktop`
 
 ### Example results
-![WhoYouCalling?](imgs/exampleoutput.png)
+![WhoYouCalling?](imgs/ExampleOutput.png)
 
 
 ### To do:
