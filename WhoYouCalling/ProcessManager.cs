@@ -6,8 +6,8 @@ namespace WhoYouCalling.Utilities
     {
         public static bool IsProcessRunning(int pid)
         {
-            Process[] processlist = Process.GetProcesses();
-            foreach (Process activePID in processlist)
+            Process[] processList = Process.GetProcesses();
+            foreach (Process activePID in processList)
             {
                 if (pid == activePID.Id)
                 {

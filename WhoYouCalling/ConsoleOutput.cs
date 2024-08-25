@@ -22,7 +22,7 @@ namespace WhoYouCalling.Utilities
                     prefix = "[!!!]";
                     break;
                 case "debug":
-                    if (Program.debug)
+                    if (Program.Debug)
                     {
                         prefix = $"[DEBUG]";
                     }

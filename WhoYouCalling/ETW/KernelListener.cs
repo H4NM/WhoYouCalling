@@ -1,109 +1,42 @@
-﻿using Microsoft.Diagnostics.Tracing;
-using Microsoft.Diagnostics.Tracing.Parsers;
+﻿using Microsoft.Diagnostics.Tracing.Parsers;
 using Microsoft.Diagnostics.Tracing.Parsers.Kernel;
 using Microsoft.Diagnostics.Tracing.Session;
 
 
-namespace WhoYouCalling.Utilities
+namespace WhoYouCalling.ETW
 {
-    public class ETWListener
-    {
-        protected int trackedProcessId = 0;
-        protected string mainExecutableFileName = "";
-        protected TraceEventSession ETWSession;
-
-        public void SetPIDAndImageToTrack(int pid, string executable)
-        {
-
-            mainExecutableFileName = executable;
-            trackedProcessId = pid;
-        }
-
-        public void StopSession()
-        {
-            ETWSession.Dispose();
-        }
-        public bool GetSessionStatus()
-        {
-            return ETWSession.IsActive;
-        }
-    }
-
-    public class DNSClientListener : ETWListener
+    public class KernelListener : Listener
     {
         public void Listen()
         {
-            using (ETWSession = new TraceEventSession("WhoYouCallingDNSClientSession"))
+            using (_session = new TraceEventSession(KernelTraceEventParser.KernelSessionName)) //KernelTraceEventParser
             {
-                ETWSession.EnableProvider("Microsoft-Windows-DNS-Client");
-                ETWSession.Source.Dynamic.All += DnsClientEvent;
-                ETWSession.Source.Process();
-            }
-
-        }
-
-        private void DnsClientEvent(TraceEvent data)
-        {
-            if (trackedProcessId == data.ProcessID && data.EventName == "EventID(3006)") // DNS Lookup made by main tracked PID
-            {
-                string dnsQuery = data.PayloadByName("QueryName").ToString();
-                dnsQuery ??= "N/A";
-                Program.CatalogETWActivity(eventType: "dnsquery",
-                    executable: mainExecutableFileName,
-                    execPID: data.ProcessID,
-                    execType: "Main",
-                    dnsQuery: dnsQuery);
-            }
-            else if (Program.IsTrackedChildPID(data.ProcessID) && data.EventName == "EventID(3006)") // DNS Lookup made by child tracked PID
-            {
-                string childExecutable = Program.GetTrackedPIDImageName(data.ProcessID);
-                string dnsQuery = data.PayloadByName("QueryName").ToString();
-                dnsQuery ??= "N/A";
-                Program.CatalogETWActivity(eventType: "dnsquery",
-                    executable: childExecutable,
-                    execPID: data.ProcessID,
-                    execType: "Child",
-                    dnsQuery: dnsQuery);
-            }
-
-            // data.FormattedMessage semi works - is entire message - quite dull. Only require action, query and perhaps answer. 
-            //ConsoleOutput.Print($"DNS {data.EventName} - {data.FormattedMessage}", "debug");
-            //ConsoleOutput.Print($"PAYLOAD {data.PayloadByName("QueryName")}", "debug");
-        }
-
-    }
-	public class KernelListener : ETWListener
-    {
-        public void Listen()
-        {
-            using (ETWSession = new TraceEventSession(KernelTraceEventParser.KernelSessionName)) //KernelTraceEventParser
-            {
-                ETWSession.EnableKernelProvider(
+                _session.EnableKernelProvider(
                     KernelTraceEventParser.Keywords.NetworkTCPIP |
                     KernelTraceEventParser.Keywords.Process
                 );
 
                 // TCP/IP
-                ETWSession.Source.Kernel.TcpIpSend += Ipv4TcpStart; // TcpIpConnect may be used. However, "send" is used to ensure capturing failed TCP handshakes
-                ETWSession.Source.Kernel.TcpIpSendIPV6 += Ipv6TcpStart;
-                ETWSession.Source.Kernel.UdpIpSend += Ipv4UdpIpStart;
-                ETWSession.Source.Kernel.UdpIpSendIPV6 += Ipv6UdpIpStart;
+                _session.Source.Kernel.TcpIpSend += Ipv4TcpStart; // TcpIpConnect may be used. However, "send" is used to ensure capturing failed TCP handshakes
+                _session.Source.Kernel.TcpIpSendIPV6 += Ipv6TcpStart;
+                _session.Source.Kernel.UdpIpSend += Ipv4UdpIpStart;
+                _session.Source.Kernel.UdpIpSendIPV6 += Ipv6UdpIpStart;
 
                 // Process
-                ETWSession.Source.Kernel.ProcessStart += childProcessStarted;
-                ETWSession.Source.Kernel.ProcessStop += processStopped;
+                _session.Source.Kernel.ProcessStart += childProcessStarted;
+                _session.Source.Kernel.ProcessStop += processStopped;
 
                 // Start Kernel ETW session
-                ETWSession.Source.Process();
+                _session.Source.Process();
             }
         }
 
         private void Ipv4TcpStart(TcpIpSendTraceData data)
         {
-            if (trackedProcessId == data.ProcessID)
+            if (_trackedProcessId == data.ProcessID)
             {
                 Program.CatalogETWActivity(eventType: "network",
-                                        executable: mainExecutableFileName,
+                                        executable: _mainExecutableFileName,
                                         execPID: data.ProcessID,
                                         execType: "Main",
                                         ipVersion: "IPv4",
@@ -131,10 +64,10 @@ namespace WhoYouCalling.Utilities
 
         private void Ipv6TcpStart(TcpIpV6SendTraceData data)
         {
-            if (trackedProcessId == data.ProcessID)
+            if (_trackedProcessId == data.ProcessID)
             {
                 Program.CatalogETWActivity(eventType: "network",
-                                        executable: mainExecutableFileName,
+                                        executable: _mainExecutableFileName,
                                         execPID: data.ProcessID,
                                         execType: "Main",
                                         ipVersion: "IPv6",
@@ -162,10 +95,10 @@ namespace WhoYouCalling.Utilities
 
         private void Ipv4UdpIpStart(UdpIpTraceData data)
         {
-            if (trackedProcessId == data.ProcessID)
+            if (_trackedProcessId == data.ProcessID)
             {
                 Program.CatalogETWActivity(eventType: "network",
-                                        executable: mainExecutableFileName,
+                                        executable: _mainExecutableFileName,
                                         execPID: data.ProcessID,
                                         execType: "Main",
                                         ipVersion: "IPv4",
@@ -193,10 +126,10 @@ namespace WhoYouCalling.Utilities
 
         private void Ipv6UdpIpStart(UpdIpV6TraceData data)
         {
-            if (trackedProcessId == data.ProcessID)
+            if (_trackedProcessId == data.ProcessID)
             {
                 Program.CatalogETWActivity(eventType: "network",
-                                        executable: mainExecutableFileName,
+                                        executable: _mainExecutableFileName,
                                         execPID: data.ProcessID,
                                         execType: "Main",
                                         ipVersion: "IPv6",
@@ -225,16 +158,16 @@ namespace WhoYouCalling.Utilities
         private void childProcessStarted(ProcessTraceData data)
         {
 
-            if (trackedProcessId == data.ParentID) //Tracks child processes by main process
+            if (_trackedProcessId == data.ParentID) //Tracks child processes by main process
             {
                 Program.CatalogETWActivity(eventType: "childprocess",
-                                        executable: mainExecutableFileName,
+                                        executable: _mainExecutableFileName,
                                         execType: "Main",
                                         execAction: "started",
                                         execObject: data.ImageFileName,
                                         execPID: data.ProcessID,
                                         parentExecPID: data.ParentID);
-                if (Program.trackChildProcesses)
+                if (Program.TrackChildProcesses)
                 {
                     Program.AddChildPID(data.ProcessID);
                     Program.InstantiateProcessVariables(pid: data.ProcessID, executable: data.ImageFileName);
@@ -251,7 +184,7 @@ namespace WhoYouCalling.Utilities
                                         execObject: data.ImageFileName,
                                         execPID: data.ProcessID,
                                         parentExecPID: data.ParentID);
-                if (Program.trackChildProcesses)
+                if (Program.TrackChildProcesses)
                 {
                     Program.AddChildPID(data.ProcessID);
                     Program.InstantiateProcessVariables(pid: data.ProcessID, executable: data.ImageFileName);
@@ -261,7 +194,7 @@ namespace WhoYouCalling.Utilities
 
         private void processStopped(ProcessTraceData data)
         {
-            if (trackedProcessId == data.ProcessID) // Main process stopped
+            if (_trackedProcessId == data.ProcessID) // Main process stopped
             {
                 Program.CatalogETWActivity(eventType: "process",
                                         executable: data.ImageFileName,

@@ -31,3 +31,4 @@ Reviews the network activity made by an executable through the use of Windows Ev
 - [ ] Sort the output addresses
 - [ ] Console write when process start and finish. 
 - [ ] Only create a results folder for processes that has any data within them.
+- [ ] Enable strictbpf argument to only allow oneway application communication
