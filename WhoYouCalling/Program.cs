@@ -96,6 +96,7 @@ namespace WhoYouCalling
             using var device = devices[s_networkInterfaceChoice];
             livePacketCapture.SetCaptureDevice(device);
 
+            ConsoleOutput.Print($"Starting monitoring capabilities...", "info");
             // Create and start thread for capturing packets if enabled
             if (!s_noPacketCapture) { 
                 Thread fpcThread = new Thread(() => livePacketCapture.StartCaptureToFile(fullPcapFile));
@@ -421,7 +422,7 @@ namespace WhoYouCalling
                     {
                         TrackChildProcesses = true;
                     }
-                    else if (args[i] == "-s" || args[i] == "--strictbpf")
+                    else if (args[i] == "-x" || args[i] == "--strictbpf")
                     {
                         s_strictBPFEnabled = true;
                     }
@@ -677,7 +678,6 @@ namespace WhoYouCalling
             {
                 if (ProcessManager.IsProcessRunning(s_trackedProcessId)) {
                     executableFileName = ProcessManager.GetProcessFileName(s_trackedProcessId);
-                    Console.WriteLine("DEBUGING {0}", executableFileName);
                 }
                 else
                 {

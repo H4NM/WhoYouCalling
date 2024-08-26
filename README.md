@@ -1,15 +1,15 @@
-# WhoYouCalling 
+﻿# WhoYouCalling 
 
-Monitors network activity made by a process through the use of Windows Event Tracing (ETW) and by Full Packet Capture that's subjected to BPF filtering based on the detected network activity made by the process. 
+Monitors network activity made by a process through the use of [Windows Event Tracing (ETW)](https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/event-tracing-for-windows--etw-) and Full Packet Capture (FPC). Filters a generated .pcap file with BPF filtering based on the detected network activity made by processes. 
 This application makes process network monitoring hella' easy.
 
 <details>
-  <summary>Why not just use ProcMon+Wireshark??</summary>
+  <summary>"Why not just use ProcMon+Wireshark??"🤔🤔</summary>
 
-One of the best methods of monitoring a process in Windows is with the use of the Sysinternal [ProcMon](https://learn.microsoft.com/sv-se/sysinternals/downloads/procmon). 
+One of the best methods of monitoring activities by a process in Windows is with the Sysinternal tool [ProcMon](https://learn.microsoft.com/sv-se/sysinternals/downloads/procmon). 
 However, there are some downsides:
 1. **Manual Work**: To get a Full Packet Capture per process you need to manually start a packet capture with a tool like Wireshark/Tshark, and create a filter for endpoints based on the results of ProcMon, which can be timeconsuming and potential endpoints may be missed due to human error of the process is not automated.
-2. **Child processes**: It can be tedious to maintain a trackrecord of all of the child processes that may spawn.
+2. **Child processes**: It can be tedious to maintain a track record of all of the child processes that may spawn and the endpoints they're communicating with
 3. **DNS queries**: (AFAIK) ProcMon doesn't support capturing DNS queries. It does enable provide with UDP Send to port 53, but no information of the actual domain name that's queried. 
 </details>
 
@@ -19,6 +19,7 @@ However, there are some downsides:
 - Records TCPIP activities made by a processes (IPv4, IPv6 and localhost)
 - Creates a fullpacket capture .pcap file per process
 - Records DNS requests made by applications
+- Can apply strict filtering to .pcap to only record TCPIP activity being sent from the process
 - Can be automated with a specified timer to monitor network activites
 - Can ensure all monitoring is applied to all spawned child processes from the origintating executable.
 - Results can be exported to JSON
@@ -36,11 +37,10 @@ However, there are some downsides:
 `WhoYouCalling.exe -e C:\Users\H4NM\Desktop\sus.exe -f -t 60 -k -i 8 -o C:\Users\H4NM\Desktop`
 
 ### Example results
-![WhoYouCalling?](imgs/ExampleOutput.png)
+![ConsoleResults](imgs/ExampleConsoleOutput.png)
+![FolderResults](imgs/ExampleOutput.png)
 
-
-### To do:
-- [X] Sort the output addresses
-- [X] Console write when monitoring start and finish. 
-- [X] Only create a results folder for processes that has any data within them.
-- [X] Enable strictbpf argument to only allow oneway application communication
+### To Do:
+- [ ] Create Wireshark filter in addition to BPF filter
+- [ ] Add network graph
+- [ ] Purge unwanted packages from the project (Visualization packages (+?))
