@@ -2,7 +2,6 @@
 using SharpPcap;
 using WhoYouCalling.Utilities;
 
-
 namespace WhoYouCalling.FPC
 {
     public class FilePacketCapture : BasePacketCapture
@@ -47,10 +46,9 @@ namespace WhoYouCalling.FPC
             capturedDevice.Close();
             ConsoleOutput.Print($"Finished writing packets to {filteredPcapFile}", "debug");
             _captureFileWriterDevice.Close();
-            var endTime = DateTime.Now;
 
-            var duration = endTime - startTime;
-            string performanceMsg = $"Read {s_packetCounter} packets in {duration.TotalSeconds}s";
+            string filterDuration = Generic.GetPresentableDuration(startTime, DateTime.Now);
+            string performanceMsg = $"Filtered {s_packetCounter} packets in {filterDuration}";
             ConsoleOutput.Print(performanceMsg, "info");
         }
     }

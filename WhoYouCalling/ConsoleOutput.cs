@@ -10,7 +10,15 @@ namespace WhoYouCalling.Utilities
             switch (type)
             {
                 case "info":
-                    prefix = "[i]";
+                    if (Program.Debug)
+                    {
+                        return;
+                    }
+                    prefix = "[*]";
+                    break;
+                case "infoTime":
+                    string currentTimestamp = Generic.GetTimestampNow();
+                    prefix = $"[{currentTimestamp}]";
                     break;
                 case "warning":
                     prefix = "[!]";
@@ -61,7 +69,7 @@ Usage: WhoYouCalling.exe [options]
 Options:
   -e, --executable    : Executes the specified executable.
   -a, --arguments     : Appends arguments contained within quotes to the executable file.
-  -f, --fulltracking  : Monitors and tracks the network activity by child processes.
+  -f, --fulltracking  : Monitors and tracks the network activity by child processes, and all other spawned processes from those.
   -s, --savefullpcap  : Does not delete the full pcap thats not filtered.
   -p, --pid           : The running process id to track rather than executing the binary.
   -t, --timer         : The number of seconds the execute binary will run for. Is a double variable so can take floating-point values.
@@ -69,6 +77,8 @@ Options:
                         If full tracking flag is set, childprocesses are also killed.
   -i, --interface     : The network interface number. Retrievable with the -g/--getinterfaces flag.
   -g, --getinterfaces : Prints the network interface devices with corresponding number (usually 0-10).
+  -s, --strictbpf     : Only generates a BPF filter based of recorded traffic that was sent by processes. 
+                        This excludes received traffic in the .pcap files.
   -n, --nopcap        : Skips collecting full packet capture.
   -o, --output        : Output directory, full path.
   -j, --json          : If the process information should be dumped to json file.
@@ -79,7 +89,6 @@ Examples:
   WhoYouCalling.exe --pid 4351 --nopcap --fulltracking --output C:\Windows\Temp 
 ";
             Console.WriteLine(helpText);
-            System.Environment.Exit(1);
         }
     }
 }

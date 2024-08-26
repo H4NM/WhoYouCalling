@@ -2,7 +2,7 @@
 {
     public static class BPFFilter
     {
-        public static Dictionary<int, string> GetBPFFilter(Dictionary<int, HashSet<string>> bpfFilterBasedDict)
+        public static Dictionary<int, string> GetBPFFilter(Dictionary<int, HashSet<string>> bpfFilterBasedDict, bool strictBPFEnabled)
         {
 
             Dictionary<int, string> bpfFilterPerExecutable = new Dictionary<int, string>();
@@ -25,8 +25,15 @@
                     string srcPort = parts[3];
                     string dstAddr = parts[4];
                     string dstPort = parts[5];
-
-                    string partialBPFstring = $"({ipVersion} and {transportProto} and ((host {srcAddr} and host {dstAddr}) and ((dst port {dstPort} and src port {srcPort}) or (dst port {srcPort} and src port {dstPort}))))";
+                    string partialBPFstring = "";
+                    if (strictBPFEnabled)
+                    {
+                        partialBPFstring = $"({ipVersion} and {transportProto} and src host {srcAddr} and src port {srcPort} and dst host {dstAddr} and dst port {dstPort})";
+                    }
+                    else
+                    {
+                        partialBPFstring = $"({ipVersion} and {transportProto} and ((host {srcAddr} and host {dstAddr}) and ((dst port {dstPort} and src port {srcPort}) or (dst port {srcPort} and src port {dstPort}))))";
+                    }
                     FullBPFlistForProcess.Add(partialBPFstring);
                 }
                 string BPFFilter = string.Join(" or ", FullBPFlistForProcess);
