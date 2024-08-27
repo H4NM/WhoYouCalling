@@ -42,7 +42,5 @@ However, there are some downsides:
 
 ### To Do:
 - [ ] Create Wireshark filter in addition to BPF filter
-- [ ] Add network graph
 - [ ] Add flag to capture every process with the same executable name rather than following a chain of PIDs. 
   -  Noticed in the execution of firefox where it called a seperate process (explorer.exe) to start firefox. This is missed by --fulltracking. 
-- [ ] Purge unwanted packages from the project (Visualization packages (+?))

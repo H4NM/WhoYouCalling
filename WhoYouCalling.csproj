@@ -9,10 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.1.13" />
-    <PackageReference Include="Microsoft.Msagl.Drawing" Version="1.1.6" />
-    <PackageReference Include="Microsoft.Msagl.GraphViewerGDI" Version="1.1.7" />
     <PackageReference Include="SharpPcap" Version="6.3.0" />
-    <PackageReference Include="System.Drawing.Common" Version="8.0.8" />
   </ItemGroup>
 
 </Project>
