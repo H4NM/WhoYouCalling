@@ -314,7 +314,6 @@ namespace WhoYouCalling
                         // FPC 
                         if (computedBPFFilterByPID.ContainsKey(pid)) // Creating filtered FPC based on application activity
                         {
-
                             string filteredPcapFile = @$"{processFolderInRootFolder}\Network Packets.pcap";
                             string processBPFFilterTextFile = @$"{processFolderInRootFolder}\BPF-filter.txt";
 

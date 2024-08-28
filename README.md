@@ -13,7 +13,6 @@ However, there are some downsides:
 3. **DNS queries**: (AFAIK) ProcMon doesn't support capturing DNS queries. It does enable provide with UDP Send to port 53, but no information of the actual domain name that's queried. 
 </details>
 
-
 ## Features: 
 - Can execute a binary and records all the network activity or listen to already running process
 - Records TCPIP activities made by a processes (IPv4, IPv6 and localhost)
@@ -41,6 +40,8 @@ However, there are some downsides:
 ![FolderResults](imgs/ExampleOutput.png)
 
 ### To Do:
+- [ ] Add resolved IP for domainname
+- [ ] Add console on hit enter event to print status of capture process
 - [ ] Create Wireshark filter in addition to BPF filter
 - [ ] Add flag to capture every process with the same executable name rather than following a chain of PIDs. 
   -  Noticed in the execution of firefox where it called a seperate process (explorer.exe) to start firefox. This is missed by --fulltracking. 
