@@ -590,7 +590,7 @@ namespace WhoYouCalling
             return true;
         }
 
- 
+
 
         public static void CatalogETWActivity(string executable = "N/A",
                                              string execType = "N/A", // Main or child process
@@ -603,77 +603,90 @@ namespace WhoYouCalling
                                              string transportProto = "TCP",
                                              IPAddress srcAddr = null!,
                                              int srcPort = 0,
-                                             IPAddress dstAddr = null!, 
+                                             IPAddress dstAddr = null!,
                                              int dstPort = 0,
                                              string dnsQuery = "N/A",
-                                             int dnsRecordType = 0,
+                                             int dnsRecordTypeCode = 0,
                                              IPAddress dnsResult = null!,
-                                             int dnsQueryStatus = 0)
+                                             int dnsQueryStatusCode = 0)
         {
 
             string timestamp = Generic.GetTimestampNow();
-            
             string historyMsg = "";
-            if (eventType == "network") // If its a network related actvitiy
-            {
-                historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) sent a {ipVersion} {transportProto} packet to {dstAddr}:{dstPort}";
-                // Create BPF filter objects
-                string bpfBasedProto = transportProto.ToLower();
-                string bpfBasedIPVersion = "";
-                string dstEndpoint = $"{dstAddr}:{dstPort}";
-                if (ipVersion == "IPv4")
-                {
-                    bpfBasedIPVersion = "ip";
-                    if (dstAddr.ToString() == "127.0.0.1")
-                    {
-                        s_collectiveProcessInfo[execPID].ipv4LocalhostEndpoint.Add(dstEndpoint);
-                    }
-                    else if (transportProto == "TCP")
-                    {
-                        s_collectiveProcessInfo[execPID].ipv4TCPEndpoint.Add(dstEndpoint);
-                    }
-                    else if (transportProto == "UDP")
-                    {
-                        s_collectiveProcessInfo[execPID].ipv4UDPEndpoint.Add(dstEndpoint);
-                    }
-                }
-                else if (ipVersion == "IPv6")
-                {
-                    bpfBasedIPVersion = "ip6";
-                    if (dstAddr.ToString() == "::1")
-                    {
-                        s_collectiveProcessInfo[execPID].ipv6LocalhostEndpoint.Add(dstEndpoint);
-                    }
-                    else if (transportProto == "TCP")
-                    {
-                        s_collectiveProcessInfo[execPID].ipv6TCPEndpoint.Add(dstEndpoint);
-                    }
-                    else if (transportProto == "UDP")
-                    {
-                        s_collectiveProcessInfo[execPID].ipv6UDPEndpoint.Add(dstEndpoint);
-                    }
-                }
-                string packetAsCSV = $"{bpfBasedIPVersion},{bpfBasedProto},{srcAddr},{srcPort},{dstAddr},{dstPort}";
 
-                s_bpfFilterBasedActivity[execPID].Add(packetAsCSV);
-            }
-            else if (eventType == "process") // If its a process related activity
+            switch (eventType)
             {
-                historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) {execAction}";
-            }else if (eventType == "childprocess") // If its a process starting another process
-            {
-                historyMsg = $"{timestamp} - {executable}[{parentExecPID}]({execType}) {execAction} {execObject}[{execPID}]";
-                s_collectiveProcessInfo[parentExecPID].childprocess.Add(execPID);
-            }
-            else if (eventType == "dnsquery")
-            {
-                s_collectiveProcessInfo[execPID].dnsQueries.Add(dnsQuery);
-                historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) made a DNS lookup for {dnsQuery}";
-            }else if (eventType == "dnsresponse")
-            {
-                string dnsResponseType = DnsTypeLookup.GetName(dnsRecordType);
+                case "network": // If its a network related activity
+                    {
+                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) sent a {ipVersion} {transportProto} packet to {dstAddr}:{dstPort}";
+                        // Create BPF filter objects
+                        string bpfBasedProto = transportProto.ToLower();
+                        string bpfBasedIPVersion = "";
+                        string dstEndpoint = $"{dstAddr}:{dstPort}";
+                        if (ipVersion == "IPv4")
+                        {
+                            bpfBasedIPVersion = "ip";
+                            if (dstAddr.ToString() == "127.0.0.1")
+                            {
+                                s_collectiveProcessInfo[execPID].ipv4LocalhostEndpoint.Add(dstEndpoint);
+                            }
+                            else if (transportProto == "TCP")
+                            {
+                                s_collectiveProcessInfo[execPID].ipv4TCPEndpoint.Add(dstEndpoint);
+                            }
+                            else if (transportProto == "UDP")
+                            {
+                                s_collectiveProcessInfo[execPID].ipv4UDPEndpoint.Add(dstEndpoint);
+                            }
+                        }
+                        else if (ipVersion == "IPv6")
+                        {
+                            bpfBasedIPVersion = "ip6";
+                            if (dstAddr.ToString() == "::1")
+                            {
+                                s_collectiveProcessInfo[execPID].ipv6LocalhostEndpoint.Add(dstEndpoint);
+                            }
+                            else if (transportProto == "TCP")
+                            {
+                                s_collectiveProcessInfo[execPID].ipv6TCPEndpoint.Add(dstEndpoint);
+                            }
+                            else if (transportProto == "UDP")
+                            {
+                                s_collectiveProcessInfo[execPID].ipv6UDPEndpoint.Add(dstEndpoint);
+                            }
+                        }
+                        string packetAsCSV = $"{bpfBasedIPVersion},{bpfBasedProto},{srcAddr},{srcPort},{dstAddr},{dstPort}";
 
-                historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) received a {dnsResponseType} DNS response lookup for {dnsQuery} with the result {dnsResult}";
+                        s_bpfFilterBasedActivity[execPID].Add(packetAsCSV);
+                        break;
+
+                    }
+                case "process": // If its a process related activity
+                    {
+                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) {execAction}";
+                        break;
+                    }
+                case "childprocess": // If its a process starting another process
+                    {
+                        historyMsg = $"{timestamp} - {executable}[{parentExecPID}]({execType}) {execAction} {execObject}[{execPID}]";
+                        s_collectiveProcessInfo[parentExecPID].childprocess.Add(execPID);
+                        break;
+                    }
+                case "dnsquery": // If its a DNS query made 
+                    {
+                        s_collectiveProcessInfo[execPID].dnsQueries.Add(dnsQuery);
+                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) made a DNS lookup for {dnsQuery}";
+                        break;
+                    }
+                case "dnsresponse": // If its a DNS response to process
+                    {
+                        string dnsRecordTypeCodeName = DnsTypeLookup.GetName(dnsRecordTypeCode); // Retrieve the DNS type code name
+                        string dnsResponseStatusCodeName = DnsStatusLookup.GetName(dnsQueryStatusCode); // Retrieve the DNS response status code name
+
+                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) received {dnsRecordTypeCodeName}({dnsRecordTypeCode}) DNS response with status {dnsResponseStatusCodeName}({dnsQueryStatusCode}) for {dnsQuery} is {dnsResult}";
+                        break;
+
+                    }
             }
 
             ConsoleOutput.Print(historyMsg, "debug");

@@ -90,9 +90,9 @@ namespace WhoYouCalling.ETW
                                     execPID: data.ProcessID,
                                     execType: execType,
                                     dnsQuery: dnsQuery,
-                                    dnsRecordType: dnsType,
+                                    dnsRecordTypeCode: dnsType,
                                     dnsResult: dnsResult,
-                                    dnsQueryStatus: dnsQueryStatus);
+                                    dnsQueryStatusCode: dnsQueryStatus);
                         }
                         break;
                 }
