@@ -11,7 +11,6 @@ namespace WhoYouCalling.ETW
 
         public void SetPIDAndImageToTrack(int pid, string executable)
         {
-
             _mainExecutableFileName = executable;
             _trackedProcessId = pid;
         }

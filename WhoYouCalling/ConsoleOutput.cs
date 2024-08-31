@@ -20,6 +20,14 @@ namespace WhoYouCalling.Utilities
                     string currentTimestamp = Generic.GetTimestampNow();
                     prefix = $"[{currentTimestamp}]";
                     break;
+                case "runningStats":
+                    if (Program.Debug)
+                    {
+                        return;
+                    }
+                    prefix = "\r[~]";
+                    Console.Write($"{prefix} {message}");
+                    return;
                 case "warning":
                     prefix = "[!]";
                     break;

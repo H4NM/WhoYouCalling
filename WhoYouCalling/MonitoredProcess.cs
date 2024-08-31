@@ -11,7 +11,5 @@
         public HashSet<string> ipv6UDPEndpoint { get; set; } = new HashSet<string>();
         public HashSet<string> ipv4LocalhostEndpoint { get; set; } = new HashSet<string>();
         public HashSet<string> ipv6LocalhostEndpoint { get; set; } = new HashSet<string>();
-
     }
-
 }

@@ -11,6 +11,7 @@ using Microsoft.Diagnostics.Tracing.Session;
 using WhoYouCalling.Utilities;
 using WhoYouCalling.FPC;
 using WhoYouCalling.ETW;
+using WhoYouCalling.DNS;
 
 
 namespace WhoYouCalling
@@ -21,6 +22,7 @@ namespace WhoYouCalling
         private static List<string> s_etwActivityHistory = new List<string>(); // Summary of the network activities made
         private static Dictionary<int, HashSet<string>> s_bpfFilterBasedActivity = new Dictionary<int, HashSet<string>>();
         private static Dictionary<int, MonitoredProcess> s_collectiveProcessInfo = new Dictionary<int, MonitoredProcess>();
+        private static Dictionary<string, HashSet<string>> s_dnsQueryResults = new Dictionary<string, HashSet<string>>();
 
         private static bool s_shutDownMonitoring = false;
         private static string s_mainExecutableFileName = "";
@@ -62,6 +64,7 @@ namespace WhoYouCalling
                 s_shutDownMonitoring = true;
                 e.Cancel = true;
             };
+
             Console.Clear();
             ConsoleOutput.PrintHeader();
             ConsoleOutput.Print($"Starting.. Press CTRL+C to cancel process monitoring.", "infoTime");
@@ -151,8 +154,11 @@ namespace WhoYouCalling
 
             while (true) // Continue monitoring 
             {
+
+                ConsoleOutput.Print($"Processes: {s_collectiveProcessInfo.Count()}. ETW Events: {s_etwActivityHistory.Count()}", "runningStats");
                 if (s_shutDownMonitoring) // If shutdown has been signaled
                 {
+                    Console.WriteLine(""); // Needed to adjust a linebreak since the runningStats print above uses Console.Write()
                     ConsoleOutput.Print($"Stopping monitoring", "info");
                     if (s_killProcesses) // If a timer was specified and that processes should be killed
                     {
@@ -584,20 +590,25 @@ namespace WhoYouCalling
             return true;
         }
 
+ 
+
         public static void CatalogETWActivity(string executable = "N/A",
                                              string execType = "N/A", // Main or child process
                                              string execAction = "started",
                                              string execObject = "N/A",
                                              int execPID = 0,
                                              int parentExecPID = 0,
-                                             string eventType = "network", // process, childprocess, network, dnsquery
+                                             string eventType = "network", // process, childprocess, network, dnsquery, dnsresponse
                                              string ipVersion = "IPv4",
                                              string transportProto = "TCP",
                                              IPAddress srcAddr = null!,
                                              int srcPort = 0,
                                              IPAddress dstAddr = null!, 
                                              int dstPort = 0,
-                                             string dnsQuery = "N/A")
+                                             string dnsQuery = "N/A",
+                                             int dnsRecordType = 0,
+                                             IPAddress dnsResult = null!,
+                                             int dnsQueryStatus = 0)
         {
 
             string timestamp = Generic.GetTimestampNow();
@@ -658,6 +669,11 @@ namespace WhoYouCalling
             {
                 s_collectiveProcessInfo[execPID].dnsQueries.Add(dnsQuery);
                 historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) made a DNS lookup for {dnsQuery}";
+            }else if (eventType == "dnsresponse")
+            {
+                string dnsResponseType = DnsTypeLookup.GetName(dnsRecordType);
+
+                historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) received a {dnsResponseType} DNS response lookup for {dnsQuery} with the result {dnsResult}";
             }
 
             ConsoleOutput.Print(historyMsg, "debug");

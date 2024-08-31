@@ -1,4 +1,6 @@
-﻿namespace WhoYouCalling.Utilities
+﻿using static System.Runtime.InteropServices.JavaScript.JSType;
+
+namespace WhoYouCalling.Utilities
 {
     public class Generic
     {

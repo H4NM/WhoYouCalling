@@ -34,14 +34,13 @@ However, there are some downsides:
 
 **Run sus.exe for 60 seconds and monitor all the child processes with FPC on the 8th enumerated interface. When the timer expires, kill all tracked pprocesses - including child processes**:
 `WhoYouCalling.exe -e C:\Users\H4NM\Desktop\sus.exe -f -t 60 -k -i 8 -o C:\Users\H4NM\Desktop`
-
+	
 ### Example results
 ![ConsoleResults](imgs/ExampleConsoleOutput.png)
 ![FolderResults](imgs/ExampleOutput.png)
 
 ### To Do:
 - [ ] Add resolved IP for domainname
-- [ ] Add console on hit enter event to print status of capture process
 - [ ] Create Wireshark filter in addition to BPF filter
 - [ ] Add flag to capture every process with the same executable name rather than following a chain of PIDs. 
   -  Noticed in the execution of firefox where it called a seperate process (explorer.exe) to start firefox. This is missed by --fulltracking. 

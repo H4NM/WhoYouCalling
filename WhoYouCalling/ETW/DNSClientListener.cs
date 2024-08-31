@@ -1,5 +1,6 @@
 ﻿using Microsoft.Diagnostics.Tracing;
 using Microsoft.Diagnostics.Tracing.Session;
+using System.Net;
 
 
 namespace WhoYouCalling.ETW
@@ -19,32 +20,83 @@ namespace WhoYouCalling.ETW
 
         private void DnsClientEvent(TraceEvent data)
         {
-            if (_trackedProcessId == data.ProcessID && data.EventName == "EventID(3006)") // DNS Lookup made by main tracked PID
+            switch (data.EventName)
             {
-                string dnsQuery = data.PayloadByName("QueryName").ToString();
-                dnsQuery ??= "N/A";
-                Program.CatalogETWActivity(eventType: "dnsquery",
-                    executable: _mainExecutableFileName,
-                    execPID: data.ProcessID,
-                    execType: "Main",
-                    dnsQuery: dnsQuery);
-            }
-            else if (Program.IsTrackedChildPID(data.ProcessID) && data.EventName == "EventID(3006)") // DNS Lookup made by child tracked PID
-            {
-                string childExecutable = Program.GetTrackedPIDImageName(data.ProcessID);
-                string dnsQuery = data.PayloadByName("QueryName").ToString();
-                dnsQuery ??= "N/A";
-                Program.CatalogETWActivity(eventType: "dnsquery",
-                    executable: childExecutable,
-                    execPID: data.ProcessID,
-                    execType: "Child",
-                    dnsQuery: dnsQuery);
-            }
+                case "EventID(3006)":
+                    {
+                        if (_trackedProcessId == data.ProcessID || Program.IsTrackedChildPID(data.ProcessID))
+                        {
+                            string retrievedQuery = data.PayloadByName("QueryName").ToString();
+                            string dnsQuery = string.IsNullOrWhiteSpace(retrievedQuery) ? "N/A" : retrievedQuery;
+                            string executable;
+                            string execType;
 
-            // data.FormattedMessage semi works - is entire message - quite dull. Only require action, query and perhaps answer. 
-            //ConsoleOutput.Print($"DNS {data.EventName} - {data.FormattedMessage}", "debug");
-            //ConsoleOutput.Print($"PAYLOAD {data.PayloadByName("QueryName")}", "debug");
+                            if (_trackedProcessId == data.ProcessID) // DNS Lookup made by main process 
+                            {
+                                executable = _mainExecutableFileName;
+                                execType = "Main";
+                            }
+                            else // DNS Lookup made by child process
+                            {
+                                executable = Program.GetTrackedPIDImageName(data.ProcessID);
+                                execType = "Child";
+                            }
+                            Program.CatalogETWActivity(eventType: "dnsquery",
+                                  executable: _mainExecutableFileName,
+                                  execPID: data.ProcessID,
+                                  execType: "Main",
+                                  dnsQuery: dnsQuery);
+                        }
+                        break;
+                    }
+                case "EventID(3008)":
+                    {
+                        if (_trackedProcessId == data.ProcessID || Program.IsTrackedChildPID(data.ProcessID))
+                        {
+                            string retrievedQuery = data.PayloadByName("QueryName").ToString();
+                            string dnsQuery = string.IsNullOrWhiteSpace(retrievedQuery) ? "N/A" : retrievedQuery;
+                            IPAddress dnsResult;
+                            int dnsType;
+                            int dnsQueryStatus;
+                            string executable;
+                            string execType;
+
+                            if (!IPAddress.TryParse(data.PayloadByName("QueryResults").ToString(), out dnsResult)) // Parsing IP address
+                            {
+                                dnsResult = IPAddress.None;
+                            }
+                            if (!int.TryParse(data.PayloadByName("QueryType").ToString(), out dnsType))
+                            {
+                                dnsType = 999999; // Non-existing DNS type value. Is later looked up
+                            }
+                            if (!int.TryParse(data.PayloadByName("QueryStatus").ToString(), out dnsQueryStatus))
+                            {
+                                dnsQueryStatus = 999999; // Non-existing DNS status value. Is later looked up
+                            }
+
+                            if (_trackedProcessId == data.ProcessID) // DNS response to by main process 
+                            {
+                                executable = _mainExecutableFileName;
+                                execType = "Main";
+                            }
+                            else  // DNS response to child process 
+                            {
+                                executable = Program.GetTrackedPIDImageName(data.ProcessID); 
+                                execType = "Child";
+                            }
+
+                            Program.CatalogETWActivity(eventType: "dnsresponse",
+                                    executable: executable,
+                                    execPID: data.ProcessID,
+                                    execType: execType,
+                                    dnsQuery: dnsQuery,
+                                    dnsRecordType: dnsType,
+                                    dnsResult: dnsResult,
+                                    dnsQueryStatus: dnsQueryStatus);
+                        }
+                        break;
+                }
+            }
         }
-
     }
 }
