@@ -41,6 +41,7 @@ However, there are some downsides:
 
 ### To Do:
 - [ ] Add resolved IP for domainname
+  - [ ] **Work in progress**: Note to self, CatalogETWActivity needs to make proper lookups for DNS attributes and to log the event accordingly. Afterwards, ensure proper output to file
 - [ ] Create Wireshark filter in addition to BPF filter
 - [ ] Add flag to capture every process with the same executable name rather than following a chain of PIDs. 
   -  Noticed in the execution of firefox where it called a seperate process (explorer.exe) to start firefox. This is missed by --fulltracking. 
