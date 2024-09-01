@@ -1,11 +1,34 @@
 ﻿using SharpPcap.LibPcap;
+using System.Net;
+using System.Text.RegularExpressions;
 using WhoYouCalling.Utilities;
-
 
 namespace WhoYouCalling.FPC
 {
     public class NetworkUtils
     {
+        public static IPAddress CleanIPv4AndIPv6Address(string ip)
+        {
+            if (string.IsNullOrWhiteSpace(ip))
+            {
+                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". It was Null or Whitespace", "debug");
+                return IPAddress.None;
+            }
+
+            string pattern = @"[^0-9a-fA-F\.:]";
+            string cleanedIpAddress = Regex.Replace(ip, pattern, "").Trim();
+
+            if (IPAddress.TryParse(cleanedIpAddress, out IPAddress cleanedIPAddressObject)) // Parsing IP address
+            {
+                return cleanedIPAddressObject;
+            }
+            else
+            {
+                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". Failed to parse it", "debug");
+                return IPAddress.None;
+            }
+        }
+
         public static LibPcapLiveDeviceList GetNetworkInterfaces()
         {
             return LibPcapLiveDeviceList.Instance; // Retrieve the device list

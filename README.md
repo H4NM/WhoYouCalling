@@ -8,9 +8,9 @@ This application makes process network monitoring hella' easy.
 
 One of the best methods of monitoring activities by a process in Windows is with the Sysinternal tool [ProcMon](https://learn.microsoft.com/sv-se/sysinternals/downloads/procmon). 
 However, there are some downsides:
-1. **Manual Work**: To get a Full Packet Capture per process you need to manually start a packet capture with a tool like Wireshark/Tshark, and create a filter for endpoints based on the results of ProcMon, which can be timeconsuming and potential endpoints may be missed due to human error of the process is not automated.
-2. **Child processes**: It can be tedious to maintain a track record of all of the child processes that may spawn and the endpoints they're communicating with
-3. **DNS queries**: (AFAIK) ProcMon doesn't support capturing DNS queries. It does enable provide with UDP Send to port 53, but no information of the actual domain name that's queried. 
+1. **Manual Work**: To get a Full Packet Capture per process you need to manually start a packet capture with a tool like Wireshark/Tshark, and create a filter for endpoints based on the results of ProcMon, which can be timeconsuming and potential endpoints may be missed due to human error if the process is not automated.
+2. **Child processes**: It can be tedious to maintain a track record of all of the child processes that may spawn and the endpoints they're communicating with.
+3. **DNS queries**: (AFAIK) ProcMon doesn't support capturing DNS queries. It does enable provide with UDP Send to port 53, but no information of the actual domain name that's queried nor the given address response.
 </details>
 
 ## Features: 
@@ -40,9 +40,10 @@ However, there are some downsides:
 ![FolderResults](imgs/ExampleOutput.png)
 
 ### To Do:
-- [ ] Add resolved IP for domainname
-  - [ ] **Work in progress**: Note to self, CatalogETWActivity needs to make proper lookups for DNS attributes and to log the event accordingly. Afterwards, ensure proper output to file
-  - Discovered the [Windows custom DNS status codes](https://www.senturean.com/posts/19_05_07_dns_investigation/)...
-- [ ] - [ ] Create Wireshark filter in addition to BPF filter
+- [ ] Create namespace for whoyoucalling > network > FPC & DNS
+- [ ] Create object class for Netflow rather than doing simple string CSV
+- [ ] Create Wireshark filter in addition to BPF filter:
+  - [ ] **Work in progress** Added flag for it, and flag for outputting the BPF filter to file as well
 - [ ] Add flag to capture every process with the same executable name rather than following a chain of PIDs. 
   -  Noticed in the execution of firefox where it called a seperate process (explorer.exe) to start firefox. This is missed by --fulltracking. 
+- [ ] Refactor code to simply when monitoring is shut down. 

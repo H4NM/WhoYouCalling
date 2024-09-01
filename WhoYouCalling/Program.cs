@@ -12,7 +12,8 @@ using WhoYouCalling.Utilities;
 using WhoYouCalling.FPC;
 using WhoYouCalling.ETW;
 using WhoYouCalling.DNS;
-
+using System.Security.Cryptography;
+using Microsoft.Diagnostics.Tracing.Parsers.IIS_Trace;
 
 namespace WhoYouCalling
 {
@@ -22,7 +23,7 @@ namespace WhoYouCalling
         private static List<string> s_etwActivityHistory = new List<string>(); // Summary of the network activities made
         private static Dictionary<int, HashSet<string>> s_bpfFilterBasedActivity = new Dictionary<int, HashSet<string>>();
         private static Dictionary<int, MonitoredProcess> s_collectiveProcessInfo = new Dictionary<int, MonitoredProcess>();
-        private static Dictionary<string, HashSet<string>> s_dnsQueryResults = new Dictionary<string, HashSet<string>>();
+        private static Dictionary<string, HashSet<DnsQueryResponse>> s_dnsQueryResults = new Dictionary<string, HashSet<DnsQueryResponse>>();
 
         private static bool s_shutDownMonitoring = false;
         private static string s_mainExecutableFileName = "";
@@ -39,6 +40,8 @@ namespace WhoYouCalling
         private static bool s_noPacketCapture = false;
         private static bool s_dumpResultsToJson = false;
         private static bool s_strictBPFEnabled = false;
+        private static bool s_outputBPFFilter = false;
+        private static bool s_outputWiresharkFilter = false;
         public static bool Debug = false;
         public static bool TrackChildProcesses = false;
         
@@ -87,7 +90,8 @@ namespace WhoYouCalling
 
             string fullPcapFile = @$"{rootFolderName}\{s_mainExecutableFileName}-Full.pcap";
             string etwHistoryFile = @$"{rootFolderName}\{s_mainExecutableFileName}-History.txt";
-            string jsonResultsFile = @$"{rootFolderName}\{s_mainExecutableFileName}-Results.json";
+            string jsonResultsFile = @$"{rootFolderName}\{s_mainExecutableFileName}-Process-Results.json";
+            string jsonDNSFile = @$"{rootFolderName}\{s_mainExecutableFileName}-DNS-Responses.json";
 
             // Retrieve network interface devices
             var devices = NetworkUtils.GetNetworkInterfaces(); // Returns a LibPcapLiveDeviceList
@@ -111,7 +115,6 @@ namespace WhoYouCalling
             Thread etwKernelListenerThread = new Thread(() => etwKernelListener.Listen());
             Thread etwDNSClientListenerThread = new Thread(() => etwDnsClientListener.Listen());
             
-
             ConsoleOutput.Print("Starting ETW sessions", "debug");
             etwKernelListenerThread.Start();
             etwDNSClientListenerThread.Start();
@@ -154,8 +157,8 @@ namespace WhoYouCalling
 
             while (true) // Continue monitoring 
             {
-
-                ConsoleOutput.Print($"Processes: {s_collectiveProcessInfo.Count()}. ETW Events: {s_etwActivityHistory.Count()}", "runningStats");
+                int capturedPacketCount = livePacketCapture.GetPacketCount();
+                ConsoleOutput.Print($"Processes: {s_collectiveProcessInfo.Count()}. ETW Events: {s_etwActivityHistory.Count()}. Network Packets: {capturedPacketCount}", "runningStats");
                 if (s_shutDownMonitoring) // If shutdown has been signaled
                 {
                     Console.WriteLine(""); // Needed to adjust a linebreak since the runningStats print above uses Console.Write()
@@ -207,19 +210,19 @@ namespace WhoYouCalling
                         MonitoredProcess monitoredProcess = kvp.Value;
 
                         // Check if the processes has any network activities recorded. If not, go to next process
-                        if (monitoredProcess.dnsQueries.Count() == 0 && 
-                            monitoredProcess.ipv4LocalhostEndpoint.Count() == 0 &&
-                            monitoredProcess.ipv4TCPEndpoint.Count() == 0 &&
-                            monitoredProcess.ipv4UDPEndpoint.Count() == 0 &&
-                            monitoredProcess.ipv6LocalhostEndpoint.Count() == 0 &&
-                            monitoredProcess.ipv6TCPEndpoint.Count() == 0 &&
-                            monitoredProcess.ipv6UDPEndpoint.Count() == 0)
+                        if (monitoredProcess.DNSQueries.Count() == 0 && 
+                            monitoredProcess.IPv4LocalhostEndpoint.Count() == 0 &&
+                            monitoredProcess.IPv4TCPEndpoint.Count() == 0 &&
+                            monitoredProcess.IPv4UDPEndpoint.Count() == 0 &&
+                            monitoredProcess.IPv6LocalhostEndpoint.Count() == 0 &&
+                            monitoredProcess.IPv6TCPEndpoint.Count() == 0 &&
+                            monitoredProcess.IPv6UDPEndpoint.Count() == 0)
                         {
                             ConsoleOutput.Print($"Not creating folder with results for PID {pid}. No activities found", "debug");
                             continue;
                         }
 
-                        string executable = monitoredProcess.imageName;
+                        string executable = monitoredProcess.ImageName;
                         string executabelNameAndPID = $"{executable}-{pid}";
                         string processFolderInRootFolder = @$"{rootFolderName}\{executabelNameAndPID}";
                         int combinedBPFprocid = 0;
@@ -229,13 +232,14 @@ namespace WhoYouCalling
 
 
                         // DNS
-                        if (monitoredProcess.dnsQueries.Count() > 0)
+                        if (monitoredProcess.DNSQueries.Count() > 0)
                         {
                             string dnsQueriesFile = @$"{processFolderInRootFolder}\DNS queries.txt";
 
-                            List<string> dnsQueries = Generic.ConvertHashSetToSortedList(monitoredProcess.dnsQueries); // Convert to list from hashset to be able to pass to function
+                            List<string> dnsQueries = Generic.ConvertHashSetToSortedList(monitoredProcess.DNSQueries); // Convert to list from hashset to be able to pass to function
+                            List<string> enrichedDNSQueries = EnrichDNSQueries(dnsQueries);
                             ConsoleOutput.Print($"Creating file {dnsQueriesFile} with all DNS queries", "debug");
-                            FileAndFolders.CreateTextFileListOfStrings(dnsQueriesFile, dnsQueries);
+                            FileAndFolders.CreateTextFileListOfStrings(dnsQueriesFile, enrichedDNSQueries);
                         }
                         else
                         {
@@ -243,10 +247,10 @@ namespace WhoYouCalling
                         }
 
                         // TCP IPv4
-                        if (monitoredProcess.ipv4TCPEndpoint.Count > 0) 
+                        if (monitoredProcess.IPv4TCPEndpoint.Count > 0) 
                         {
                             string tcpIPv4File = @$"{processFolderInRootFolder}\IPv4 TCP Endpoints.txt";
-                            List<string> tcpIPv4Endpoints = Generic.ConvertHashSetToSortedList(monitoredProcess.ipv4TCPEndpoint); // Convert to list from hashset to be able to pass to function
+                            List<string> tcpIPv4Endpoints = Generic.ConvertHashSetToSortedList(monitoredProcess.IPv4TCPEndpoint); // Convert to list from hashset to be able to pass to function
                             ConsoleOutput.Print($"Creating file {tcpIPv4File} with TCP IPv4 communication", "debug");
                             FileAndFolders.CreateTextFileListOfStrings(tcpIPv4File, tcpIPv4Endpoints);
                         }
@@ -256,10 +260,10 @@ namespace WhoYouCalling
                         }
 
                         // TCP IPv6
-                        if (monitoredProcess.ipv6TCPEndpoint.Count > 0)
+                        if (monitoredProcess.IPv6TCPEndpoint.Count > 0)
                         {
                             string tcpIPv6File = @$"{processFolderInRootFolder}\IPv6 TCP Endpoints.txt";
-                            List<string> tcpIPv6Endpoints = Generic.ConvertHashSetToSortedList(monitoredProcess.ipv6TCPEndpoint); // Convert to list from hashset to be able to pass to function
+                            List<string> tcpIPv6Endpoints = Generic.ConvertHashSetToSortedList(monitoredProcess.IPv6TCPEndpoint); // Convert to list from hashset to be able to pass to function
                             ConsoleOutput.Print($"Creating file {tcpIPv6File} with TCP IPv6 communication", "debug");
                             FileAndFolders.CreateTextFileListOfStrings(tcpIPv6File, tcpIPv6Endpoints);
                         }
@@ -269,10 +273,10 @@ namespace WhoYouCalling
                         }
 
                         // UDP IPv4
-                        if (monitoredProcess.ipv4UDPEndpoint.Count > 0)
+                        if (monitoredProcess.IPv4UDPEndpoint.Count > 0)
                         {
                             string udpIPv4File = @$"{processFolderInRootFolder}\IPv4 UDP Endpoints.txt";
-                            List<string> udpIPv4Endpoints = Generic.ConvertHashSetToSortedList(monitoredProcess.ipv4UDPEndpoint); // Convert to list from hashset to be able to pass to function
+                            List<string> udpIPv4Endpoints = Generic.ConvertHashSetToSortedList(monitoredProcess.IPv4UDPEndpoint); // Convert to list from hashset to be able to pass to function
                             ConsoleOutput.Print($"Creating file {udpIPv4File} with UDP IPv4 communication", "debug");
                             FileAndFolders.CreateTextFileListOfStrings(udpIPv4File, udpIPv4Endpoints);
                         }
@@ -281,10 +285,10 @@ namespace WhoYouCalling
                             ConsoleOutput.Print($"Not creating UDP IPv4 communication file, none found for {pid}", "debug");
                         }
                         // UDP IPv6
-                        if (monitoredProcess.ipv6UDPEndpoint.Count > 0)
+                        if (monitoredProcess.IPv6UDPEndpoint.Count > 0)
                         {
                             string udpIPv6File = @$"{processFolderInRootFolder}\IPv6 UDP Endpoints.txt";
-                            List<string> udpIPv6Endpoints = Generic.ConvertHashSetToSortedList(monitoredProcess.ipv6UDPEndpoint); // Convert to list from hashset to be able to pass to function
+                            List<string> udpIPv6Endpoints = Generic.ConvertHashSetToSortedList(monitoredProcess.IPv6UDPEndpoint); // Convert to list from hashset to be able to pass to function
                             ConsoleOutput.Print($"Creating file {udpIPv6File} with UDP IPv6 communication", "debug");
                             FileAndFolders.CreateTextFileListOfStrings(udpIPv6File, udpIPv6Endpoints);
                         }
@@ -293,10 +297,10 @@ namespace WhoYouCalling
                             ConsoleOutput.Print($"Not creating UDP IPv6 communication file, none found for {pid}", "debug");
                         }
                         // Localhost IPv4 - Takes both TCP UDP
-                        if (monitoredProcess.ipv4LocalhostEndpoint.Count > 0)
+                        if (monitoredProcess.IPv4LocalhostEndpoint.Count > 0)
                         {
                             string localhostIPv4File = @$"{processFolderInRootFolder}\Localhost Endpoints.txt";
-                            List<string> localhostIPv4Endpoints = Generic.ConvertHashSetToSortedList(monitoredProcess.ipv4LocalhostEndpoint); // Convert to list from hashset to be able to pass to function
+                            List<string> localhostIPv4Endpoints = Generic.ConvertHashSetToSortedList(monitoredProcess.IPv4LocalhostEndpoint); // Convert to list from hashset to be able to pass to function
                             ConsoleOutput.Print($"Creating file {localhostIPv4File} with localhost IPv4 communication", "debug");
                             FileAndFolders.CreateTextFileListOfStrings(localhostIPv4File, localhostIPv4Endpoints);
                         }
@@ -305,10 +309,10 @@ namespace WhoYouCalling
                             ConsoleOutput.Print($"Not creating localhost IPv4 communication file, none found for {pid}", "debug");
                         }
                         // Localhost IPv6 - Takes both TCP UDP
-                        if (monitoredProcess.ipv6LocalhostEndpoint.Count > 0)
+                        if (monitoredProcess.IPv6LocalhostEndpoint.Count > 0)
                         {
                             string localhostIPv6File = @$"{processFolderInRootFolder}\Localhost Endpoints IPv6.txt";
-                            List<string> localhostIPv6Endpoints = Generic.ConvertHashSetToSortedList(monitoredProcess.ipv6LocalhostEndpoint); // Convert to list from hashset to be able to pass to function
+                            List<string> localhostIPv6Endpoints = Generic.ConvertHashSetToSortedList(monitoredProcess.IPv6LocalhostEndpoint); // Convert to list from hashset to be able to pass to function
                             ConsoleOutput.Print($"Creating file {localhostIPv6File} with localhost IPv6 communication", "debug");
                             FileAndFolders.CreateTextFileListOfStrings(localhostIPv6File, localhostIPv6Endpoints);
                         }
@@ -326,7 +330,10 @@ namespace WhoYouCalling
                             ConsoleOutput.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter.", "debug");
                             FilePacketCapture filePacketCapture = new FilePacketCapture();
                             filePacketCapture.FilterCaptureFile(computedBPFFilterByPID[pid], fullPcapFile, filteredPcapFile);
-                            FileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[pid]); // Create textfile containing used BPF filter
+                            if (s_outputBPFFilter) // If BPF Filter is to be written to text file.
+                            {
+                                FileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[pid]); // Create textfile containing used BPF filter
+                            }
                         }
                         else if (computedBPFFilterByPID.ContainsKey(combinedBPFprocid)) // 0 represents the combined BPF filter for all applications
                         {
@@ -366,10 +373,15 @@ namespace WhoYouCalling
 
                     if (s_dumpResultsToJson)
                     {
-                        ConsoleOutput.Print($"Creating json results file \"{jsonResultsFile}\"", "debug");
                         var options = new JsonSerializerOptions { WriteIndented = true };
-                        string jsonString = JsonSerializer.Serialize(s_collectiveProcessInfo, options);
-                        File.WriteAllText(jsonResultsFile, jsonString);
+
+                        ConsoleOutput.Print($"Creating json results file for process results \"{jsonResultsFile}\"", "debug");
+                        string jsonProcessString = JsonSerializer.Serialize(s_collectiveProcessInfo, options);
+                        File.WriteAllText(jsonResultsFile, jsonProcessString);
+
+                        ConsoleOutput.Print($"Creating json results file for DNS responses \"{jsonDNSFile}\"", "debug");
+                        string jsonDNSString = JsonSerializer.Serialize(s_dnsQueryResults, options);
+                        File.WriteAllText(jsonDNSFile, jsonDNSString);
                     }
                     else
                     {
@@ -383,13 +395,37 @@ namespace WhoYouCalling
             }
         }
 
+        private static List<string> EnrichDNSQueries(List<string> dnsQueries)
+        {
+            List<string> enrichedDNSQueries = new List<string>();
+
+            foreach (string query in dnsQueries)
+            {
+                if (s_dnsQueryResults.ContainsKey(query))
+                {
+                    foreach (DnsQueryResponse response in s_dnsQueryResults[query])
+                    {
+                        string enrichedQuery = $"{query} {response.RecordTypeText}({response.RecordTypeCode}) query, status {response.StatusText}({response.StatusCode}), Result {response.IP}";
+                        enrichedDNSQueries.Add(enrichedQuery);
+                    }
+                }
+                else
+                {
+                    enrichedDNSQueries.Add(query);
+                }
+            }
+
+            enrichedDNSQueries.Sort();
+            return enrichedDNSQueries;
+        }
+
         private static bool ValidateProvidedArguments(string[] args){
             bool executableFlagSet = false;
             bool executableArgsFlagSet = false;
             bool PIDFlagSet = false;
             bool networkInterfaceDeviceFlagSet = false;
             bool noPCAPFlagSet = false;
-            bool s_killProcessesFlagSet = false;
+            bool killProcessesFlagSet = false;
 
             // Check if no args are provided
             if (args.Length > 0)
@@ -427,16 +463,24 @@ namespace WhoYouCalling
                     {
                         TrackChildProcesses = true;
                     }
-                    else if (args[i] == "-x" || args[i] == "--strictbpf")
+                    else if (args[i] == "-S" || args[i] == "--strictbpf")
                     {
                         s_strictBPFEnabled = true;
                     }
-                    else if (args[i] == "-k" || args[i] == "--s_killProcesses") // Track the network activity by child processes
+                    else if (args[i] == "-B" || args[i] == "--outputbpf")
+                    {
+                        s_outputBPFFilter = true;
+                    }
+                    else if (args[i] == "-D" || args[i] == "--outputdfl")
+                    {
+                        s_outputWiresharkFilter = true;
+                    }
+                    else if (args[i] == "-k" || args[i] == "--killprocesses") // Track the network activity by child processes
                     {
                         s_killProcesses = true;
-                        s_killProcessesFlagSet = true;
+                        killProcessesFlagSet = true;
                     }
-                    else if (args[i] == "-s" || args[i] == "--s_saveFullPcap") //Save the full pcap
+                    else if (args[i] == "-s" || args[i] == "--savefullpcap") //Save the full pcap
                     {
                         s_saveFullPcap = true;
                     }
@@ -576,7 +620,7 @@ namespace WhoYouCalling
                 ConsoleOutput.Print("You need to specify an executable when providing with arguments with -a", "error");
                 return false;
             }
-            else if (s_killProcessesFlagSet && PIDFlagSet)
+            else if (killProcessesFlagSet && PIDFlagSet)
             {
                 ConsoleOutput.Print("You can only specify -k for killing process that's been started, and not via listening to a running process", "error");
                 return false;
@@ -628,15 +672,15 @@ namespace WhoYouCalling
                             bpfBasedIPVersion = "ip";
                             if (dstAddr.ToString() == "127.0.0.1")
                             {
-                                s_collectiveProcessInfo[execPID].ipv4LocalhostEndpoint.Add(dstEndpoint);
+                                s_collectiveProcessInfo[execPID].IPv4LocalhostEndpoint.Add(dstEndpoint);
                             }
                             else if (transportProto == "TCP")
                             {
-                                s_collectiveProcessInfo[execPID].ipv4TCPEndpoint.Add(dstEndpoint);
+                                s_collectiveProcessInfo[execPID].IPv4TCPEndpoint.Add(dstEndpoint);
                             }
                             else if (transportProto == "UDP")
                             {
-                                s_collectiveProcessInfo[execPID].ipv4UDPEndpoint.Add(dstEndpoint);
+                                s_collectiveProcessInfo[execPID].IPv4UDPEndpoint.Add(dstEndpoint);
                             }
                         }
                         else if (ipVersion == "IPv6")
@@ -644,22 +688,21 @@ namespace WhoYouCalling
                             bpfBasedIPVersion = "ip6";
                             if (dstAddr.ToString() == "::1")
                             {
-                                s_collectiveProcessInfo[execPID].ipv6LocalhostEndpoint.Add(dstEndpoint);
+                                s_collectiveProcessInfo[execPID].IPv6LocalhostEndpoint.Add(dstEndpoint);
                             }
                             else if (transportProto == "TCP")
                             {
-                                s_collectiveProcessInfo[execPID].ipv6TCPEndpoint.Add(dstEndpoint);
+                                s_collectiveProcessInfo[execPID].IPv6TCPEndpoint.Add(dstEndpoint);
                             }
                             else if (transportProto == "UDP")
                             {
-                                s_collectiveProcessInfo[execPID].ipv6UDPEndpoint.Add(dstEndpoint);
+                                s_collectiveProcessInfo[execPID].IPv6UDPEndpoint.Add(dstEndpoint);
                             }
                         }
                         string packetAsCSV = $"{bpfBasedIPVersion},{bpfBasedProto},{srcAddr},{srcPort},{dstAddr},{dstPort}";
 
                         s_bpfFilterBasedActivity[execPID].Add(packetAsCSV);
                         break;
-
                     }
                 case "process": // If its a process related activity
                     {
@@ -669,26 +712,61 @@ namespace WhoYouCalling
                 case "childprocess": // If its a process starting another process
                     {
                         historyMsg = $"{timestamp} - {executable}[{parentExecPID}]({execType}) {execAction} {execObject}[{execPID}]";
-                        s_collectiveProcessInfo[parentExecPID].childprocess.Add(execPID);
+                        s_collectiveProcessInfo[parentExecPID].ChildProcess.Add(execPID);
                         break;
                     }
                 case "dnsquery": // If its a DNS query made 
                     {
-                        s_collectiveProcessInfo[execPID].dnsQueries.Add(dnsQuery);
+                        s_collectiveProcessInfo[execPID].DNSQueries.Add(dnsQuery);
+                        
                         historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) made a DNS lookup for {dnsQuery}";
                         break;
                     }
-                case "dnsresponse": // If its a DNS response to process
+                case "dnsresponse": // If its a DNS response 
                     {
+                        if (dnsQueryStatusCode == 87) // DNS status code 87 is not an official status code of the DNS standard.
+                        {                             // Only something made up by Windows.
+                                                      // Excluding these should not affect general analysis of the processes
+                            break;
+                        }
+
                         string dnsRecordTypeCodeName = DnsTypeLookup.GetName(dnsRecordTypeCode); // Retrieve the DNS type code name
                         string dnsResponseStatusCodeName = DnsStatusLookup.GetName(dnsQueryStatusCode); // Retrieve the DNS response status code name
+                        string dnsResultAsString = dnsResult.ToString(); // This is needed due to json serialization
 
-                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) received {dnsRecordTypeCodeName}({dnsRecordTypeCode}) DNS response with status {dnsResponseStatusCodeName}({dnsQueryStatusCode}) for {dnsQuery} is {dnsResult}";
+                        DnsQueryResponse responseObject = new DnsQueryResponse
+                        {
+                            RecordTypeCode = dnsRecordTypeCode,
+                            RecordTypeText = dnsRecordTypeCodeName,
+                            StatusCode = dnsQueryStatusCode,
+                            StatusText = dnsResponseStatusCodeName,
+                            IP = dnsResultAsString
+                        };
+
+                        /* Normally i would prefer that the domain name queried is only entered 
+                         * into this dict when its a query and not in the operation of 
+                         * managing the response itself. However, in the use-case of listening to a running 
+                         * process via specifing the PID, the query itself may have been missed, but the response is catched.
+                         * This is also why it has been added that s_collectiveProcessInfo[execPID].dnsQueries.Add(dnsQuery) 
+                         * is made within this part, even though it may seem redundant it's still registered proof that a process 
+                         * made a DNS call. Furthermore, s_collectiveProcessInfo is a hashset so there will be no duplicates as well.
+                         */
+
+                        if (!s_dnsQueryResults.ContainsKey(dnsQuery)) // Check if DNS domain exists as key. 
+                        {
+                            s_dnsQueryResults[dnsQuery] = new HashSet<DnsQueryResponse>(); // Add the key with an empty defined hashset
+                        }
+                        
+                        s_dnsQueryResults[dnsQuery].Add(responseObject);
+
+                        s_collectiveProcessInfo[execPID].DNSQueries.Add(dnsQuery); // See comment above to why this is also here. 
+
+
+                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) received {dnsRecordTypeCodeName}({dnsRecordTypeCode}) DNS response {dnsResponseStatusCodeName}({dnsQueryStatusCode}) for {dnsQuery} is {dnsResult}";
                         break;
 
                     }
             }
-
             ConsoleOutput.Print(historyMsg, "debug");
             s_etwActivityHistory.Add(historyMsg);
         }
@@ -724,7 +802,7 @@ namespace WhoYouCalling
         {
             s_collectiveProcessInfo[pid] = new MonitoredProcess
             {
-                imageName = executable
+                ImageName = executable
             };
             s_bpfFilterBasedActivity[pid] = new HashSet<string>(); // Add the main executable processname
         }
@@ -751,7 +829,7 @@ namespace WhoYouCalling
 
         public static string GetTrackedPIDImageName(int pid)
         {
-            return s_collectiveProcessInfo[pid].imageName;
+            return s_collectiveProcessInfo[pid].ImageName;
         }
     }
 }

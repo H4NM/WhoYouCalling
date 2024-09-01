@@ -85,11 +85,13 @@ Options:
                         If full tracking flag is set, childprocesses are also killed.
   -i, --interface     : The network interface number. Retrievable with the -g/--getinterfaces flag.
   -g, --getinterfaces : Prints the network interface devices with corresponding number (usually 0-10).
-  -x, --strictbpf     : Only generates a BPF filter based of recorded traffic that was sent by processes. 
+  -S, --strictbpf     : Only generates a BPF filter based of recorded traffic that was sent by processes. 
                         This excludes received traffic in the .pcap files.
   -n, --nopcap        : Skips collecting full packet capture.
   -o, --output        : Output directory, full path.
   -j, --json          : If the process information should be dumped to json file.
+  -B, --outputbpf     : Write the applied BPF-filter to text file.
+  -D, --outputdfl     : Write the equivalent Wireshark Display Filter to text file.
   -h, --help          : Displays this help information.
 
 Examples:

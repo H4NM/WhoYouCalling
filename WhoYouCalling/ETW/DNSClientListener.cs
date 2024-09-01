@@ -1,7 +1,8 @@
 ﻿using Microsoft.Diagnostics.Tracing;
 using Microsoft.Diagnostics.Tracing.Session;
 using System.Net;
-
+using WhoYouCalling.FPC;
+using WhoYouCalling.Utilities;
 
 namespace WhoYouCalling.ETW
 {
@@ -55,23 +56,24 @@ namespace WhoYouCalling.ETW
                         {
                             string retrievedQuery = data.PayloadByName("QueryName").ToString();
                             string dnsQuery = string.IsNullOrWhiteSpace(retrievedQuery) ? "N/A" : retrievedQuery;
-                            IPAddress dnsResult;
+
+                            string retrievedQueryResults = data.PayloadByName("QueryResults").ToString();
+                            IPAddress dnsResult = NetworkUtils.CleanIPv4AndIPv6Address(retrievedQueryResults);
+
                             int dnsType;
                             int dnsQueryStatus;
                             string executable;
                             string execType;
 
-                            if (!IPAddress.TryParse(data.PayloadByName("QueryResults").ToString(), out dnsResult)) // Parsing IP address
+                            if (!int.TryParse(data.PayloadByName("QueryStatus").ToString(), out dnsQueryStatus))
                             {
-                                dnsResult = IPAddress.None;
+                                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query status. Failed to parse it", "debug");
+                                dnsQueryStatus = 999999; // Non-existing DNS status value. Is later looked up
                             }
                             if (!int.TryParse(data.PayloadByName("QueryType").ToString(), out dnsType))
                             {
+                                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query type. Failed to parse it", "debug");
                                 dnsType = 999999; // Non-existing DNS type value. Is later looked up
-                            }
-                            if (!int.TryParse(data.PayloadByName("QueryStatus").ToString(), out dnsQueryStatus))
-                            {
-                                dnsQueryStatus = 999999; // Non-existing DNS status value. Is later looked up
                             }
 
                             if (_trackedProcessId == data.ProcessID) // DNS response to by main process 

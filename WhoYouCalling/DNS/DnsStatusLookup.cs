@@ -22,8 +22,9 @@
             { 20, "BADNAME" },         // Duplicate key name
             { 21, "BADALG" },          // Algorithm not supported
             { 22, "BADTRUNC" },        // Bad truncation
-            { 23, "BADCOOKIE" },       // Bad/missing server cookie
-            { 999999, "N/A" }          // Custom Non-existent DNS Status Value
+            { 23, "BADCOOKIE" },               // Bad/missing server cookie
+            { 87, "ERROR_INVALID_PARAMETER" }, // Custom Windows DNS error. Not part of DNS standard
+            { 999999, "N/A" }                  // Custom Non-existent DNS Status Value
         };
 
         private static readonly Dictionary<string, int> NameToCode = CodeToName

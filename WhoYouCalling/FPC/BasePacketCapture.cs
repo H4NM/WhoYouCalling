@@ -10,6 +10,11 @@ namespace WhoYouCalling.FPC
         protected CaptureFileWriterDevice _captureFileWriterDevice;
         protected LibPcapLiveDevice _captureDevice;
 
+        public int GetPacketCount()
+        {
+            return s_packetCounter;
+        }
+
         public void SetCaptureDevice(LibPcapLiveDevice device)
         {
             _captureDevice = device;
