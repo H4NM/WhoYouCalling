@@ -2,9 +2,9 @@
 using SharpPcap;
 using WhoYouCalling.Utilities;
 
-namespace WhoYouCalling.FPC
+namespace WhoYouCalling.Network.FPC
 {
-    public class FilePacketCapture : BasePacketCapture
+    internal class FilePacketCapture : BasePacketCapture
     {
         public void FilterCaptureFile(string BPFFilter, string fullPcapFile, string filteredPcapFile)
         {

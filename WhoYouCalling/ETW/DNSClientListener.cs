@@ -1,12 +1,12 @@
 ﻿using Microsoft.Diagnostics.Tracing;
 using Microsoft.Diagnostics.Tracing.Session;
 using System.Net;
-using WhoYouCalling.FPC;
+using WhoYouCalling.Network.FPC;
 using WhoYouCalling.Utilities;
 
 namespace WhoYouCalling.ETW
 {
-    public class DNSClientListener : Listener
+    internal class DNSClientListener : Listener
     {
         public void Listen()
         {

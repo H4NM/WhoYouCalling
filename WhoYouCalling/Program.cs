@@ -9,11 +9,11 @@ using Microsoft.Diagnostics.Tracing.Session;
 
 // CUSTOM
 using WhoYouCalling.Utilities;
-using WhoYouCalling.FPC;
+using WhoYouCalling.Process;
+using WhoYouCalling.Network;
+using WhoYouCalling.Network.FPC;
+using WhoYouCalling.Network.DNS;
 using WhoYouCalling.ETW;
-using WhoYouCalling.DNS;
-using System.Security.Cryptography;
-using Microsoft.Diagnostics.Tracing.Parsers.IIS_Trace;
 
 namespace WhoYouCalling
 {
@@ -21,7 +21,7 @@ namespace WhoYouCalling
     {
         private static List<int> s_trackedChildProcessIds = new List<int>(); // Used for tracking the corresponding executable name to the spawned processes
         private static List<string> s_etwActivityHistory = new List<string>(); // Summary of the network activities made
-        private static Dictionary<int, HashSet<string>> s_bpfFilterBasedActivity = new Dictionary<int, HashSet<string>>();
+        private static Dictionary<int, HashSet<NetworkPacket>> s_bpfFilterBasedActivity = new Dictionary<int, HashSet<NetworkPacket>>();
         private static Dictionary<int, MonitoredProcess> s_collectiveProcessInfo = new Dictionary<int, MonitoredProcess>();
         private static Dictionary<string, HashSet<DnsQueryResponse>> s_dnsQueryResults = new Dictionary<string, HashSet<DnsQueryResponse>>();
 
@@ -643,12 +643,7 @@ namespace WhoYouCalling
                                              int execPID = 0,
                                              int parentExecPID = 0,
                                              string eventType = "network", // process, childprocess, network, dnsquery, dnsresponse
-                                             string ipVersion = "IPv4",
-                                             string transportProto = "TCP",
-                                             IPAddress srcAddr = null!,
-                                             int srcPort = 0,
-                                             IPAddress dstAddr = null!,
-                                             int dstPort = 0,
+                                             NetworkPacket networkPacket = null!,
                                              string dnsQuery = "N/A",
                                              int dnsRecordTypeCode = 0,
                                              IPAddress dnsResult = null!,
@@ -662,46 +657,45 @@ namespace WhoYouCalling
             {
                 case "network": // If its a network related activity
                     {
-                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) sent a {ipVersion} {transportProto} packet to {dstAddr}:{dstPort}";
+                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) sent a {networkPacket.IPversion} {networkPacket.TransportProtocol} packet to {networkPacket.DestinationIP}:{networkPacket.DestinationPort}";
                         // Create BPF filter objects
-                        string bpfBasedProto = transportProto.ToLower();
+                        string dstEndpoint = $"{networkPacket.DestinationIP}:{networkPacket.DestinationPort}";
                         string bpfBasedIPVersion = "";
-                        string dstEndpoint = $"{dstAddr}:{dstPort}";
-                        if (ipVersion == "IPv4")
+
+                        if (networkPacket.IPversion == "IPv4")
                         {
-                            bpfBasedIPVersion = "ip";
-                            if (dstAddr.ToString() == "127.0.0.1")
+
+                            if (networkPacket.DestinationIP == "127.0.0.1")
                             {
                                 s_collectiveProcessInfo[execPID].IPv4LocalhostEndpoint.Add(dstEndpoint);
                             }
-                            else if (transportProto == "TCP")
+                            else if (networkPacket.TransportProtocol == "TCP")
                             {
                                 s_collectiveProcessInfo[execPID].IPv4TCPEndpoint.Add(dstEndpoint);
                             }
-                            else if (transportProto == "UDP")
+                            else if (networkPacket.TransportProtocol == "UDP")
                             {
                                 s_collectiveProcessInfo[execPID].IPv4UDPEndpoint.Add(dstEndpoint);
                             }
                         }
-                        else if (ipVersion == "IPv6")
+                        else if (networkPacket.IPversion == "IPv6")
                         {
-                            bpfBasedIPVersion = "ip6";
-                            if (dstAddr.ToString() == "::1")
+                
+                            if (networkPacket.DestinationIP == "::1")
                             {
                                 s_collectiveProcessInfo[execPID].IPv6LocalhostEndpoint.Add(dstEndpoint);
                             }
-                            else if (transportProto == "TCP")
+                            else if (networkPacket.TransportProtocol == "TCP")
                             {
                                 s_collectiveProcessInfo[execPID].IPv6TCPEndpoint.Add(dstEndpoint);
                             }
-                            else if (transportProto == "UDP")
+                            else if (networkPacket.TransportProtocol == "UDP")
                             {
                                 s_collectiveProcessInfo[execPID].IPv6UDPEndpoint.Add(dstEndpoint);
                             }
                         }
-                        string packetAsCSV = $"{bpfBasedIPVersion},{bpfBasedProto},{srcAddr},{srcPort},{dstAddr},{dstPort}";
 
-                        s_bpfFilterBasedActivity[execPID].Add(packetAsCSV);
+                        s_bpfFilterBasedActivity[execPID].Add(networkPacket);
                         break;
                     }
                 case "process": // If its a process related activity
@@ -804,7 +798,7 @@ namespace WhoYouCalling
             {
                 ImageName = executable
             };
-            s_bpfFilterBasedActivity[pid] = new HashSet<string>(); // Add the main executable processname
+            s_bpfFilterBasedActivity[pid] = new HashSet<NetworkPacket>(); // Add the main executable processname
         }
 
        public static bool IsTrackedChildPID(int pid)

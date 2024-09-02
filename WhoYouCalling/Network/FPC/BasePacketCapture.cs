@@ -2,9 +2,9 @@
 using SharpPcap.LibPcap;
 
 
-namespace WhoYouCalling.FPC
+namespace WhoYouCalling.Network.FPC
 {
-    public class BasePacketCapture
+    internal class BasePacketCapture
     {
         protected static int s_packetCounter = 0;
         protected CaptureFileWriterDevice _captureFileWriterDevice;

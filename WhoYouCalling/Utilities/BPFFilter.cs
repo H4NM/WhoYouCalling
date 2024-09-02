@@ -1,13 +1,15 @@
-﻿namespace WhoYouCalling.Utilities
-{
-    public static class BPFFilter
-    {
-        public static Dictionary<int, string> GetBPFFilter(Dictionary<int, HashSet<string>> bpfFilterBasedDict, bool strictBPFEnabled)
-        {
+﻿using SharpPcap.LibPcap;
+using WhoYouCalling.Network;
 
+namespace WhoYouCalling.Utilities
+{
+    internal static class BPFFilter
+    {
+        public static Dictionary<int, string> GetBPFFilter(Dictionary<int, HashSet<NetworkPacket>> bpfFilterBasedDict, bool strictBPFEnabled)
+        {
             Dictionary<int, string> bpfFilterPerExecutable = new Dictionary<int, string>();
 
-            foreach (KeyValuePair<int, HashSet<string>> entry in bpfFilterBasedDict) //For each Process 
+            foreach (KeyValuePair<int, HashSet<NetworkPacket>> entry in bpfFilterBasedDict) //For each Process 
             {
                 if (entry.Value.Count == 0) // Check if the executable has any recorded network activity
                 {
@@ -15,24 +17,17 @@
                     continue;
                 }
                 List<string> FullBPFlistForProcess = new List<string>();
-                foreach (string entryCSV in entry.Value) //For each recorded unique network activity
+                foreach (NetworkPacket packet in entry.Value) //For each recorded unique network activity
                 {
-                    string[] parts = entryCSV.Split(',');
-
-                    string ipVersion = parts[0];
-                    string transportProto = parts[1];
-                    string srcAddr = parts[2];
-                    string srcPort = parts[3];
-                    string dstAddr = parts[4];
-                    string dstPort = parts[5];
-                    string partialBPFstring = "";
+        
+                    string partialBPFstring;
                     if (strictBPFEnabled)
                     {
-                        partialBPFstring = $"({ipVersion} and {transportProto} and src host {srcAddr} and src port {srcPort} and dst host {dstAddr} and dst port {dstPort})";
+                        partialBPFstring = $"({packet.IPversion} and {packet.TransportProtocol} and src host {packet.SourceIP} and src port {packet.SourcePort} and dst host {packet.DestinationIP} and dst port {packet.DestinationPort})";
                     }
                     else
                     {
-                        partialBPFstring = $"({ipVersion} and {transportProto} and ((host {srcAddr} and host {dstAddr}) and ((dst port {dstPort} and src port {srcPort}) or (dst port {srcPort} and src port {dstPort}))))";
+                        partialBPFstring = $"({packet.IPversion} and {packet.TransportProtocol} and ((host {packet.SourceIP} and host {packet.DestinationIP}) and ((dst port {packet.DestinationPort} and src port {packet.SourcePort}) or (dst port {packet.SourcePort} and src port {packet.DestinationPort}))))";
                     }
                     FullBPFlistForProcess.Add(partialBPFstring);
                 }

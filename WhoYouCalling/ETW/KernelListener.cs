@@ -1,11 +1,11 @@
 ﻿using Microsoft.Diagnostics.Tracing.Parsers;
 using Microsoft.Diagnostics.Tracing.Parsers.Kernel;
 using Microsoft.Diagnostics.Tracing.Session;
-
+using WhoYouCalling.Network;
 
 namespace WhoYouCalling.ETW
 {
-    public class KernelListener : Listener
+    internal class KernelListener : Listener
     {
         public void Listen()
         {
@@ -31,159 +31,106 @@ namespace WhoYouCalling.ETW
             }
         }
 
+        private bool IsAMonitoredProcess(int pid)
+        {
+            if (_trackedProcessId == pid || Program.IsTrackedChildPID(pid))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        private void ProcessNetworkPacket(dynamic data, string ipVersion = "", string transportProto = "")
+        {
+            NetworkPacket ipv4TCPPacket = new NetworkPacket
+            {
+                IPversion = "IPv4",
+                TransportProtocol = "TCP",
+                SourceIP = data.saddr.ToString(),
+                SourcePort = data.sport,
+                DestinationIP = data.daddr.ToString(),
+                DestinationPort = data.dport
+            };
+            string executable;
+            string execType;
+
+            if (_trackedProcessId == data.ProcessID) // Main monitored process
+            {
+                executable = _mainExecutableFileName;
+                execType = "Main";
+            }
+            else // Child monitored process
+            {
+                executable = Program.GetTrackedPIDImageName(data.ProcessID);
+                execType = "Child";
+            }
+
+            Program.CatalogETWActivity(eventType: "network",
+                                    executable: executable,
+                                    execPID: data.ProcessID,
+                                    execType: execType,
+                                    networkPacket: ipv4TCPPacket);
+        }
+
         private void Ipv4TcpStart(TcpIpSendTraceData data)
         {
-            if (_trackedProcessId == data.ProcessID)
+            if (IsAMonitoredProcess(data.ProcessID)) // If main or child monitored process
             {
-                Program.CatalogETWActivity(eventType: "network",
-                                        executable: _mainExecutableFileName,
-                                        execPID: data.ProcessID,
-                                        execType: "Main",
-                                        ipVersion: "IPv4",
-                                        transportProto: "TCP",
-                                        srcAddr: data.saddr,
-                                        srcPort: data.sport,
-                                        dstAddr: data.daddr,
-                                        dstPort: data.dport);
-            }
-            else if (Program.IsTrackedChildPID(data.ProcessID))
-            {
-                string childExecutable = Program.GetTrackedPIDImageName(data.ProcessID);
-                Program.CatalogETWActivity(eventType: "network",
-                                        executable: childExecutable,
-                                        execPID: data.ProcessID,
-                                        execType: "Child",
-                                        ipVersion: "IPv4",
-                                        transportProto: "TCP",
-                                        srcAddr: data.saddr,
-                                        srcPort: data.sport,
-                                        dstAddr: data.daddr,
-                                        dstPort: data.dport);
+                ProcessNetworkPacket(data, ipVersion: "IPv4", transportProto: "TCP");
             }
         }
 
         private void Ipv6TcpStart(TcpIpV6SendTraceData data)
         {
-            if (_trackedProcessId == data.ProcessID)
+            if (IsAMonitoredProcess(data.ProcessID)) // If main or child monitored process
             {
-                Program.CatalogETWActivity(eventType: "network",
-                                        executable: _mainExecutableFileName,
-                                        execPID: data.ProcessID,
-                                        execType: "Main",
-                                        ipVersion: "IPv6",
-                                        transportProto: "TCP",
-                                        srcAddr: data.saddr,
-                                        srcPort: data.sport,
-                                        dstAddr: data.daddr,
-                                        dstPort: data.dport);
-            }
-            else if (Program.IsTrackedChildPID(data.ProcessID))
-            {
-                string childExecutable = Program.GetTrackedPIDImageName(data.ProcessID);
-                Program.CatalogETWActivity(eventType: "network",
-                                        executable: childExecutable,
-                                        execPID: data.ProcessID,
-                                        execType: "Child",
-                                        ipVersion: "IPv6",
-                                        transportProto: "TCP",
-                                        srcAddr: data.saddr,
-                                        srcPort: data.sport,
-                                        dstAddr: data.daddr,
-                                        dstPort: data.dport);
+                ProcessNetworkPacket(data, ipVersion: "IPv6", transportProto: "TCP");
             }
         }
 
         private void Ipv4UdpIpStart(UdpIpTraceData data)
         {
-            if (_trackedProcessId == data.ProcessID)
+            if (IsAMonitoredProcess(data.ProcessID)) // If main or child monitored process
             {
-                Program.CatalogETWActivity(eventType: "network",
-                                        executable: _mainExecutableFileName,
-                                        execPID: data.ProcessID,
-                                        execType: "Main",
-                                        ipVersion: "IPv4",
-                                        transportProto: "UDP",
-                                        srcAddr: data.saddr,
-                                        srcPort: data.sport,
-                                        dstAddr: data.daddr,
-                                        dstPort: data.dport);
-            }
-            else if (Program.IsTrackedChildPID(data.ProcessID))
-            {
-                string childExecutable = Program.GetTrackedPIDImageName(data.ProcessID);
-                Program.CatalogETWActivity(eventType: "network",
-                                        executable: childExecutable,
-                                        execPID: data.ProcessID,
-                                        execType: "Child",
-                                        ipVersion: "IPv4",
-                                        transportProto: "UDP",
-                                        srcAddr: data.saddr,
-                                        srcPort: data.sport,
-                                        dstAddr: data.daddr,
-                                        dstPort: data.dport);
+                ProcessNetworkPacket(data, ipVersion: "IPv4", transportProto: "UDP");
             }
         }
 
         private void Ipv6UdpIpStart(UpdIpV6TraceData data)
         {
-            if (_trackedProcessId == data.ProcessID)
+            if (IsAMonitoredProcess(data.ProcessID)) // If main or child monitored process
             {
-                Program.CatalogETWActivity(eventType: "network",
-                                        executable: _mainExecutableFileName,
-                                        execPID: data.ProcessID,
-                                        execType: "Main",
-                                        ipVersion: "IPv6",
-                                        transportProto: "UDP",
-                                        srcAddr: data.saddr,
-                                        srcPort: data.sport,
-                                        dstAddr: data.daddr,
-                                        dstPort: data.dport);
-            }
-            else if (Program.IsTrackedChildPID(data.ProcessID))
-            {
-                string childExecutable = Program.GetTrackedPIDImageName(data.ProcessID);
-                Program.CatalogETWActivity(eventType: "network",
-                                        executable: childExecutable,
-                                        execPID: data.ProcessID,
-                                        execType: "Child",
-                                        ipVersion: "IPv6",
-                                        transportProto: "UDP",
-                                        srcAddr: data.saddr,
-                                        srcPort: data.sport,
-                                        dstAddr: data.daddr,
-                                        dstPort: data.dport);
+                ProcessNetworkPacket(data, ipVersion: "IPv6", transportProto: "UDP");
             }
         }
 
         private void childProcessStarted(ProcessTraceData data)
         {
-
-            if (_trackedProcessId == data.ParentID) //Tracks child processes by main process
+            if (IsAMonitoredProcess(data.ParentID)) //Tracks child processes by main process
             {
-                Program.CatalogETWActivity(eventType: "childprocess",
-                                        executable: _mainExecutableFileName,
-                                        execType: "Main",
-                                        execAction: "started",
-                                        execObject: data.ImageFileName,
-                                        execPID: data.ProcessID,
-                                        parentExecPID: data.ParentID);
-                if (Program.TrackChildProcesses)
+                string executable;
+                string execType;
+
+                if (_trackedProcessId == data.ParentID) // If spawned process is from main tracked process
                 {
-                    Program.AddChildPID(data.ProcessID);
-                    Program.InstantiateProcessVariables(pid: data.ProcessID, executable: data.ImageFileName);
+                    executable = _mainExecutableFileName;
+                    execType = "Main";
                 }
-            }
-            else if (Program.IsTrackedChildPID(data.ParentID)) //Tracks child processes by child processes
-            {
-                string childExecutable = Program.GetTrackedPIDImageName(data.ParentID);
-
+                else // else the parent process is from one of the children
+                {
+                    executable = Program.GetTrackedPIDImageName(data.ParentID);
+                    execType = "Child";
+                }
                 Program.CatalogETWActivity(eventType: "childprocess",
-                                        executable: childExecutable,
-                                        execType: "Child",
-                                        execAction: "started",
-                                        execObject: data.ImageFileName,
-                                        execPID: data.ProcessID,
-                                        parentExecPID: data.ParentID);
+                                            executable: executable,
+                                            execType: execType,
+                                            execAction: "started",
+                                            execObject: data.ImageFileName,
+                                            execPID: data.ProcessID,
+                                            parentExecPID: data.ParentID);
                 if (Program.TrackChildProcesses)
                 {
                     Program.AddChildPID(data.ProcessID);
@@ -194,24 +141,29 @@ namespace WhoYouCalling.ETW
 
         private void processStopped(ProcessTraceData data)
         {
-            if (_trackedProcessId == data.ProcessID) // Main process stopped
+            if (IsAMonitoredProcess(data.ProcessID)) // Main or child process stopped
             {
+                string execType;
+                if (_trackedProcessId == data.ProcessID) // If main process stopped
+                {
+                    execType = "Main";
+                }
+                else // else a child process topped
+                {
+                    execType = "Child";
+                }
+
                 Program.CatalogETWActivity(eventType: "process",
                                         executable: data.ImageFileName,
-                                        execType: "Main",
+                                        execType: execType,
                                         execAction: "stopped",
                                         execPID: data.ProcessID);
-            }
-            else if (Program.IsTrackedChildPID(data.ProcessID)) // Child process stopped
-            {
-                Program.CatalogETWActivity(eventType: "process",
-                                        executable: data.ImageFileName,
-                                        execType: "Child",
-                                        execAction: "stopped",
-                                        execPID: data.ProcessID);
-                Program.RemoveChildPID(data.ProcessID);
+
+                if (Program.IsTrackedChildPID(data.ProcessID)) // A redundant check to ensure that the PID is only removed after calling CatalogETWActivity to ensure any possible
+                {                                              // Lookups are not affected 
+                    Program.RemoveChildPID(data.ProcessID);
+                }
             }
         }
-
     }
 }

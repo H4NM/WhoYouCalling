@@ -3,9 +3,9 @@ using System.Net;
 using System.Text.RegularExpressions;
 using WhoYouCalling.Utilities;
 
-namespace WhoYouCalling.FPC
+namespace WhoYouCalling.Network.FPC
 {
-    public class NetworkUtils
+    internal class NetworkUtils
     {
         public static IPAddress CleanIPv4AndIPv6Address(string ip)
         {

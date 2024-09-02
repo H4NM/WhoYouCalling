@@ -1,22 +1,20 @@
-﻿using System;
+﻿using System.IO;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Text;
+using WhoYouCalling.Utilities;
 
-namespace WhoYouCalling.Utilities
+namespace WhoYouCalling.Process
 { 
-    public static class ProcessManager
+    internal static class ProcessManager
     {
-
         [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         static extern bool QueryFullProcessImageName(IntPtr hProcess, int dwFlags, StringBuilder lpExeName, ref int lpdwSize);
 
-
         public static bool IsProcessRunning(int pid)
         {
-            Process[] processList = Process.GetProcesses();
-            foreach (Process activePID in processList)
+            System.Diagnostics.Process[] processList = System.Diagnostics.Process.GetProcesses();
+            foreach (System.Diagnostics.Process activePID in processList)
             {
                 if (pid == activePID.Id)
                 {
@@ -32,7 +30,7 @@ namespace WhoYouCalling.Utilities
         {
             try
             {
-                Process process = Process.GetProcessById(pid);
+                System.Diagnostics.Process process = System.Diagnostics.Process.GetProcessById(pid);
                 StringBuilder buffer = new StringBuilder(1024);
                 int size = buffer.Capacity;
                 if (QueryFullProcessImageName(process.Handle, 0, buffer, ref size))
@@ -72,7 +70,7 @@ namespace WhoYouCalling.Utilities
         {
             try
             {
-                Process process = Process.GetProcessById(pid);
+                System.Diagnostics.Process process = System.Diagnostics.Process.GetProcessById(pid);
 
                 if (!process.HasExited)
                 {
@@ -104,7 +102,7 @@ namespace WhoYouCalling.Utilities
                 startInfo.UseShellExecute = true;
                 startInfo.Verb = "open";
 
-                Process process = Process.Start(startInfo);
+                System.Diagnostics.Process process = System.Diagnostics.Process.Start(startInfo);
 
                 if (process != null)
                 {

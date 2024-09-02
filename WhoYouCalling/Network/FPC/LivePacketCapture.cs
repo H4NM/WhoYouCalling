@@ -3,9 +3,9 @@ using SharpPcap;
 using WhoYouCalling.Utilities;
 
 
-namespace WhoYouCalling.FPC
+namespace WhoYouCalling.Network.FPC
 {
-    public class LivePacketCapture : BasePacketCapture
+    internal class LivePacketCapture : BasePacketCapture
     {
         public void StartCaptureToFile(string pcapFile)
         {

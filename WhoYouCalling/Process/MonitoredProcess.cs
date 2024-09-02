@@ -1,4 +1,4 @@
-﻿namespace WhoYouCalling.Utilities
+﻿namespace WhoYouCalling.Process
 {
     public class MonitoredProcess
     {

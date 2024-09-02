@@ -1,4 +1,4 @@
-﻿namespace WhoYouCalling.DNS
+﻿namespace WhoYouCalling.Network.DNS
 {
     public static class DnsStatusLookup
     {

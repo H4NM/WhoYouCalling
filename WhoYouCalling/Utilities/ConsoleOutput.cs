@@ -75,7 +75,7 @@ namespace WhoYouCalling.Utilities
             string helpText = @"
 Usage: WhoYouCalling.exe [options]
 Options:
-  -e, --executable    : Executes the specified executable.
+  -e, --executable    : Executes the specified executable in a non-privileged context.
   -a, --arguments     : Appends arguments contained within quotes to the executable file.
   -f, --fulltracking  : Monitors and tracks the network activity by child processes, and all other spawned processes from those.
   -s, --savefullpcap  : Does not delete the full pcap thats not filtered.

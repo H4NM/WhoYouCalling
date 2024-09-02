@@ -3,7 +3,7 @@
 
 namespace WhoYouCalling.ETW
 {
-    public class Listener
+    internal class Listener
     {
         protected int _trackedProcessId = 0;
         protected string _mainExecutableFileName = "";
