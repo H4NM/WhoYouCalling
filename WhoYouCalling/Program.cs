@@ -43,7 +43,7 @@ namespace WhoYouCalling
         private static bool s_outputBPFFilter = false;
         private static bool s_outputWiresharkFilter = false;
         public static bool Debug = false;
-        public static bool TrackChildProcesses = false;
+        public static bool TrackChildProcesses = true;
         
 
         static void Main(string[] args)
@@ -459,9 +459,9 @@ namespace WhoYouCalling
                             return false;
                         }
                     }
-                    else if (args[i] == "-f" || args[i] == "--fulltracking") // Track the network activity by child processes
+                    else if (args[i] == "-c" || args[i] == "--nochildprocs") // Track the network activity by child processes
                     {
-                        TrackChildProcesses = true;
+                        TrackChildProcesses = false;
                     }
                     else if (args[i] == "-S" || args[i] == "--strictbpf")
                     {

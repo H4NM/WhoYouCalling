@@ -2,7 +2,7 @@
 
 namespace WhoYouCalling.Utilities
 {
-    public static class ConsoleOutput
+    internal static class ConsoleOutput
     {
         public static void Print(string message, string type = "")
         {
@@ -77,7 +77,7 @@ Usage: WhoYouCalling.exe [options]
 Options:
   -e, --executable    : Executes the specified executable in a non-privileged context.
   -a, --arguments     : Appends arguments contained within quotes to the executable file.
-  -f, --fulltracking  : Monitors and tracks the network activity by child processes, and all other spawned processes from those.
+  -c, --nochildprocs  : Only monitors and tracks the main PID that's executed or running.
   -s, --savefullpcap  : Does not delete the full pcap thats not filtered.
   -p, --pid           : The running process id to track rather than executing the binary.
   -t, --timer         : The number of seconds the execute binary will run for. Is a double variable so can take floating-point values.

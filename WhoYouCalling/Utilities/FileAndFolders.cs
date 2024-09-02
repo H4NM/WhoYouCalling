@@ -2,7 +2,7 @@
 
 namespace WhoYouCalling.Utilities
 {
-    public static class FileAndFolders
+    internal static class FileAndFolders
     {
         public static void CreateFolder(string folder)
         {
