@@ -56,7 +56,7 @@ namespace WhoYouCalling.ETW
                 execType = "Child";
             }
 
-            Program.CatalogETWActivity(eventType: "network",
+            Program.CatalogETWActivity(eventType: EventType.Network,
                                     executable: executable,
                                     execPID: data.ProcessID,
                                     execType: execType,
@@ -112,7 +112,7 @@ namespace WhoYouCalling.ETW
                     executable = Program.GetTrackedPIDImageName(data.ParentID);
                     execType = "Child";
                 }
-                Program.CatalogETWActivity(eventType: "childprocess",
+                Program.CatalogETWActivity(eventType: EventType.Childprocess,
                                             executable: executable,
                                             execType: execType,
                                             execAction: "started",
@@ -141,7 +141,7 @@ namespace WhoYouCalling.ETW
                     execType = "Child";
                 }
 
-                Program.CatalogETWActivity(eventType: "process",
+                Program.CatalogETWActivity(eventType: EventType.Process,
                                         executable: data.ImageFileName,
                                         execType: execType,
                                         execAction: "stopped",

@@ -131,7 +131,7 @@ namespace WhoYouCalling
                     ConsoleOutput.Print($"Executing \"{s_executablePath}\" with args \"{s_executableArguments}\"", "debug");
                     ConsoleOutput.Print($"Executing \"{s_executablePath}\"", "info");
                     s_trackedProcessId = ProcessManager.StartProcessAndGetId(s_executablePath, s_executableArguments);
-                    CatalogETWActivity(eventType: "process", executable: s_mainExecutableFileName, execType: "Main", execAction: "started", execPID: s_trackedProcessId);
+                    CatalogETWActivity(eventType: EventType.Process, executable: s_mainExecutableFileName, execType: "Main", execAction: "started", execPID: s_trackedProcessId);
                 }
                 catch (Exception ex)
                 {
@@ -142,7 +142,7 @@ namespace WhoYouCalling
             else // PID to an existing process is running
             {
                 ConsoleOutput.Print($"Listening to PID \"{s_trackedProcessId}\"", "info");
-                CatalogETWActivity(eventType: "process", executable: s_mainExecutableFileName, execType: "Main", execAction: "being listened to", execPID: s_trackedProcessId);
+                CatalogETWActivity(eventType: EventType.Process, executable: s_mainExecutableFileName, execType: "Main", execAction: "being listened to", execPID: s_trackedProcessId);
             }
 
             etwDnsClientListener.SetPIDAndImageToTrack(s_trackedProcessId, s_mainExecutableFileName);
@@ -663,7 +663,7 @@ namespace WhoYouCalling
                                              string execObject = "N/A",
                                              int execPID = 0,
                                              int parentExecPID = 0,
-                                             string eventType = "network", // process, childprocess, network, dnsquery, dnsresponse
+                                             EventType eventType = EventType.Network, 
                                              NetworkPacket networkPacket = null!,
                                              DNSResponse dnsResponse = null!,
                                              DNSQuery dnsQuery = null!)
@@ -674,7 +674,7 @@ namespace WhoYouCalling
 
             switch (eventType)
             {
-                case "network": // If its a network related activity
+                case EventType.Network: // If its a network related activity
                     {
                         historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) sent a {networkPacket.IPversion} {networkPacket.TransportProtocol} packet to {networkPacket.DestinationIP}:{networkPacket.DestinationPort}";
                         // Create BPF filter objects
@@ -717,25 +717,25 @@ namespace WhoYouCalling
                         s_processNetworkTraffic[execPID].Add(networkPacket);
                         break;
                     }
-                case "process": // If its a process related activity
+                case EventType.Process: // If its a process related activity
                     {
                         historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) {execAction}";
                         break;
                     }
-                case "childprocess": // If its a process starting another process
+                case EventType.Childprocess: // If its a process starting another process
                     {
                         historyMsg = $"{timestamp} - {executable}[{parentExecPID}]({execType}) {execAction} {execObject}[{execPID}]";
                         s_collectiveProcessInfo[parentExecPID].ChildProcess.Add(execPID);
                         break;
                     }
-                case "dnsquery": // If its a DNS query made 
+                case EventType.DNSQuery: // If its a DNS query made 
                     {
                         s_collectiveProcessInfo[execPID].DNSQueries.Add(dnsQuery.DomainQueried);
                         
                         historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) made a DNS lookup for {dnsQuery.DomainQueried}";
                         break;
                     }
-                case "dnsresponse": // If its a DNS response 
+                case EventType.DNSResponse: // If its a DNS response 
                     {
                         if (dnsResponse.StatusCode == 87) // DNS status code 87 is not an official status code of the DNS standard.
                         {                                 // Only something made up by Windows.

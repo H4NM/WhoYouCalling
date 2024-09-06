@@ -14,17 +14,19 @@ However, there are some downsides:
 </details>
 
 ## Features: 
-- Can execute a binary and records all the network activity or listen to already running process
-- Records TCPIP activities made by a processes (IPv4, IPv6 and localhost)
-- Creates a fullpacket capture .pcap file per process
-- Records DNS requests made by applications
-- Can apply strict filtering to .pcap to only record TCPIP activity being sent from the process
-- Can be automated with a specified timer to monitor network activites
-- Can ensure all monitoring is applied to all spawned child processes from the origintating executable.
+- Can start and monitor an executable or listen to an already running process
+- Records TCPIP activities made by a processes, netflow style.
+- Records DNS requests and responses made and retrieved by applications
+- Creates a full packet capture .pcap file per process
+- Can apply strict filtering to only record TCPIP activity being sent from the process. This is applied to the recorded .pcap
+- Can be automated with a timer
+- By default all monitoring is applied to all spawned child processes.
 - Results can be exported to JSON
+- Can generate a Wireshark DFL filter based on the recorded actiivty.
+- Can generate a BPF filter based on the recorded actiivty.
 
 ## Usage:
-(*Must be run as administrator - for packet capture and listening to the ETW*) 
+(*Must be run as administrator - for packet capture and listening to ETW*) 
 
 **Execute a binary with arguments and track all child processes made by it. Output the results to a folder on the user desktop**:
 `WhoYouCalling.exe -e C:\Users\Desktop\TestApplication.exe -a "--pass=ETph0n3H0m3" -f -i 4 -o C:\Users\H4NM\Desktop`
@@ -32,8 +34,8 @@ However, there are some downsides:
 **Listen to process with PID 1337 and output the results to json. Skip FPC (Which will only log the ETW activity)**:
 `WhoYouCalling.exe --pid 1337 --nopcap --json --output C:\Users\H4NM\AppData\Local\Temp`
 
-**Run sus.exe for 60 seconds and monitor all the child processes with FPC on the 8th enumerated interface. When the timer expires, kill all tracked pprocesses - including child processes**:
-`WhoYouCalling.exe -e C:\Users\H4NM\Desktop\sus.exe -f -t 60 -k -i 8 -o C:\Users\H4NM\Desktop`
+**Run sus.exe for 60 seconds with FPC on the 8th enumerated interface. When the timer expires, kill all tracked pprocesses - including child processes**:
+`WhoYouCalling.exe -e C:\Users\H4NM\Desktop\sus.exe -t 60 -k -i 8 -o C:\Users\H4NM\Desktop`
 	
 ### Example results
 ![ConsoleResults](imgs/ExampleConsoleOutput.png)

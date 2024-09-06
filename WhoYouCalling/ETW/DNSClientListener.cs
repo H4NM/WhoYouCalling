@@ -58,7 +58,7 @@ namespace WhoYouCalling.ETW
                                 executable = Program.GetTrackedPIDImageName(data.ProcessID);
                                 execType = "Child";
                             }
-                            Program.CatalogETWActivity(eventType: "dnsquery",
+                            Program.CatalogETWActivity(eventType: EventType.DNSQuery,
                                   executable: _mainExecutableFileName,
                                   execPID: data.ProcessID,
                                   execType: "Main",
@@ -116,7 +116,7 @@ namespace WhoYouCalling.ETW
                                 execType = "Child";
                             }
 
-                            Program.CatalogETWActivity(eventType: "dnsresponse",
+                            Program.CatalogETWActivity(eventType: EventType.DNSResponse,
                                     executable: executable,
                                     execPID: data.ProcessID,
                                     execType: execType,
