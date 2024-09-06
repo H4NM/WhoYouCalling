@@ -4,6 +4,10 @@ namespace WhoYouCalling.Utilities
 {
     public class Generic
     {
+        public static string NormalizePath(string path)
+        {
+            return path.Replace(@"\\", @"\"); 
+        }
         public static double ConvertToMilliseconds(double providedSeconds)
         {
             TimeSpan timeSpan = TimeSpan.FromSeconds(providedSeconds);

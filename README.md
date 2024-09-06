@@ -39,11 +39,16 @@ However, there are some downsides:
 ![ConsoleResults](imgs/ExampleConsoleOutput.png)
 ![FolderResults](imgs/ExampleOutput.png)
 
+### Complementary Tools
+There are other tools that can compliment your quest of application network analysis:
+- [Frida](https://frida.re/): Provides the most granular interaction with applications in which you can view API calls made. 
+	- *"It lets you inject snippets of JavaScript or your own library into native apps on Windows, macOS, GNU/Linux, iOS, watchOS, tvOS, Android, FreeBSD, and QNX."*
+- [Deluder](https://github.com/Warxim/deluder) and [PETEP (PEnetration TEsting Proxy)](https://github.com/Warxim/petep): Deluder uses frida but acts as an interface towards capturing the network traffic made by the application, similar to **WhoYoucalling**. Deluder also allows for many other fun things, including integration with the PETEP proxy for viewing and editing packets live.
+
+Did i miss any other suitable tool? Let me know.
+
+
 ### To Do:
-- [ ] Create namespace for whoyoucalling > network > FPC & DNS
-- [ ] Create object class for Netflow rather than doing simple string CSV
-- [ ] Create Wireshark filter in addition to BPF filter:
-  - [ ] **Work in progress** Added flag for it, and flag for outputting the BPF filter to file as well
 - [ ] Add flag to capture every process with the same executable name rather than following a chain of PIDs. 
   -  Noticed in the execution of firefox where it called a seperate process (explorer.exe) to start firefox. This is missed by --fulltracking. 
-- [ ] Refactor code to simply when monitoring is shut down. 
+- [ ] Refactor code and simplify it when monitoring is shut down. One processes from the main basically

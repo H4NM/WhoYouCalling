@@ -14,6 +14,7 @@ using WhoYouCalling.Network;
 using WhoYouCalling.Network.FPC;
 using WhoYouCalling.Network.DNS;
 using WhoYouCalling.ETW;
+using WhoYouCalling.WhoYouCalling.Network;
 
 namespace WhoYouCalling
 {
@@ -21,9 +22,9 @@ namespace WhoYouCalling
     {
         private static List<int> s_trackedChildProcessIds = new List<int>(); // Used for tracking the corresponding executable name to the spawned processes
         private static List<string> s_etwActivityHistory = new List<string>(); // Summary of the network activities made
-        private static Dictionary<int, HashSet<NetworkPacket>> s_bpfFilterBasedActivity = new Dictionary<int, HashSet<NetworkPacket>>();
+        private static Dictionary<int, HashSet<NetworkPacket>> s_processNetworkTraffic = new Dictionary<int, HashSet<NetworkPacket>>();
         private static Dictionary<int, MonitoredProcess> s_collectiveProcessInfo = new Dictionary<int, MonitoredProcess>();
-        private static Dictionary<string, HashSet<DnsQueryResponse>> s_dnsQueryResults = new Dictionary<string, HashSet<DnsQueryResponse>>();
+        private static Dictionary<string, HashSet<DNSResponse>> s_dnsQueryResults = new Dictionary<string, HashSet<DNSResponse>>();
 
         private static bool s_shutDownMonitoring = false;
         private static string s_mainExecutableFileName = "";
@@ -39,7 +40,7 @@ namespace WhoYouCalling
         private static bool s_saveFullPcap = false;
         private static bool s_noPacketCapture = false;
         private static bool s_dumpResultsToJson = false;
-        private static bool s_strictBPFEnabled = false;
+        private static bool s_strictCommunicationEnabled = false;
         private static bool s_outputBPFFilter = false;
         private static bool s_outputWiresharkFilter = false;
         public static bool Debug = false;
@@ -61,6 +62,7 @@ namespace WhoYouCalling
 
             }
             var startTime = DateTime.Now;
+            int combinedFilterProcId = 0;
 
             Console.CancelKeyPress += (sender, e) => // For manual cancellation of application
             {
@@ -81,6 +83,8 @@ namespace WhoYouCalling
 
 
             string rootFolderName = Generic.GetRunInstanceFolderName(s_mainExecutableFileName);
+            s_outputDirectory = Generic.NormalizePath(s_outputDirectory);
+
             if (!string.IsNullOrEmpty(s_outputDirectory)) // If catalog to save data is specified
             {
                 rootFolderName = $"{s_outputDirectory}{rootFolderName}";
@@ -88,13 +92,13 @@ namespace WhoYouCalling
             ConsoleOutput.Print($"Creating folder {rootFolderName}", "debug");
             FileAndFolders.CreateFolder(rootFolderName);
 
-            string fullPcapFile = @$"{rootFolderName}\{s_mainExecutableFileName}-Full.pcap";
-            string etwHistoryFile = @$"{rootFolderName}\{s_mainExecutableFileName}-History.txt";
-            string jsonResultsFile = @$"{rootFolderName}\{s_mainExecutableFileName}-Process-Results.json";
-            string jsonDNSFile = @$"{rootFolderName}\{s_mainExecutableFileName}-DNS-Responses.json";
+            string fullPcapFile = @$"{rootFolderName}\Full Network Packet Capture.pcap";
+            string etwHistoryFile = @$"{rootFolderName}\ETW history.txt";
+            string jsonResultsFile = @$"{rootFolderName}\Process details.json";
+            string jsonDNSFile = @$"{rootFolderName}\DNS responses.json";
 
             // Retrieve network interface devices
-            var devices = NetworkUtils.GetNetworkInterfaces(); // Returns a LibPcapLiveDeviceList
+            var devices = NetworkCaptureManagement.GetNetworkInterfaces(); // Returns a LibPcapLiveDeviceList
             if (devices.Count == 0)
             {
                 ConsoleOutput.Print($"No network devices were found..", "fatal");
@@ -194,14 +198,31 @@ namespace WhoYouCalling
                     }
 
                     Dictionary<int, string> computedBPFFilterByPID = new Dictionary<int, string>();
+                    Dictionary<int, string> computedDFLFilterByPID = new Dictionary<int, string>();
 
                     if (!s_noPacketCapture)
                     {
                         ConsoleOutput.Print($"Stopping packet capture saved to \"{fullPcapFile}\"", "debug");
                         livePacketCapture.StopCapture();
 
-                        ConsoleOutput.Print($"Producing BPF filter", "debug");
-                        computedBPFFilterByPID = BPFFilter.GetBPFFilter(s_bpfFilterBasedActivity, s_strictBPFEnabled);
+                        ConsoleOutput.Print($"Producing filters", "debug");
+                        computedBPFFilterByPID = NetworkFilter.GetNetworkFilter(s_processNetworkTraffic, s_strictCommunicationEnabled, NetworkFilterType.BPF); //BPFFilter.GetBPFFilter(s_processNetworkTraffic, s_strictCommunicationEnabled);
+                        computedDFLFilterByPID = NetworkFilter.GetNetworkFilter(s_processNetworkTraffic, s_strictCommunicationEnabled, NetworkFilterType.DFL); //WiresharkFilter.GetDFLFilter(s_processNetworkTraffic, s_strictCommunicationEnabled);
+                        
+                        if (computedBPFFilterByPID.ContainsKey(combinedFilterProcId)) // 0 represents the combined BPF filter for all applications
+                        {
+                            string filteredPcapFile = @$"{rootFolderName}\All {computedBPFFilterByPID.Count} processes filter.pcap";
+                            string processBPFFilterTextFile = @$"{rootFolderName}\All {computedBPFFilterByPID.Count} processes filter.txt";
+                            ConsoleOutput.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilterByPID[combinedFilterProcId]}\"", "debug");
+
+                            FilePacketCapture filePacketCapture = new FilePacketCapture();
+                            filePacketCapture.FilterCaptureFile(computedBPFFilterByPID[combinedFilterProcId], fullPcapFile, filteredPcapFile);
+                            if (s_outputBPFFilter) // If BPF Filter is to be written to text file.
+                            {
+                                FileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[combinedFilterProcId]); // Create textfile containing used BPF filter
+                            }
+                        }
+
                     }
 
                     foreach (var kvp in s_collectiveProcessInfo)
@@ -225,11 +246,9 @@ namespace WhoYouCalling
                         string executable = monitoredProcess.ImageName;
                         string executabelNameAndPID = $"{executable}-{pid}";
                         string processFolderInRootFolder = @$"{rootFolderName}\{executabelNameAndPID}";
-                        int combinedBPFprocid = 0;
 
                         ConsoleOutput.Print($"Creating folder {processFolderInRootFolder}", "debug");
                         FileAndFolders.CreateFolder(processFolderInRootFolder);
-
 
                         // DNS
                         if (monitoredProcess.DNSQueries.Count() > 0)
@@ -321,11 +340,27 @@ namespace WhoYouCalling
                             ConsoleOutput.Print($"Not creating localhost IPv6 communication file, none found for {pid}", "debug");
                         }
 
-                        // FPC 
+                        // Wireshark DFL Filter
+                        if (s_outputWiresharkFilter)
+                        {
+                            if (computedDFLFilterByPID.ContainsKey(pid)) 
+                            {
+                                string processDFLFilterTextFile = @$"{processFolderInRootFolder}\Wireshark filter.txt";
+                                FileAndFolders.CreateTextFileString(processDFLFilterTextFile, computedDFLFilterByPID[pid]); 
+                            }
+                            else if (computedDFLFilterByPID.ContainsKey(combinedFilterProcId)) 
+                            {
+                                string processDFLFilterTextFile = @$"{rootFolderName}\All {computedDFLFilterByPID.Count} processes filter.txt";
+                                FileAndFolders.CreateTextFileString(processDFLFilterTextFile, computedDFLFilterByPID[combinedFilterProcId]); // Create textfile containing used BPF filter
+                            }
+                        }
+                        
+
+                        // FPC
                         if (computedBPFFilterByPID.ContainsKey(pid)) // Creating filtered FPC based on application activity
                         {
                             string filteredPcapFile = @$"{processFolderInRootFolder}\Network Packets.pcap";
-                            string processBPFFilterTextFile = @$"{processFolderInRootFolder}\BPF-filter.txt";
+                            string processBPFFilterTextFile = @$"{processFolderInRootFolder}\BPF filter.txt";
 
                             ConsoleOutput.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter.", "debug");
                             FilePacketCapture filePacketCapture = new FilePacketCapture();
@@ -334,16 +369,6 @@ namespace WhoYouCalling
                             {
                                 FileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[pid]); // Create textfile containing used BPF filter
                             }
-                        }
-                        else if (computedBPFFilterByPID.ContainsKey(combinedBPFprocid)) // 0 represents the combined BPF filter for all applications
-                        {
-                            string filteredPcapFile = @$"{rootFolderName}\All {computedBPFFilterByPID.Count} processes filter.pcap";
-                            string processBPFFilterTextFile = @$"{rootFolderName}\All {computedBPFFilterByPID.Count} processes filter.txt";
-                            ConsoleOutput.Print($"Filtering saved pcap \"{fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilterByPID[combinedBPFprocid]}\"", "debug");
-
-                            FilePacketCapture filePacketCapture = new FilePacketCapture();
-                            filePacketCapture.FilterCaptureFile(computedBPFFilterByPID[combinedBPFprocid], fullPcapFile, filteredPcapFile);
-                            FileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[combinedBPFprocid]); // Create textfile containing used BPF filter
                         }
                         else
                         {
@@ -403,7 +428,7 @@ namespace WhoYouCalling
             {
                 if (s_dnsQueryResults.ContainsKey(query))
                 {
-                    foreach (DnsQueryResponse response in s_dnsQueryResults[query])
+                    foreach (DNSResponse response in s_dnsQueryResults[query])
                     {
                         string enrichedQuery = $"{query} {response.RecordTypeText}({response.RecordTypeCode}) query, status {response.StatusText}({response.StatusCode}), Result {response.IP}";
                         enrichedDNSQueries.Add(enrichedQuery);
@@ -465,7 +490,7 @@ namespace WhoYouCalling
                     }
                     else if (args[i] == "-S" || args[i] == "--strictbpf")
                     {
-                        s_strictBPFEnabled = true;
+                        s_strictCommunicationEnabled = true;
                     }
                     else if (args[i] == "-B" || args[i] == "--outputbpf")
                     {
@@ -496,17 +521,13 @@ namespace WhoYouCalling
 
                             if (Path.IsPathRooted(path) && System.IO.Directory.Exists(path))
                             {
-                                if (path.Substring(path.Length - 2) == @"\\")
+                                if (path.Substring(path.Length - 1) == @"\")
                                 {
                                     s_outputDirectory = path;
                                 }
-                                else if (path.Substring(path.Length - 1) == @"\")
-                                {
-                                    s_outputDirectory = path + @"\";
-                                }
                                 else
                                 {
-                                    s_outputDirectory = path + @"\\";
+                                    s_outputDirectory = path + @"\";
                                 }
                             }
                             else
@@ -589,7 +610,7 @@ namespace WhoYouCalling
 
                     else if (args[i] == "-g" || args[i] == "--getinterfaces") //Print available interfaces
                     {
-                        NetworkUtils.PrintNetworkInterfaces();
+                        NetworkCaptureManagement.PrintNetworkInterfaces();
                         System.Environment.Exit(1);
                     }
                     else if (args[i] == "-d" || args[i] == "--debug") //Save the full pcap
@@ -644,10 +665,8 @@ namespace WhoYouCalling
                                              int parentExecPID = 0,
                                              string eventType = "network", // process, childprocess, network, dnsquery, dnsresponse
                                              NetworkPacket networkPacket = null!,
-                                             string dnsQuery = "N/A",
-                                             int dnsRecordTypeCode = 0,
-                                             IPAddress dnsResult = null!,
-                                             int dnsQueryStatusCode = 0)
+                                             DNSResponse dnsResponse = null!,
+                                             DNSQuery dnsQuery = null!)
         {
 
             string timestamp = Generic.GetTimestampNow();
@@ -695,7 +714,7 @@ namespace WhoYouCalling
                             }
                         }
 
-                        s_bpfFilterBasedActivity[execPID].Add(networkPacket);
+                        s_processNetworkTraffic[execPID].Add(networkPacket);
                         break;
                     }
                 case "process": // If its a process related activity
@@ -711,31 +730,25 @@ namespace WhoYouCalling
                     }
                 case "dnsquery": // If its a DNS query made 
                     {
-                        s_collectiveProcessInfo[execPID].DNSQueries.Add(dnsQuery);
+                        s_collectiveProcessInfo[execPID].DNSQueries.Add(dnsQuery.DomainQueried);
                         
-                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) made a DNS lookup for {dnsQuery}";
+                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) made a DNS lookup for {dnsQuery.DomainQueried}";
                         break;
                     }
                 case "dnsresponse": // If its a DNS response 
                     {
-                        if (dnsQueryStatusCode == 87) // DNS status code 87 is not an official status code of the DNS standard.
-                        {                             // Only something made up by Windows.
-                                                      // Excluding these should not affect general analysis of the processes
+                        if (dnsResponse.StatusCode == 87) // DNS status code 87 is not an official status code of the DNS standard.
+                        {                                 // Only something made up by Windows.
+                                                          // Excluding these should not affect general analysis of the processes
                             break;
                         }
 
-                        string dnsRecordTypeCodeName = DnsTypeLookup.GetName(dnsRecordTypeCode); // Retrieve the DNS type code name
-                        string dnsResponseStatusCodeName = DnsStatusLookup.GetName(dnsQueryStatusCode); // Retrieve the DNS response status code name
-                        string dnsResultAsString = dnsResult.ToString(); // This is needed due to json serialization
-
-                        DnsQueryResponse responseObject = new DnsQueryResponse
+                        if (NetworkCaptureManagement.IsIPv4MappedToIPv6Address(dnsResponse.IP))
                         {
-                            RecordTypeCode = dnsRecordTypeCode,
-                            RecordTypeText = dnsRecordTypeCodeName,
-                            StatusCode = dnsQueryStatusCode,
-                            StatusText = dnsResponseStatusCodeName,
-                            IP = dnsResultAsString
-                        };
+                            IPAddress address = IPAddress.Parse(dnsResponse.IP);
+                            dnsResponse.IsIPv4MappedIPv6Address = true;
+                            dnsResponse.IPv4MappedIPv6Address = address.MapToIPv4().ToString();
+                        }
 
                         /* Normally i would prefer that the domain name queried is only entered 
                          * into this dict when its a query and not in the operation of 
@@ -746,17 +759,16 @@ namespace WhoYouCalling
                          * made a DNS call. Furthermore, s_collectiveProcessInfo is a hashset so there will be no duplicates as well.
                          */
 
-                        if (!s_dnsQueryResults.ContainsKey(dnsQuery)) // Check if DNS domain exists as key. 
+                        if (!s_dnsQueryResults.ContainsKey(dnsResponse.DomainQueried)) // Check if DNS domain exists as key. 
                         {
-                            s_dnsQueryResults[dnsQuery] = new HashSet<DnsQueryResponse>(); // Add the key with an empty defined hashset
+                            s_dnsQueryResults[dnsResponse.DomainQueried] = new HashSet<DNSResponse>(); // Add the key with an empty defined hashset
                         }
                         
-                        s_dnsQueryResults[dnsQuery].Add(responseObject);
+                        s_dnsQueryResults[dnsResponse.DomainQueried].Add(dnsResponse);
 
-                        s_collectiveProcessInfo[execPID].DNSQueries.Add(dnsQuery); // See comment above to why this is also here. 
+                        s_collectiveProcessInfo[execPID].DNSQueries.Add(dnsResponse.DomainQueried); // See comment above to why this is also here. 
 
-
-                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) received {dnsRecordTypeCodeName}({dnsRecordTypeCode}) DNS response {dnsResponseStatusCodeName}({dnsQueryStatusCode}) for {dnsQuery} is {dnsResult}";
+                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) received {dnsResponse.RecordTypeText}({dnsResponse.RecordTypeCode}) DNS response {dnsResponse.StatusText}({dnsResponse.StatusCode}) for {dnsQuery} is {dnsResponse.IP}";
                         break;
 
                     }
@@ -798,7 +810,7 @@ namespace WhoYouCalling
             {
                 ImageName = executable
             };
-            s_bpfFilterBasedActivity[pid] = new HashSet<NetworkPacket>(); // Add the main executable processname
+            s_processNetworkTraffic[pid] = new HashSet<NetworkPacket>(); // Add the main executable processname
         }
 
        public static bool IsTrackedChildPID(int pid)

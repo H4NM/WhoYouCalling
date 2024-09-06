@@ -9,6 +9,18 @@ namespace WhoYouCalling.ETW
         protected string _mainExecutableFileName = "";
         protected TraceEventSession _session;
 
+        public bool IsAMonitoredProcess(int pid)
+        {
+            if (_trackedProcessId == pid || Program.IsTrackedChildPID(pid))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         public void SetPIDAndImageToTrack(int pid, string executable)
         {
             _mainExecutableFileName = executable;

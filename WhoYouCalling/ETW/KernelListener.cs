@@ -31,18 +31,6 @@ namespace WhoYouCalling.ETW
             }
         }
 
-        private bool IsAMonitoredProcess(int pid)
-        {
-            if (_trackedProcessId == pid || Program.IsTrackedChildPID(pid))
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
         private void ProcessNetworkPacket(dynamic data, string ipVersion = "", string transportProto = "")
         {
             NetworkPacket ipv4TCPPacket = new NetworkPacket

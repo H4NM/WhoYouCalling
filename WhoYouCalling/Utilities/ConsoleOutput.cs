@@ -63,6 +63,7 @@ namespace WhoYouCalling.Utilities
    \ \/\/ /| ' \/ _ \ V / _ \ || | (__/ _` | | | | ' \/ _` |   |:::|
     \_/\_/ |_||_\___/|_|\___/\_,_|\___\__,_|_|_|_|_||_\__, |   |:::|
                                                       |___/     \___\
+                                                                 @H4NM
 ";
             ConsoleColor initialForeground = Console.ForegroundColor;
             Console.ForegroundColor = ConsoleColor.Magenta;
@@ -91,12 +92,13 @@ Options:
   -o, --output        : Output directory, full path.
   -j, --json          : If the process information should be dumped to json file.
   -B, --outputbpf     : Write the applied BPF-filter to text file.
-  -D, --outputdfl     : Write the equivalent Wireshark Display Filter to text file.
+  -D, --outputdfl     : Write the equivalent Wireshark Display Filter to text file. 
+                        Useful in conjunction with --savefullpcap to filter process activity based on all traffic.
   -h, --help          : Displays this help information.
 
 Examples:
-  WhoYouCalling.exe -e C:\Windows\System32\calc.exe -f -t 10.5 -k -i 8 -o C:\Users\H4NM\Desktop 
-  WhoYouCalling.exe --pid 4351 --nopcap --fulltracking --output C:\Windows\Temp 
+  WhoYouCalling.exe -e C:\Windows\System32\calc.exe -t 10.5 -k -i 8 -o C:\Users\H4NM\Desktop 
+  WhoYouCalling.exe --pid 4351 --nopcap --outputdfl --output C:\Windows\Temp 
 ";
             Console.WriteLine(helpText);
         }

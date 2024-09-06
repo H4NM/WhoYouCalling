@@ -1,12 +1,15 @@
-﻿using SharpPcap.LibPcap;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
+using System.Text;
 using System.Text.RegularExpressions;
-using WhoYouCalling.Network.DNS;
+using System.Threading.Tasks;
 using WhoYouCalling.Utilities;
 
-namespace WhoYouCalling.Network.FPC
+namespace WhoYouCalling.WhoYouCalling.Network
 {
-    internal class NetworkCaptureManagement
+    internal class NetworkUtils
     {
         public static bool IsIPv4MappedToIPv6Address(string ip)
         {
@@ -20,7 +23,7 @@ namespace WhoYouCalling.Network.FPC
                 return false;
             }
         }
-                        
+
         public static IPAddress CleanIPv4AndIPv6Address(string ip)
         {
             if (string.IsNullOrWhiteSpace(ip))
@@ -40,29 +43,6 @@ namespace WhoYouCalling.Network.FPC
             {
                 ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". Failed to parse it", "debug");
                 return IPAddress.None;
-            }
-        }
-
-        public static LibPcapLiveDeviceList GetNetworkInterfaces()
-        {
-            return LibPcapLiveDeviceList.Instance; // Retrieve the device list
-        }
-        public static void PrintNetworkInterfaces()
-        {
-            var devices = GetNetworkInterfaces();
-            if (devices.Count < 1)
-            {
-                ConsoleOutput.Print("No network interfaces were found on this machine.", "error");
-                Environment.Exit(1);
-            }
-
-            int i = 0;
-            string deviceMsg;
-            foreach (var dev in devices)
-            {
-                deviceMsg = $"{i}) {dev.Name} {dev.Description}";
-                ConsoleOutput.Print(deviceMsg);
-                i++;
             }
         }
     }
