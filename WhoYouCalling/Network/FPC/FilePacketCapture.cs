@@ -12,44 +12,44 @@ namespace WhoYouCalling.Network.FPC
 
             try
             {
-                ConsoleOutput.Print($"Opening saved packet capture file {fullPcapFile}", "debug");
+                ConsoleOutput.Print($"Opening saved packet capture file {fullPcapFile}", PrintType.Debug);
                 capturedDevice = new CaptureFileReaderDevice(fullPcapFile);
                 capturedDevice.Open();
             }
             catch (Exception e)
             {
-                ConsoleOutput.Print("Caught exception when opening file" + e.ToString(), "error");
+                ConsoleOutput.Print("Caught exception when opening file" + e.ToString(), PrintType.Debug);
                 return;
             }
 
             try
             {
-                ConsoleOutput.Print($"Opening new packet capture file {filteredPcapFile} to save filtered packets", "debug");
+                ConsoleOutput.Print($"Opening new packet capture file {filteredPcapFile} to save filtered packets", PrintType.Debug);
                 _captureFileWriterDevice = new CaptureFileWriterDevice(filteredPcapFile);
                 _captureFileWriterDevice.Open();
             }
             catch (Exception e)
             {
-                ConsoleOutput.Print("Caught exception when writing to file" + e.ToString(), "error");
+                ConsoleOutput.Print("Caught exception when writing to file" + e.ToString(), PrintType.Error);
                 return;
             }
-            ConsoleOutput.Print($"Setting BPF filter for reading the saved", "debug");
+            ConsoleOutput.Print($"Setting BPF filter for reading the saved", PrintType.Debug);
             capturedDevice.Filter = BPFFilter;
             capturedDevice.OnPacketArrival += new PacketArrivalEventHandler(device_OnPacketArrival);
 
             var startTime = DateTime.Now;
 
-            ConsoleOutput.Print($"Starting reading packets from {fullPcapFile}", "debug");
+            ConsoleOutput.Print($"Starting reading packets from {fullPcapFile}", PrintType.Debug);
             capturedDevice.Capture();
 
-            ConsoleOutput.Print($"Finished reading packets from {fullPcapFile}. Closing read", "debug");
+            ConsoleOutput.Print($"Finished reading packets from {fullPcapFile}. Closing read", PrintType.Debug);
             capturedDevice.Close();
-            ConsoleOutput.Print($"Finished writing packets to {filteredPcapFile}", "debug");
+            ConsoleOutput.Print($"Finished writing packets to {filteredPcapFile}", PrintType.Debug);
             _captureFileWriterDevice.Close();
 
             string filterDuration = Generic.GetPresentableDuration(startTime, DateTime.Now);
             string performanceMsg = $"Filtered {s_packetCounter} packets in {filterDuration}";
-            ConsoleOutput.Print(performanceMsg, "info");
+            ConsoleOutput.Print(performanceMsg, PrintType.Info);
         }
     }
 }

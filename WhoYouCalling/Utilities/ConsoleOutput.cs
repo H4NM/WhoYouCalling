@@ -1,26 +1,28 @@
 ﻿using System;
+using System.Diagnostics;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace WhoYouCalling.Utilities
 {
     internal static class ConsoleOutput
     {
-        public static void Print(string message, string type = "")
+        public static void Print(string message, PrintType type = PrintType.Info)
         {
             string prefix;
             switch (type)
             {
-                case "info":
+                case PrintType.Info:
                     if (Program.Debug)
                     {
                         return;
                     }
                     prefix = "[*]";
                     break;
-                case "infoTime":
-                    string currentTimestamp = Generic.GetTimestampNow();
+                case PrintType.InfoTime:
+                    string currentTimestamp = Generic.GetTimestampNow(); 
                     prefix = $"[{currentTimestamp}]";
                     break;
-                case "runningStats":
+                case PrintType.RunningMetrics:
                     if (Program.Debug)
                     {
                         return;
@@ -28,16 +30,16 @@ namespace WhoYouCalling.Utilities
                     prefix = "\r[~]";
                     Console.Write($"{prefix} {message}");
                     return;
-                case "warning":
+                case PrintType.Warning:
                     prefix = "[!]";
                     break;
-                case "error":
+                case PrintType.Error:
                     prefix = "[?]";
                     break;
-                case "fatal":
+                case PrintType.Fatal:
                     prefix = "[!!!]";
                     break;
-                case "debug":
+                case PrintType.Debug:
                     if (Program.Debug)
                     {
                         prefix = $"[DEBUG]";

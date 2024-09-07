@@ -51,8 +51,8 @@
             { 258, "AVC" },          // Application visibility and control
             { 260, "AMTRELAY" },     // Automatic multicast tunneling relay
             { 32768, "TA" },         // DNSSEC Trust Authorities
-            { 32769, "DLV" },         // DNSSEC Lookaside Validation
-            { 999999, "N/A" }       // Custom Non-existent DNS Type Value
+            { 32769, "DLV" },        // DNSSEC Lookaside Validation
+            { 999999, "N/A" }        // Custom Non-existent DNS Type Value
         };
 
         private static readonly Dictionary<string, int> NameToType = TypeToName

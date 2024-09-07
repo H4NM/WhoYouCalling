@@ -1,7 +1,7 @@
 ﻿
 namespace WhoYouCalling.Network
 {
-    public enum NetworkFilterType
+    public enum FilterType
     {
         BPF,
         DFL

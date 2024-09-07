@@ -12,7 +12,7 @@ namespace WhoYouCalling.WhoYouCalling.Network
 {
     internal class NetworkFilter
     {
-        public static Dictionary<int, string> GetNetworkFilter(Dictionary<int, HashSet<NetworkPacket>> networkPackets, bool strictComsEnabled, NetworkFilterType filter)
+        public static Dictionary<int, string> GetNetworkFilter(Dictionary<int, HashSet<NetworkPacket>> networkPackets, bool strictComsEnabled, FilterType filter)
         {
             Dictionary<int, string> filterPerExecutable = new Dictionary<int, string>();
 
@@ -20,7 +20,7 @@ namespace WhoYouCalling.WhoYouCalling.Network
             {
                 if (entry.Value.Count == 0) // Check if the executable has any recorded network activity
                 {
-                    ConsoleOutput.Print($"Not calculating {filter} filter for PID {entry.Key}. No recored network activity", "debug");
+                    ConsoleOutput.Print($"Not calculating {filter} filter for PID {entry.Key}. No recored network activity", PrintType.Debug);
                     continue;
                 }
                 List<string> fullFilterListForProcess = new List<string>();
@@ -31,12 +31,12 @@ namespace WhoYouCalling.WhoYouCalling.Network
 
                     switch (filter)
                     {
-                        case NetworkFilterType.BPF: 
+                        case FilterType.BPF: 
                             {
                                 partialFilter = GetBPFFilter(strictComsEnabled: strictComsEnabled, packet: packet);
                                 break;
                             }
-                        case NetworkFilterType.DFL:
+                        case FilterType.DFL:
                             {
                                 partialFilter = GetDFLFilter(strictComsEnabled: strictComsEnabled, packet: packet);
                                 break;
@@ -62,17 +62,17 @@ namespace WhoYouCalling.WhoYouCalling.Network
             return filterPerExecutable;
         }
 
-        private static string JoinFilterList(NetworkFilterType filter, List<string> listOfFilters)
+        private static string JoinFilterList(FilterType filter, List<string> listOfFilters)
         {
             string joinedString = "";
             switch (filter) 
             {
-                case NetworkFilterType.BPF:
+                case FilterType.BPF:
                     {
                         joinedString = string.Join(" or ", listOfFilters);
                         break;
                     }
-                case NetworkFilterType.DFL:
+                case FilterType.DFL:
                     {
                         joinedString = string.Join(" || ", listOfFilters);
                         break;

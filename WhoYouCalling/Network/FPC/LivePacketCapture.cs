@@ -14,15 +14,15 @@ namespace WhoYouCalling.Network.FPC
 
             // Open the device for capturing
             int readTimeoutMilliseconds = 1000;
-            ConsoleOutput.Print($"Opening {_captureDevice.Name} for reading packets with read timeout of {readTimeoutMilliseconds}", "debug");
+            ConsoleOutput.Print($"Opening {_captureDevice.Name} for reading packets with read timeout of {readTimeoutMilliseconds}", PrintType.Debug);
             _captureDevice.Open(mode: DeviceModes.Promiscuous | DeviceModes.DataTransferUdp | DeviceModes.NoCaptureLocal, read_timeout: readTimeoutMilliseconds);
 
             // open the output file
-            ConsoleOutput.Print($"Opening {pcapFile} to write packets to", "debug");
+            ConsoleOutput.Print($"Opening {pcapFile} to write packets to", PrintType.Debug);
             _captureFileWriterDevice = new CaptureFileWriterDevice(pcapFile);
             _captureFileWriterDevice.Open(_captureDevice);
 
-            ConsoleOutput.Print($"Starting capture process", "debug");
+            ConsoleOutput.Print($"Starting capture process", PrintType.Debug);
             _captureDevice.StartCapture();
         }
     }

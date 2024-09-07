@@ -33,7 +33,7 @@ namespace WhoYouCalling.ETW
                             int queryTypeCode = 0;
                             if (!int.TryParse(data.PayloadByName("QueryType").ToString(), out queryTypeCode))
                             {
-                                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query type. Failed to parse it", "debug");
+                                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query type. Failed to parse it", PrintType.Debug);
                                 queryTypeCode = 999999; // Non-existing DNS type value. Is later looked up
                             }
                             string dnsRecordTypeCodeName = DnsTypeLookup.GetName(queryTypeCode); // Retrieve the DNS type code name
@@ -82,12 +82,12 @@ namespace WhoYouCalling.ETW
 
                             if (!int.TryParse(data.PayloadByName("QueryStatus").ToString(), out queryStatusCode))
                             {
-                                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query status. Failed to parse it", "debug");
+                                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query status. Failed to parse it", PrintType.Debug);
                                 queryStatusCode = 999999; // Non-existing DNS status value. Is later looked up
                             }
                             if (!int.TryParse(data.PayloadByName("QueryType").ToString(), out queryTypeCode))
                             {
-                                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query type. Failed to parse it", "debug");
+                                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query type. Failed to parse it", PrintType.Debug);
                                 queryTypeCode = 999999; // Non-existing DNS type value. Is later looked up
                             }
 

@@ -21,11 +21,11 @@ namespace WhoYouCalling.Utilities
             if (File.Exists(file))
             {
                 File.Delete(file);
-                ConsoleOutput.Print($"Deleted file {file}", "debug");
+                ConsoleOutput.Print($"Deleted file {file}", PrintType.Debug);
             }
             else
             {
-                ConsoleOutput.Print($"Unable to delete file {file}. It doesnt exist", "warning");
+                ConsoleOutput.Print($"Unable to delete file {file}. It doesnt exist", PrintType.Warning);
             }
         }
     }

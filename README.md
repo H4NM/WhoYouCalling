@@ -1,6 +1,6 @@
 ﻿# WhoYouCalling 
 
-Monitors network activity made by a process through the use of [Windows Event Tracing (ETW)](https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/event-tracing-for-windows--etw-) and Full Packet Capture (FPC). Filters a generated .pcap file with BPF filtering based on the detected network activity made by processes. 
+Monitors network activity made by a process through the use of [Windows Event Tracing (ETW)](https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/event-tracing-for-windows--etw-) and Full Packet Capture (FPC). Filters a generated .pcap file with BPF based on the detected network activity made by the process. 
 This application makes process network monitoring hella' easy.
 
 <details>
@@ -22,8 +22,8 @@ However, there are some downsides:
 - Can be automated with a timer
 - By default all monitoring is applied to all spawned child processes.
 - Results can be exported to JSON
-- Can generate a Wireshark DFL filter based on the recorded actiivty.
-- Can generate a BPF filter based on the recorded actiivty.
+- Can generate a Wireshark DFL filter per process.
+- Can generate a BPF filter per process.
 
 ## Usage:
 (*Must be run as administrator - for packet capture and listening to ETW*) 
@@ -49,8 +49,6 @@ There are other tools that can compliment your quest of application network anal
 
 Did i miss any other suitable tool? Let me know.
 
-
 ### To Do:
 - [ ] Add flag to capture every process with the same executable name rather than following a chain of PIDs. 
   -  Noticed in the execution of firefox where it called a seperate process (explorer.exe) to start firefox. This is missed by --fulltracking. 
-- [ ] Refactor code and simplify it when monitoring is shut down. One processes from the main basically

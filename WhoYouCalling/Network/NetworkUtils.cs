@@ -28,7 +28,7 @@ namespace WhoYouCalling.WhoYouCalling.Network
         {
             if (string.IsNullOrWhiteSpace(ip))
             {
-                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". It was Null or Whitespace", "debug");
+                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". It was Null or Whitespace", PrintType.Debug);
                 return IPAddress.None;
             }
 
@@ -41,7 +41,7 @@ namespace WhoYouCalling.WhoYouCalling.Network
             }
             else
             {
-                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". Failed to parse it", "debug");
+                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". Failed to parse it", PrintType.Debug);
                 return IPAddress.None;
             }
         }

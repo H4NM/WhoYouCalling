@@ -18,11 +18,11 @@ namespace WhoYouCalling.Process
             {
                 if (pid == activePID.Id)
                 {
-                    ConsoleOutput.Print($"Provided PID ({pid}) is active on the system", "debug");
+                    ConsoleOutput.Print($"Provided PID ({pid}) is active on the system", PrintType.Debug);
                     return true;
                 }
             }
-            ConsoleOutput.Print($"Unable to find process with pid {pid}", "warning");
+            ConsoleOutput.Print($"Unable to find process with pid {pid}", PrintType.Warning);
             return false;
         }
 
@@ -41,30 +41,13 @@ namespace WhoYouCalling.Process
             }
             catch (Exception ex)
             {
-                ConsoleOutput.Print($"Error when retrieving executable filename from PID: {ex.Message}", "error");
+                ConsoleOutput.Print($"Error when retrieving executable filename from PID: {ex.Message}", PrintType.Error);
             }
             string defaultExecName = "NOTAPPLICABLE";
-            ConsoleOutput.Print($"Unable to retrieve executable filename from PID. Setting default name {defaultExecName}", "warning");
+            ConsoleOutput.Print($"Unable to retrieve executable filename from PID. Setting default name {defaultExecName}", PrintType.Warning);
             return defaultExecName;
 
         }
-
-        /*
-                 public static string GetProcessFileName(int PID)
-        {
-            try
-            {
-                Process runningProcess = Process.GetProcessById(PID);
-                return Path.GetFileName(runningProcess.MainModule.FileName);
-            }
-            catch (Exception ex)
-            {
-                ConsoleOutput.Print($"Failed to read executable name of PID {PID}: {ex.Message}. The process", "warning");
-                return "UNRETRIEVABLE_FILENAME";
-            }
-            
-        }
-         */
 
         public static void KillProcess(int pid)
         {
@@ -74,17 +57,17 @@ namespace WhoYouCalling.Process
 
                 if (!process.HasExited)
                 {
-                    ConsoleOutput.Print($"Killing the process with PID {pid}", "debug");
+                    ConsoleOutput.Print($"Killing the process with PID {pid}", PrintType.Debug);
                     process.Kill();
                 }
             }
             catch (ArgumentException)
             {
-                ConsoleOutput.Print($"Process with PID {pid} has already exited.", "debug");
+                ConsoleOutput.Print($"Process with PID {pid} has already exited.", PrintType.Debug);
             }
             catch (Exception ex)
             {
-                ConsoleOutput.Print($"An error occurred when stopping process when timer expired: {ex.Message}", "error");
+                ConsoleOutput.Print($"An error occurred when stopping process when timer expired: {ex.Message}", PrintType.Error);
             }
         }
 
@@ -116,7 +99,7 @@ namespace WhoYouCalling.Process
             }
             catch (Exception ex)
             {
-                ConsoleOutput.Print($"An error occurred: {ex.Message}", "error");
+                ConsoleOutput.Print($"An error occurred: {ex.Message}", PrintType.Error);
                 throw;
             }
         }

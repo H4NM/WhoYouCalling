@@ -25,7 +25,7 @@ namespace WhoYouCalling.Network.FPC
         {
             if (string.IsNullOrWhiteSpace(ip))
             {
-                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". It was Null or Whitespace", "debug");
+                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". It was Null or Whitespace", PrintType.Debug);
                 return IPAddress.None;
             }
 
@@ -38,7 +38,7 @@ namespace WhoYouCalling.Network.FPC
             }
             else
             {
-                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". Failed to parse it", "debug");
+                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". Failed to parse it", PrintType.Debug);
                 return IPAddress.None;
             }
         }
@@ -52,7 +52,7 @@ namespace WhoYouCalling.Network.FPC
             var devices = GetNetworkInterfaces();
             if (devices.Count < 1)
             {
-                ConsoleOutput.Print("No network interfaces were found on this machine.", "error");
+                ConsoleOutput.Print("No network interfaces were found on this machine.", PrintType.Error);
                 Environment.Exit(1);
             }
 
