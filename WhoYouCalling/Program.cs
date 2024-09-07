@@ -15,8 +15,7 @@ using WhoYouCalling.Network.FPC;
 using WhoYouCalling.Network.DNS;
 using WhoYouCalling.ETW;
 using WhoYouCalling.WhoYouCalling.Network;
-using PacketDotNet.Utils;
-using System.Security.Cryptography;
+using System.Reflection;
 
 namespace WhoYouCalling
 {
@@ -24,6 +23,7 @@ namespace WhoYouCalling
     {
         private static List<int> s_trackedChildProcessIds = new List<int>(); // Used for tracking the corresponding executable name to the spawned processes
         private static List<string> s_etwActivityHistory = new List<string>(); // Summary of the network activities made
+
         private static Dictionary<int, HashSet<NetworkPacket>> s_processNetworkTraffic = new Dictionary<int, HashSet<NetworkPacket>>();
         private static Dictionary<int, MonitoredProcess> s_collectiveProcessInfo = new Dictionary<int, MonitoredProcess>();
         private static Dictionary<string, HashSet<DNSResponse>> s_dnsQueryResults = new Dictionary<string, HashSet<DNSResponse>>();
@@ -46,6 +46,8 @@ namespace WhoYouCalling
         private static DateTime startTime = DateTime.Now;
 
         // Arguments
+        private static List<string> s_executableNamesToMonitor = new List<string>(); // Executable file names to monitor in addition to PID or executable
+        private static bool s_executableNamesToMonitorProvided = false;
         private static int s_trackedProcessId = 0;
         private static double s_processRunTimer = 0;
         private static bool s_processRunTimerWasProvided = false;
@@ -165,7 +167,8 @@ namespace WhoYouCalling
             while (true) // Continue monitoring and output statistics
             {
                 int capturedPacketCount = s_livePacketCapture.GetPacketCount();
-                ConsoleOutput.Print($"Processes: {s_collectiveProcessInfo.Count()}. ETW Events: {s_etwActivityHistory.Count()}. Network Packets: {capturedPacketCount}", PrintType.RunningMetrics);
+                // DEBUGGING- ConsoleOutput.Print($"Processes: {s_collectiveProcessInfo.Count()}. ETW Events: {s_etwActivityHistory.Count()}. Network Packets: {capturedPacketCount}", PrintType.RunningMetrics);
+
                 if (s_shutDownMonitoring) // If shutdown has been signaled
                 {
                     ShutdownMonitoring();
@@ -412,7 +415,7 @@ namespace WhoYouCalling
                 ConsoleOutput.Print($"Successfully stopped ETW DNS Client session", PrintType.Debug);
             }
         }
-
+     
         private static List<string> EnrichDNSQueries(List<string> dnsQueries)
         {
             List<string> enrichedDNSQueries = new List<string>();
@@ -423,7 +426,7 @@ namespace WhoYouCalling
                 {
                     foreach (DNSResponse response in s_dnsQueryResults[query])
                     {
-                        string enrichedQuery = $"{query} {response.RecordTypeText}({response.RecordTypeCode}) query, status {response.StatusText}({response.StatusCode}), Result {response.IP}";
+                        string enrichedQuery = @$"{query} {response.RecordTypeText}({response.RecordTypeCode}), {response.StatusText}({response.StatusCode}), {response.IP}";
                         enrichedDNSQueries.Add(enrichedQuery);
                     }
                 }
@@ -439,6 +442,7 @@ namespace WhoYouCalling
       
         private static bool ValidateProvidedArguments(string[] args){
             bool executableFlagSet = false;
+            bool executableNamesToMonitorFlagSet = false;
             bool executableArgsFlagSet = false;
             bool PIDFlagSet = false;
             bool networkInterfaceDeviceFlagSet = false;
@@ -465,6 +469,33 @@ namespace WhoYouCalling
                             ConsoleOutput.Print("No arguments specified after -e/--executable flag", PrintType.Warning);
                         }
                     }
+                    else if (args[i] == "-x" || args[i] == "--execnames") // Executable flag
+                    {
+                        // Ensure there's a subsequent argument that represents the executable
+                        if (i + 1 < args.Length)
+                        {
+                            string execNamesProvided = args[i + 1];
+                            List<string> execNamesParsed = new List<string>();
+
+                            if (execNamesProvided.Contains(","))
+                            {
+                                ConsoleOutput.Print($"Multiple additional executable file names to monitor: {execNamesProvided}", PrintType.Warning);
+                                execNamesParsed.AddRange(execNamesProvided.Split(","));
+                            }
+                            else
+                            {
+                                ConsoleOutput.Print($"One additional executable file name to monitor: {execNamesProvided}", PrintType.Warning);
+                                execNamesParsed.Add(execNamesProvided);
+                            }
+                            s_executableNamesToMonitor.AddRange(execNamesParsed);
+                            executableNamesToMonitorFlagSet = true;
+                            s_executableNamesToMonitorProvided = true;
+                        }
+                        else
+                        {
+                            ConsoleOutput.Print("No arguments specified after -e/--executable flag", PrintType.Warning);
+                        }
+                    }
                     else if (args[i] == "-a" || args[i] == "--arguments") // Executable arguments flag
                     {
                         if (i + 1 < args.Length)
@@ -482,7 +513,7 @@ namespace WhoYouCalling
                     {
                         TrackChildProcesses = false;
                     }
-                    else if (args[i] == "-S" || args[i] == "--strictbpf")
+                    else if (args[i] == "-S" || args[i] == "--strictfilter")
                     {
                         s_strictCommunicationEnabled = true;
                     }
@@ -739,12 +770,14 @@ namespace WhoYouCalling
                             break;
                         }
 
+                        /* TBD
                         if (NetworkCaptureManagement.IsIPv4MappedToIPv6Address(dnsResponse.IP))
                         {
                             IPAddress address = IPAddress.Parse(dnsResponse.IP);
                             dnsResponse.IsIPv4MappedIPv6Address = true;
                             dnsResponse.IPv4MappedIPv6Address = address.MapToIPv4().ToString();
                         }
+                        */
 
                         /* Normally i would prefer that the domain name queried is only entered 
                          * into this dict when its a query and not in the operation of 
@@ -759,7 +792,7 @@ namespace WhoYouCalling
                         {
                             s_dnsQueryResults[dnsResponse.DomainQueried] = new HashSet<DNSResponse>(); // Add the key with an empty defined hashset
                         }
-                        
+
                         s_dnsQueryResults[dnsResponse.DomainQueried].Add(dnsResponse);
 
                         s_collectiveProcessInfo[execPID].DNSQueries.Add(dnsResponse.DomainQueried); // See comment above to why this is also here. 

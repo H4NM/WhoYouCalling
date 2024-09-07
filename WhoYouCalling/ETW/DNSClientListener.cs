@@ -70,10 +70,11 @@ namespace WhoYouCalling.ETW
                     {
                         if (IsAMonitoredProcess(data.ProcessID))
                         {
-                            string retrievedQuery = data.PayloadByName("QueryName").ToString();
+                            string retrievedQuery = data.PayloadByName("QueryName").ToString().Trim();
                             string dnsQuery = string.IsNullOrWhiteSpace(retrievedQuery) ? "N/A" : retrievedQuery;
-                            string retrievedQueryResults = data.PayloadByName("QueryResults").ToString();
+                            string retrievedQueryResults = data.PayloadByName("QueryResults").ToString().Trim();
                             IPAddress dnsResult = NetworkUtils.CleanIPv4AndIPv6Address(retrievedQueryResults);
+
 
                             int queryTypeCode;
                             int queryStatusCode;
@@ -93,7 +94,7 @@ namespace WhoYouCalling.ETW
 
                             string dnsRecordTypeCodeName = DnsTypeLookup.GetName(queryTypeCode); // Retrieve the DNS type code name
                             string dnsResponseStatusCodeName = DnsStatusLookup.GetName(queryStatusCode); // Retrieve the DNS response status code name
-                            string dnsResultAsString = dnsResult.ToString(); // This is needed due to json serialization
+                            string dnsResultAsString = dnsResult.ToString().Trim(); // This is needed due to json serialization
 
                             DNSResponse dnsResponseQuery = new DNSResponse
                             {
@@ -104,6 +105,8 @@ namespace WhoYouCalling.ETW
                                 StatusText = dnsResponseStatusCodeName,
                                 IP = dnsResultAsString
                             };
+
+                            Console.WriteLine($"DEBUGGING-DNSCLIENT {dnsResponseQuery.IP} for {dnsResponseQuery.DomainQueried}");
 
                             if (_trackedProcessId == data.ProcessID) // DNS response to by main process 
                             {

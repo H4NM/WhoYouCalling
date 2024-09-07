@@ -80,19 +80,23 @@ Usage: WhoYouCalling.exe [options]
 Options:
   -e, --executable    : Executes the specified executable in a non-privileged context.
   -a, --arguments     : Appends arguments contained within quotes to the executable file.
-  -c, --nochildprocs  : Only monitors and tracks the main PID that's executed or running.
-  -s, --savefullpcap  : Does not delete the full pcap thats not filtered.
   -p, --pid           : The running process id to track rather than executing the binary.
+  -x, --execnames     : A comma separated list of executable file names to also monitor for.
+                        A useful scenario is when C:\Program Files\Mozilla Firefox\firefox.exe is launched.
+                        The PPID of the main firefox instance belongs to explorer.exe, which is 
+                        an already running process, meaning that following a PPID/PID trail misses the process.
+  -i, --interface     : The network interface number. Retrievable with the -g/--getinterfaces flag.
+  -g, --getinterfaces : Prints the network interface devices with corresponding number (usually 0-10).
   -t, --timer         : The number of seconds the execute binary will run for. Is a double variable so can take floating-point values.
   -k, --killprocesses : Used in conjunction with the timer in which the main process is killed. 
                         If full tracking flag is set, childprocesses are also killed.
-  -i, --interface     : The network interface number. Retrievable with the -g/--getinterfaces flag.
-  -g, --getinterfaces : Prints the network interface devices with corresponding number (usually 0-10).
-  -S, --strictbpf     : Only generates a BPF filter based of recorded traffic that was sent by processes. 
+  -c, --nochildprocs  : Only monitors and tracks the main PID that's executed or running.
+  -n, --nopcap        : Skips collecting packets from interface.
+  -S, --strictfilter  : Only generates a BPF filter based of recorded traffic that was sent by processes. 
                         This excludes received traffic in the .pcap files.
-  -n, --nopcap        : Skips collecting full packet capture.
-  -o, --output        : Output directory, full path.
+  -s, --savefullpcap  : Does not delete the full pcap thats not filtered.
   -j, --json          : If the process information should be dumped to json file.
+  -o, --output        : Output directory, full path.
   -B, --outputbpf     : Write the applied BPF-filter to text file.
   -D, --outputdfl     : Write the equivalent Wireshark Display Filter to text file. 
                         Useful in conjunction with --savefullpcap to filter process activity based on all traffic.
