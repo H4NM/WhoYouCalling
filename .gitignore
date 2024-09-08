@@ -4,6 +4,7 @@ venv/
 dist/
 Caps/
 TestApplication*
+args.txt
 
 
 ## Ignore Visual Studio temporary files, build results, and

@@ -348,7 +348,7 @@ namespace WhoYouCalling
             }
             var endTime = DateTime.Now;
             string monitorDuration = Generic.GetPresentableDuration(startTime, endTime);
-            ConsoleOutput.Print($"Finished! Monitor duration: {monitorDuration}. Results are in the folder {s_rootFolderName}.", PrintType.InfoTime);
+            ConsoleOutput.Print($"Finished! Monitor duration: {monitorDuration}. Results are in the folder {s_rootFolderName}", PrintType.InfoTime);
         }
 
         private static void SetCancelKeyEvent()
@@ -426,7 +426,8 @@ namespace WhoYouCalling
                 {
                     foreach (DNSResponse response in s_dnsQueryResults[query])
                     {
-                        string enrichedQuery = @$"{query} {response.RecordTypeText}({response.RecordTypeCode}), {response.StatusText}({response.StatusCode}), {response.IP}";
+                        string enrichedQuery = @$"{query}   {String.Join(", ", response.QueryResult.IPs)}";
+
                         enrichedDNSQueries.Add(enrichedQuery);
                     }
                 }
@@ -767,17 +768,8 @@ namespace WhoYouCalling
                         if (dnsResponse.StatusCode == 87) // DNS status code 87 is not an official status code of the DNS standard.
                         {                                 // Only something made up by Windows.
                                                           // Excluding these should not affect general analysis of the processes
-                            break;
+                            return;
                         }
-
-                        /* TBD
-                        if (NetworkCaptureManagement.IsIPv4MappedToIPv6Address(dnsResponse.IP))
-                        {
-                            IPAddress address = IPAddress.Parse(dnsResponse.IP);
-                            dnsResponse.IsIPv4MappedIPv6Address = true;
-                            dnsResponse.IPv4MappedIPv6Address = address.MapToIPv4().ToString();
-                        }
-                        */
 
                         /* Normally i would prefer that the domain name queried is only entered 
                          * into this dict when its a query and not in the operation of 
@@ -797,7 +789,7 @@ namespace WhoYouCalling
 
                         s_collectiveProcessInfo[execPID].DNSQueries.Add(dnsResponse.DomainQueried); // See comment above to why this is also here. 
 
-                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) received {dnsResponse.RecordTypeText}({dnsResponse.RecordTypeCode}) DNS response {dnsResponse.StatusText}({dnsResponse.StatusCode}) for {dnsQuery} is {dnsResponse.IP}";
+                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) received {dnsResponse.RecordTypeText}({dnsResponse.RecordTypeCode}) DNS response {dnsResponse.StatusText}({dnsResponse.StatusCode}) for {dnsResponse.DomainQueried} is {String.Join(", ", dnsResponse.QueryResult.IPs)}";
                         break;
 
                     }

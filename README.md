@@ -52,8 +52,6 @@ Did i miss any other suitable tool? Let me know.
 ### To Do:
 - [ ] LOKAL TODO: DNS BUGG vid mottagande response (AAAA) "QueryName="www.songsofconquest.com" QueryType="28" QueryOptions="722 968 478 755 217 408" QueryStatus="0" QueryResults="type: 5 ext-sq.squarespace.com;::ffff:198.185.159.144;::ffff:198.185.159.145;::ffff:198.49.23.144;::ffff:198.49.23.145;"/>"
 	Innehåller flera adresser som inte parsas ut ordentligt. Lösning vore om en lista med alla uthämtade returneras och alla dem bearbetas för sig
-- [ ] LOKAL TODO: OLIKA HASHSET FÖR DNSRESPONSE OBJECT, WHY DO ?
-
  
 - [ ] Add flag to capture every process with the same executable name rather than following a chain of PIDs. 
   - Noticed in the execution of firefox where it called a seperate process (explorer.exe) to start firefox. This is missed by --fulltracking. 
