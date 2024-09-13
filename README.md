@@ -48,7 +48,7 @@ WhoYouCalling.exe -e C:\Users\H4NM\Desktop\sus.exe -t 60 -k -i 8 -o C:\Users\H4N
 
 **Execute firefox.exe and also monitor for other processes with the same executable name** (*This is especially needed if the main processes calls an already running process like `explorer.exe` to start a child process.*)
 ```
-WhoYouCalling.exe --executable "C:\Program Files\Mozilla Firefox\firefox.exe" --interface 4 --execnames "firefox.exe"
+WhoYouCalling.exe --executable "C:\Program Files\Mozilla Firefox\firefox.exe" --nopcap --execnames "firefox.exe"
 ```
 	
 ### Example results
@@ -61,12 +61,13 @@ There are other tools that can compliment your quest of application network anal
 	- *"It lets you inject snippets of JavaScript or your own library into native apps on Windows, macOS, GNU/Linux, iOS, watchOS, tvOS, Android, FreeBSD, and QNX."*
 - [Deluder](https://github.com/Warxim/deluder) and [PETEP (PEnetration TEsting Proxy)](https://github.com/Warxim/petep): Deluder uses frida but acts as an interface towards capturing the network traffic made by the application, similar to **WhoYoucalling**. Deluder also allows for many other fun things, including integration with the PETEP proxy for viewing and editing packets live.
 
-Did i miss any other suitable tool? Let me know.
-
 ### Limitations
 - **DNS**: In ETW, `Microsoft-Windows-DNS-Client` only logs A and AAAA queries, neglecting other DNS query types such as PTR, TXT, MX, SOA etc. It does capture CNAME and it's respective adresses, which are part of the DNS response. However, with the FPC the requests are captured either way, just not portrayed as in registered DNS traffic by the application.
 
+## Bugs or Requests? Create an issue! :) 
+
 ### To Do:
+- Clean up DNS output to text file as there are instances of duplicates 
 - Add inverted communication, in which only received to the process filter is applied.
   - Also adjust flag for specifying. Atm it's a bool flag. It should be able to take options such as direction of communication 
 - Refactor. Lots and lots to refactor and make more tidy :) 
