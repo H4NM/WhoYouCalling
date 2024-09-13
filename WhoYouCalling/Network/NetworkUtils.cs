@@ -28,12 +28,11 @@ namespace WhoYouCalling.WhoYouCalling.Network
         public static DNSResponseResult ParseDNSResult(string queryResults)
         {
             DNSResponseResult responseResult = new DNSResponseResult {
-                IPs = new List<string>()
+                IPs = new List<string> ()
             };
 
             if (!queryResults.Contains(";") || string.IsNullOrWhiteSpace(queryResults))
             {
-                ConsoleOutput.Print($"DEBUGGING-NETWORK_UTILS_REMOVE_ME_LATER - Parsing DNS result \"{queryResults}\". It did not contain a \";\" OR NULL OR EMPTY...", PrintType.Info);
                 return responseResult;
             }
 
@@ -46,28 +45,26 @@ namespace WhoYouCalling.WhoYouCalling.Network
                 }
                 else if (result.Contains("type: "))
                 {
-                    ConsoleOutput.Print($"DEBUGGING-NETWORK_UTILS_REGEX_MATCH_TYPE_REMOVE_ME_LATER - \"{result}\"", PrintType.Debug);
 
-                    MatchCollection coll = Regex.Matches(result, "type\\:\\s(\\d+)\\s(.*)");
-                    int recordTypeCode = int.Parse(coll[0].Groups[1].Value);
-                    string domainQueried = coll[0].Groups[2].Value;
+                    MatchCollection matches = Regex.Matches(result, "type\\:\\s(\\d+)\\s(.*)");
+                    int recordTypeCode = int.Parse(matches[0].Groups[1].Value);
+                    string retrievedTextPart = matches[0].Groups[2].Value;
+                    string domain = string.IsNullOrEmpty(retrievedTextPart) ? "N/A" : retrievedTextPart;
 
                     responseResult.BundledRecordTypeCode = recordTypeCode;
                     responseResult.BundledRecordTypeText = DnsTypeLookup.GetName(recordTypeCode);
-                    responseResult.BundledDomainQueried = domainQueried;
+                    responseResult.BundledDomain = domain;
                 }
                 else
                 {
                     if (IsIPv4MappedToIPv6Address(result))
                     {
-                        ConsoleOutput.Print($"DEBUGGING-NETWORK_UTILS_IPv4ADDRINIPv6_REMOVE_ME_LATER - \"{result}\"", PrintType.Debug);
                         responseResult.IPv4MappedIPv6Adresses = true;
                         IPAddress address = IPAddress.Parse(result);
                         responseResult.IPs.Add(address.MapToIPv4().ToString());
                     }
                     else
                     {
-                        ConsoleOutput.Print($"DEBUGGING-NETWORK_UTILS_ADDING_ORD_ADDR_REMOVE_ME_LATER - \"{result}\"", PrintType.Debug);
                         responseResult.IPs.Add(result);
                     }
                 }

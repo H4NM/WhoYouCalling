@@ -22,7 +22,7 @@ namespace WhoYouCalling.Process
                     return true;
                 }
             }
-            ConsoleOutput.Print($"Unable to find process with pid {pid}", PrintType.Warning);
+            ConsoleOutput.Print($"Unable to find process with pid {pid}", PrintType.Debug);
             return false;
         }
 
@@ -41,10 +41,10 @@ namespace WhoYouCalling.Process
             }
             catch (Exception ex)
             {
-                ConsoleOutput.Print($"Error when retrieving executable filename from PID: {ex.Message}", PrintType.Error);
+                ConsoleOutput.Print($"Error when retrieving executable filename from PID: {ex.Message}", PrintType.Debug);
             }
-            string defaultExecName = "NOTAPPLICABLE";
-            ConsoleOutput.Print($"Unable to retrieve executable filename from PID. Setting default name {defaultExecName}", PrintType.Warning);
+            string defaultExecName = "NA";
+            ConsoleOutput.Print($"Unable to retrieve executable filename from PID. Setting default name \"{defaultExecName}\"", PrintType.Debug);
             return defaultExecName;
 
         }
@@ -67,7 +67,7 @@ namespace WhoYouCalling.Process
             }
             catch (Exception ex)
             {
-                ConsoleOutput.Print($"An error occurred when stopping process when timer expired: {ex.Message}", PrintType.Error);
+                ConsoleOutput.Print($"An error occurred when stopping process when timer expired: {ex.Message}", PrintType.Debug);
             }
         }
 

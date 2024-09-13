@@ -5,6 +5,7 @@ dist/
 Caps/
 TestApplication*
 args.txt
+requirements.txt
 
 
 ## Ignore Visual Studio temporary files, build results, and

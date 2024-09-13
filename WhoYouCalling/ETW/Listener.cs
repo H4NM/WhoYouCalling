@@ -1,4 +1,5 @@
 ﻿using Microsoft.Diagnostics.Tracing.Session;
+using WhoYouCalling.Process;
 
 
 namespace WhoYouCalling.ETW
@@ -11,6 +12,16 @@ namespace WhoYouCalling.ETW
 
         public bool IsAMonitoredProcess(int pid)
         {
+            if (Program.TrackExecutablesByName())
+            {
+                string processFileName = ProcessManager.GetProcessFileName(pid);
+                if (Program.IsTrackedExecutableName(processFileName))
+                {
+                    Program.InstantiateProcessVariables(pid, processFileName);
+                    return true;
+                }
+            }
+
             if (_trackedProcessId == pid || Program.IsTrackedChildPID(pid))
             {
                 return true;

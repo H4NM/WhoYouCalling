@@ -14,14 +14,16 @@ However, there are some downsides:
 </details>
 
 ## Features: 
-- Can start and monitor an executable or listen to an already running process
+- Can start and monitor an executable
+- Can monitor an already running process
+- Can monitor additional related processes based on executable names 
 - Records TCPIP activities made by a processes, netflow style.
 - Records DNS requests and responses made and retrieved by applications
 - Creates a full packet capture .pcap file per process
 - Can apply strict filtering to only record TCPIP activity being sent from the process. This is applied to the recorded .pcap
 - Can be automated with a timer
 - By default all monitoring is applied to all spawned child processes.
-- Results can be exported to JSON
+- Process and DNS results can be exported to JSON
 - Can generate a Wireshark DFL filter per process.
 - Can generate a BPF filter per process.
 
@@ -49,10 +51,5 @@ There are other tools that can compliment your quest of application network anal
 
 Did i miss any other suitable tool? Let me know.
 
-### To Do:
-- [ ] LOKAL TODO: DNS BUGG vid mottagande response (AAAA) "QueryName="www.songsofconquest.com" QueryType="28" QueryOptions="722 968 478 755 217 408" QueryStatus="0" QueryResults="type: 5 ext-sq.squarespace.com;::ffff:198.185.159.144;::ffff:198.185.159.145;::ffff:198.49.23.144;::ffff:198.49.23.145;"/>"
-	Innehåller flera adresser som inte parsas ut ordentligt. Lösning vore om en lista med alla uthämtade returneras och alla dem bearbetas för sig
- 
-- [ ] Add flag to capture every process with the same executable name rather than following a chain of PIDs. 
-  - Noticed in the execution of firefox where it called a seperate process (explorer.exe) to start firefox. This is missed by --fulltracking. 
-	- LOKAL NOTE: Har lagt in två variabler som ska populeras vid angivet argument nu för filnamn att övervaka.
+### Limitations
+- **DNS**: In ETW, `Microsoft-Windows-DNS-Client` only logs A and AAAA queries, neglecting other DNS query types such as PTR, TXT, MX, SOA etc. It does capture CNAME and it's respective adresses, which are part of the DNS response. However, with the FPC the requests are captured either way, just not portrayed as in registered DNS traffic by the application.

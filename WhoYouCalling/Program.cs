@@ -85,8 +85,8 @@ namespace WhoYouCalling
 
             SetCancelKeyEvent();
             PrintStartMonitoringText();
-            
-            
+
+
             ConsoleOutput.Print("Retrieving executable filename", PrintType.Debug);
             s_mainExecutableFileName = GetExecutableFileName(s_trackedProcessId, s_executablePath);
 
@@ -166,9 +166,7 @@ namespace WhoYouCalling
 
             while (true) // Continue monitoring and output statistics
             {
-                int capturedPacketCount = s_livePacketCapture.GetPacketCount();
-                // DEBUGGING- ConsoleOutput.Print($"Processes: {s_collectiveProcessInfo.Count()}. ETW Events: {s_etwActivityHistory.Count()}. Network Packets: {capturedPacketCount}", PrintType.RunningMetrics);
-
+                ConsoleOutput.PrintMetrics();
                 if (s_shutDownMonitoring) // If shutdown has been signaled
                 {
                     ShutdownMonitoring();
@@ -490,7 +488,7 @@ namespace WhoYouCalling
                             }
                             s_executableNamesToMonitor.AddRange(execNamesParsed);
                             executableNamesToMonitorFlagSet = true;
-                            s_executableNamesToMonitorProvided = true;
+                            s_executableNamesToMonitorProvided = true; 
                         }
                         else
                         {
@@ -585,7 +583,7 @@ namespace WhoYouCalling
                             }
                             else
                             {
-                                Console.WriteLine($"The provided value for PID ({s_trackedProcessId}) is not a valid integer", PrintType.Warning);
+                                ConsoleOutput.Print($"The provided value for PID ({s_trackedProcessId}) is not a valid integer", PrintType.Warning);
                                 return false;
                             }
                         }
@@ -605,7 +603,7 @@ namespace WhoYouCalling
                             }
                             else
                             {
-                                Console.WriteLine($"The provided value for timer ({s_processRunTimer}) is not a valid double", PrintType.Warning);
+                                ConsoleOutput.Print($"The provided value for timer ({s_processRunTimer}) is not a valid double", PrintType.Warning);
                                 return false;
                             }
                         }
@@ -625,7 +623,7 @@ namespace WhoYouCalling
                             }
                             else
                             {
-                                Console.WriteLine($"The provided value for network device ({s_networkInterfaceChoice}) is not a valid integer", PrintType.Warning);
+                                ConsoleOutput.Print($"The provided value for network device ({s_networkInterfaceChoice}) is not a valid integer", PrintType.Warning);
                                 return false;
                             }
                         }
@@ -827,11 +825,31 @@ namespace WhoYouCalling
 
         public static void InstantiateProcessVariables(int pid, string executable)
         {
-            s_collectiveProcessInfo[pid] = new MonitoredProcess
+            if (!s_collectiveProcessInfo.ContainsKey(pid) && !s_processNetworkTraffic.ContainsKey(pid))
             {
-                ImageName = executable
-            };
-            s_processNetworkTraffic[pid] = new HashSet<NetworkPacket>(); // Add the main executable processname
+                s_collectiveProcessInfo[pid] = new MonitoredProcess
+                {
+                    ImageName = executable
+                };
+                s_processNetworkTraffic[pid] = new HashSet<NetworkPacket>(); // Add the main executable processname
+            }
+        }
+
+        public static bool TrackExecutablesByName()
+        {
+            return s_executableNamesToMonitorProvided;
+        }
+
+       public static bool IsTrackedExecutableName(string executable)
+        {
+            if (s_executableNamesToMonitor.Contains(executable)) 
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
        public static bool IsTrackedChildPID(int pid)
@@ -857,6 +875,26 @@ namespace WhoYouCalling
         public static string GetTrackedPIDImageName(int pid)
         {
             return s_collectiveProcessInfo[pid].ImageName;
+        }
+
+        public static int GetDNSActivityCount()
+        {
+            return s_dnsQueryResults.Count();
+        }
+
+        public static int GetETWActivityCount()
+        {
+            return s_etwActivityHistory.Count();
+        }
+
+        public static int GetLivePacketCount()
+        {
+            return s_livePacketCapture.GetPacketCount();
+        }
+
+        public static int GetProcessesCount()
+        {
+            return s_collectiveProcessInfo.Count();
         }
     }
 }

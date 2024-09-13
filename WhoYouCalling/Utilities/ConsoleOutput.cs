@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using WhoYouCalling.Network.FPC;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace WhoYouCalling.Utilities
@@ -55,6 +56,16 @@ namespace WhoYouCalling.Utilities
             }
             Console.WriteLine($"{prefix} {message}");
         }
+
+        public static void PrintMetrics()
+        {
+            int packetCount = Program.GetLivePacketCount();
+            int etwActivities = Program.GetETWActivityCount();
+            int dnsActivities = Program.GetDNSActivityCount();
+            int processCount = Program.GetProcessesCount();
+            ConsoleOutput.Print($"Processes: {processCount}. ETW Events: {etwActivities}. DNS Queries: {dnsActivities}. Network Packets: {packetCount}", PrintType.RunningMetrics);
+        }
+
         public static void PrintHeader()
         {
             string headerText = @" 

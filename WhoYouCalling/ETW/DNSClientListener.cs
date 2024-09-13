@@ -74,7 +74,6 @@ namespace WhoYouCalling.ETW
                             string dnsQuery = string.IsNullOrWhiteSpace(retrievedQuery) ? "N/A" : retrievedQuery;
                             string retrievedQueryResults = data.PayloadByName("QueryResults").ToString().Trim();
 
-
                             int queryTypeCode;
                             int queryStatusCode;
                             string executable;
@@ -124,6 +123,10 @@ namespace WhoYouCalling.ETW
                         }
                         break;
                 }
+                default:
+                    {
+                        break;
+                    }
             }
         }
     }
