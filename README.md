@@ -68,6 +68,4 @@ There are other tools that can compliment your quest of application network anal
 
 ### To Do:
 - Clean up DNS output to text file as there are instances of duplicates 
-- Add inverted communication, in which only received to the process filter is applied.
-  - Also adjust flag for specifying. Atm it's a bool flag. It should be able to take options such as direction of communication 
 - Refactor. Lots and lots to refactor and make more tidy :) 

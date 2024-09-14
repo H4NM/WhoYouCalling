@@ -67,7 +67,6 @@ namespace WhoYouCalling
         public static bool Debug = false;
         public static bool TrackChildProcesses = true;
 
-
         static void Main(string[] args)
         {
             if (!(TraceEventSession.IsElevated() ?? false))
@@ -420,19 +419,23 @@ namespace WhoYouCalling
 
             foreach (string query in dnsQueries)
             {
+                string enrichedQuery = query;
+
                 if (s_dnsQueryResults.ContainsKey(query))
                 {
+                    HashSet<string> ipsForDomain = new HashSet<string>();
+
                     foreach (DNSResponse response in s_dnsQueryResults[query])
                     {
-                        string enrichedQuery = @$"{query}   {String.Join(", ", response.QueryResult.IPs)}";
-
-                        enrichedDNSQueries.Add(enrichedQuery);
+                        foreach (string ip in response.QueryResult.IPs)
+                        {
+                            ipsForDomain.Add(ip);
+                        }
                     }
+
+                    enrichedQuery = $"{query}   {string.Join(", ", ipsForDomain)}";
                 }
-                else
-                {
-                    enrichedDNSQueries.Add(query);
-                }
+                enrichedDNSQueries.Add(enrichedQuery);
             }
 
             enrichedDNSQueries.Sort();
