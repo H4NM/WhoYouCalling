@@ -1,11 +1,4 @@
-﻿using PacketDotNet;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
-using WhoYouCalling.Network;
+﻿using WhoYouCalling.Network;
 using WhoYouCalling.Utilities;
 
 namespace WhoYouCalling.WhoYouCalling.Network

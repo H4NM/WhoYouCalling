@@ -1,4 +1,5 @@
-﻿using static System.Runtime.InteropServices.JavaScript.JSType;
+﻿using WhoYouCalling.Network;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace WhoYouCalling.Utilities
 {
@@ -22,9 +23,13 @@ namespace WhoYouCalling.Utilities
             return folderName;
         }
 
-        public static List<string> ConvertHashSetToSortedList(HashSet<string> providedHashSet)
+        public static List<string> ConvertDestinationEndpoints(HashSet<DestinationEndpoint> providedHashSet)
         {
-            List<string> convertedToList = providedHashSet.ToList();
+            List<string> convertedToList = new List<string>();
+            foreach (DestinationEndpoint dstEndpoint in providedHashSet)
+            {
+                convertedToList.Add($"{dstEndpoint.IP}:{dstEndpoint.Port}");
+            }
             convertedToList.Sort();
             return convertedToList;
         }

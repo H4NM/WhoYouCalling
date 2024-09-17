@@ -103,7 +103,6 @@ namespace WhoYouCalling.ETW
                                 QueryResult = NetworkUtils.ParseDNSResult(retrievedQueryResults)
                             };
 
-
                             if (_trackedProcessId == data.ProcessID) // DNS response to by main process 
                             {
                                 executable = _mainExecutableFileName;

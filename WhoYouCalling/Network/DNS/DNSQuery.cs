@@ -2,7 +2,7 @@
 
 namespace WhoYouCalling.Network.DNS
 {
-    public class DNSQuery 
+    public struct DNSQuery 
     {
         public string DomainQueried { get; set; } 
         public int RecordTypeCode { get; set; }

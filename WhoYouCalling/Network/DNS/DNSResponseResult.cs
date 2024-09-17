@@ -7,7 +7,6 @@ namespace WhoYouCalling.Network.DNS
         public int BundledRecordTypeCode { get; set; }
         public string BundledRecordTypeText { get; set; }
         public string BundledDomain { get; set; }
-
         public List<string> IPs { get; set; }
         public bool IPv4MappedIPv6Adresses { get; set; }
 

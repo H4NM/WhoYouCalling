@@ -67,5 +67,6 @@ There are other tools that can compliment your quest of application network anal
 ## Bugs or Requests? Create an issue! :) 
 
 ### To Do:
-- Clean up DNS output to text file as there are instances of duplicates 
 - Refactor. Lots and lots to refactor and make more tidy :) 
+  -	Continue adding struct for argument passing. Part of project refactor
+  - Continue fixing DNS struct. Lots to fix here in terms of logic
