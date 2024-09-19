@@ -11,16 +11,27 @@ namespace WhoYouCalling.Utilities.Arguments
 {
     internal class ArgumentManager
     {
-        public static bool ValidateArguments(string[] args)
+        private bool executableFlagSet = false;
+        private bool executableNamesToMonitorFlagSet = false;
+        private bool executableArgsFlagSet = false;
+        private bool PIDFlagSet = false;
+        private bool networkInterfaceDeviceFlagSet = false;
+        private bool noPCAPFlagSet = false;
+        private bool killProcessesFlagSet = false;
+
+        private Program _mainClass;
+
+        internal ArgumentManager(Program mainClass)
         {
+            _mainClass = mainClass;
+        }
+
+
+        public ArgumentData ParseArguments(string[] args)
+        {
+            ArgumentData argumentData = new ArgumentData();
+
             // Flags used for reviewing argument combinations
-            bool executableFlagSet = false;
-            bool executableNamesToMonitorFlagSet = false;
-            bool executableArgsFlagSet = false;
-            bool PIDFlagSet = false;
-            bool networkInterfaceDeviceFlagSet = false;
-            bool noPCAPFlagSet = false;
-            bool killProcessesFlagSet = false;
 
             // Check if no args are provided
             if (args.Length > 0)
@@ -33,9 +44,10 @@ namespace WhoYouCalling.Utilities.Arguments
                         // Ensure there's a subsequent argument that represents the executable
                         if (i + 1 < args.Length)
                         {
-                            s_executablePath = args[i + 1];
+                            argumentData.ExecutablePath = args[i + 1];
+                            argumentData.ExecutablePathProvided = true;
                             executableFlagSet = true;
-                            s_executablePathProvided = true;
+
                         }
                         else
                         {
@@ -60,9 +72,10 @@ namespace WhoYouCalling.Utilities.Arguments
                                 ConsoleOutput.Print($"One additional executable file name to monitor: {execNamesProvided}", PrintType.Warning);
                                 execNamesParsed.Add(execNamesProvided);
                             }
-                            s_executableNamesToMonitor.AddRange(execNamesParsed);
+                            argumentData.ExecutableNamesToMonitor.AddRange(execNamesParsed);
+                            argumentData.ExecutableNamesToMonitorProvided = true;
                             executableNamesToMonitorFlagSet = true;
-                            s_executableNamesToMonitorProvided = true;
+
                         }
                         else
                         {
@@ -73,43 +86,43 @@ namespace WhoYouCalling.Utilities.Arguments
                     {
                         if (i + 1 < args.Length)
                         {
-                            s_executableArguments = args[i + 1];
+                            argumentData.ExecutableArguments = args[i + 1];
                             executableArgsFlagSet = true;
                         }
                         else
                         {
                             ConsoleOutput.Print("No arguments specified after -a/--arguments flag", PrintType.Warning);
-                            return false;
+                            return null;
                         }
                     }
                     else if (args[i] == "-c" || args[i] == "--nochildprocs") // Track the network activity by child processes
                     {
-                        TrackChildProcesses = false;
+                        argumentData.TrackChildProcesses = false;
                     }
                     else if (args[i] == "-S" || args[i] == "--strictfilter")
                     {
-                        s_strictCommunicationEnabled = true;
+                        argumentData.StrictCommunicationEnabled = true;
                     }
                     else if (args[i] == "-B" || args[i] == "--outputbpf")
                     {
-                        s_outputBPFFilter = true;
+                        argumentData.OutputBPFFilter = true;
                     }
                     else if (args[i] == "-D" || args[i] == "--outputdfl")
                     {
-                        s_outputWiresharkFilter = true;
+                        argumentData.OutputWiresharkFilter = true;
                     }
                     else if (args[i] == "-k" || args[i] == "--killprocesses") // Track the network activity by child processes
                     {
-                        s_killProcesses = true;
+                        argumentData.KillProcesses = true;
                         killProcessesFlagSet = true;
                     }
                     else if (args[i] == "-s" || args[i] == "--savefullpcap") //Save the full pcap
                     {
-                        s_saveFullPcap = true;
+                        argumentData.SaveFullPcap = true;
                     }
                     else if (args[i] == "-j" || args[i] == "--json") //Save the full pcap
                     {
-                        s_dumpResultsToJson = true;
+                        argumentData.DumpResultsToJson = true;
                     }
                     else if (args[i] == "-o" || args[i] == "--output") //Save the full pcap
                     {
@@ -121,13 +134,13 @@ namespace WhoYouCalling.Utilities.Arguments
                             {
                                 if (path.Substring(path.Length - 1) == @"\")
                                 {
-                                    s_outputDirectory = path;
+                                    argumentData.OutputDirectory = path;
                                 }
                                 else
                                 {
-                                    s_outputDirectory = path + @"\";
+                                    argumentData.OutputDirectory = path + @"\";
                                 }
-                                s_providedOutputDirectory = true;
+                                argumentData.ProvidedOutputDirectory = true;
                             }
                             else
                             {
@@ -144,20 +157,21 @@ namespace WhoYouCalling.Utilities.Arguments
                     }
                     else if (args[i] == "-n" || args[i] == "--nopcap") // Don't collect pcap
                     {
-                        s_noPacketCapture = true;
+                        argumentData.NoPacketCapture = true;
                         noPCAPFlagSet = true;
                     }
                     else if (args[i] == "-p" || args[i] == "--pid") // Running process id
                     {
                         if (i + 1 < args.Length)
                         {
-                            if (int.TryParse(args[i + 1], out s_trackedProcessId))
+                            if (int.TryParse(args[i + 1], out int trackedProcessId))
                             {
+                                argumentData.TrackedProcessId = trackedProcessId;
                                 PIDFlagSet = true;
                             }
                             else
                             {
-                                ConsoleOutput.Print($"The provided value for PID ({s_trackedProcessId}) is not a valid integer", PrintType.Warning);
+                                ConsoleOutput.Print($"The provided value for PID ({trackedProcessId}) is not a valid integer", PrintType.Warning);
                                 return false;
                             }
                         }
@@ -171,13 +185,14 @@ namespace WhoYouCalling.Utilities.Arguments
                     {
                         if (i + 1 < args.Length)
                         {
-                            if (double.TryParse(args[i + 1], NumberStyles.Any, CultureInfo.InvariantCulture, out s_processRunTimer))
+                            if (double.TryParse(args[i + 1], NumberStyles.Any, CultureInfo.InvariantCulture, out double processRunTimer))
                             {
-                                s_processRunTimerWasProvided = true;
+                                argumentData.ProcessRunTimer = processRunTimer;
+                                argumentData.ProcessRunTimerWasProvided = true;
                             }
                             else
                             {
-                                ConsoleOutput.Print($"The provided value for timer ({s_processRunTimer}) is not a valid double", PrintType.Warning);
+                                ConsoleOutput.Print($"The provided value for timer ({processRunTimer}) is not a valid double", PrintType.Warning);
                                 return false;
                             }
                         }
@@ -191,13 +206,14 @@ namespace WhoYouCalling.Utilities.Arguments
                     {
                         if (i + 1 < args.Length)
                         {
-                            if (int.TryParse(args[i + 1], out s_networkInterfaceChoice))
+                            if (int.TryParse(args[i + 1], out int networkInterfaceChoice))
                             {
+                                argumentData.NetworkInterfaceChoice = networkInterfaceChoice;
                                 networkInterfaceDeviceFlagSet = true;
                             }
                             else
                             {
-                                ConsoleOutput.Print($"The provided value for network device ({s_networkInterfaceChoice}) is not a valid integer", PrintType.Warning);
+                                ConsoleOutput.Print($"The provided value for network device ({networkInterfaceChoice}) is not a valid integer", PrintType.Warning);
                                 return false;
                             }
                         }
@@ -232,16 +248,16 @@ namespace WhoYouCalling.Utilities.Arguments
 
             if (IsValidCombinationOfArguments())
             {
-                return true;
+                _mainClass.SetVariables(argumentData);
             }
             else
             {
-                return false;
+                _mainClass.ResetWithHeaderAndHelp();
             }
 
         }
 
-        private static bool IsValidCombinationOfArguments(string[] args)
+        private bool IsValidCombinationOfArguments()
         {
             // Forbidden combination of flags
             if (executableFlagSet == PIDFlagSet) //Must specify PID or executable file and not both

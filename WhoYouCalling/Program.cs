@@ -16,6 +16,7 @@ using WhoYouCalling.Network.DNS;
 using WhoYouCalling.ETW;
 using WhoYouCalling.WhoYouCalling.Network;
 using System.Reflection;
+using WhoYouCalling.Utilities.Arguments;
 
 namespace WhoYouCalling
 {
@@ -75,6 +76,12 @@ namespace WhoYouCalling
                 return;
             }
 
+
+            // TO DO
+            /*
+             Gör så att argumentmanager.parsearguments kör och returnerar all argument data, sen gör validering här igene. Kanske är värt att 
+            definiera global private static variabel som är argumentData som man refererar till senare så är det tydligare att det är argumetn data
+             */
             if (!ValidateProvidedArguments(args)) {
                 ConsoleOutput.PrintHeader();
                 ConsoleOutput.PrintHelp();
@@ -243,9 +250,8 @@ namespace WhoYouCalling
                 ConsoleOutput.Print($"Creating folder {processFolderInRootFolder}", PrintType.Debug);
                 FileAndFolders.CreateFolder(processFolderInRootFolder);
 
-                OutputProcessNetworkDetails(monitoredProcess.DNSQueries, 
-                                            outputFile: @$"{processFolderInRootFolder}\DNS queries.txt",
-                                            packetType: PacketType.DNS);
+                OutputProcessDNSDetails(monitoredProcess.DNSQueries, 
+                                        outputFile: @$"{processFolderInRootFolder}\DNS queries.txt");
 
                 OutputProcessNetworkDetails(monitoredProcess.IPv4TCPEndpoint,
                                             outputFile: @$"{processFolderInRootFolder}\IPv4 TCP Endpoints.txt",
@@ -348,6 +354,11 @@ namespace WhoYouCalling
             ConsoleOutput.Print($"Finished! Monitor duration: {monitorDuration}. Results are in the folder {s_rootFolderName}", PrintType.InfoTime);
         }
 
+        public void SetVariables(ArgumentData argumentData)
+        {
+
+        }
+
         private static void SetCancelKeyEvent()
         {
             Console.CancelKeyPress += (sender, e) => // For manual cancellation of application
@@ -377,16 +388,26 @@ namespace WhoYouCalling
             if (networkHashSet.Count() > 0)
             {
                 List<string> networkDetails = Generic.ConvertDestinationEndpoints(networkHashSet); // Convert to list from hashset to be able to pass to function
-                if (packetType == PacketType.DNS)
-                {
-                    networkDetails = EnrichDNSQueries(networkDetails);
-                }
                 ConsoleOutput.Print($"Creating file {outputFile} with all {packetType} details", PrintType.Debug);
                 FileAndFolders.CreateTextFileListOfStrings(outputFile, networkDetails);
             }
             else
             {
                 ConsoleOutput.Print($"Not creating {packetType} file, none found for process", PrintType.Debug);
+            }
+        }
+
+        private static void OutputProcessDNSDetails(HashSet<DNSQuery> dnsHashSet, string outputFile = "")
+        {
+            if (dnsHashSet.Count() > 0)
+            {
+                List<string> dnsDetails = ParseDNSQueries(dnsHashSet); // Convert to list from hashset to be able to pass to function
+                ConsoleOutput.Print($"Creating file {outputFile} with all DNS details", PrintType.Debug);
+                FileAndFolders.CreateTextFileListOfStrings(outputFile, dnsDetails);
+            }
+            else
+            {
+                ConsoleOutput.Print($"Not creating DNS file, none found for process", PrintType.Debug);
             }
         }
 
@@ -413,19 +434,19 @@ namespace WhoYouCalling
             }
         }
      
-        private static List<string> EnrichDNSQueries(List<string> dnsQueries)
+        private static List<string> ParseDNSQueries(HashSet<DNSQuery> dnsQueries)
         {
             List<string> enrichedDNSQueries = new List<string>();
 
-            foreach (string query in dnsQueries)
+            foreach (DNSQuery dnsQuery in dnsQueries)
             {
-                string enrichedQuery = query;
+                string enrichedQuery = dnsQuery.DomainQueried;
 
-                if (s_dnsQueryResults.ContainsKey(query))
+                if (s_dnsQueryResults.ContainsKey(dnsQuery.DomainQueried))
                 {
                     HashSet<string> ipsForDomain = new HashSet<string>();
 
-                    foreach (DNSResponse response in s_dnsQueryResults[query])
+                    foreach (DNSResponse response in s_dnsQueryResults[dnsQuery.DomainQueried])
                     {
                         foreach (string ip in response.QueryResult.IPs)
                         {
@@ -433,7 +454,7 @@ namespace WhoYouCalling
                         }
                     }
 
-                    enrichedQuery = $"{query}   {string.Join(", ", ipsForDomain)}";
+                    enrichedQuery = $"{dnsQuery.DomainQueried}   {string.Join(", ", ipsForDomain)}";
                 }
                 enrichedDNSQueries.Add(enrichedQuery);
             }
@@ -795,7 +816,11 @@ namespace WhoYouCalling
 
                         s_dnsQueryResults[dnsResponse.DomainQueried].Add(dnsResponse);
 
-                        s_collectiveProcessInfo[execPID].DNSQueries.Add(dnsResponse.DomainQueried); // See comment above to why this is also here. 
+                        s_collectiveProcessInfo[execPID].DNSQueries.Add(new DNSQuery { 
+                            DomainQueried = dnsResponse.DomainQueried,
+                            RecordTypeCode = dnsResponse.RecordTypeCode,
+                            RecordTypeText = dnsResponse.RecordTypeText
+                        }); // See comment above to why this is also here. 
 
                         historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) received {dnsResponse.RecordTypeText}({dnsResponse.RecordTypeCode}) DNS response {dnsResponse.StatusText}({dnsResponse.StatusCode}) for {dnsResponse.DomainQueried} is {String.Join(", ", dnsResponse.QueryResult.IPs)}";
                         break;

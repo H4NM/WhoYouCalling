@@ -8,16 +8,25 @@ namespace WhoYouCalling.Utilities.Arguments
 {
     public struct ArgumentData
     {
-        public string Var1 { get; set; }
-        public int Var2 { get; set; }
-        public bool Var3 { get; set; }
-
-        // You can include a constructor for convenience
-        public ArgumentData(string var1, int var2, bool var3)
-        {
-            Var1 = var1;
-            Var2 = var2;
-            Var3 = var3;
-        }
+        public List<string> ExecutableNamesToMonitor { get; set; }
+        public bool ExecutableNamesToMonitorProvided { get; set; }
+        public int TrackedProcessId { get; set; }
+        public double ProcessRunTimer { get; set; }
+        public bool ProcessRunTimerWasProvided { get; set; }
+        public int NetworkInterfaceChoice { get; set; }
+        public string ExecutablePath { get; set; }
+        public bool ExecutablePathProvided { get; set; }
+        public string ExecutableArguments { get; set; }
+        public string OutputDirectory { get; set; }
+        public bool ProvidedOutputDirectory { get; set; }
+        public bool KillProcesses { get; set; }
+        public bool SaveFullPcap { get; set; }
+        public bool NoPacketCapture { get; set; }
+        public bool DumpResultsToJson { get; set; }
+        public bool StrictCommunicationEnabled { get; set; }
+        public bool OutputBPFFilter { get; set; }
+        public bool OutputWiresharkFilter { get; set; }
+        public bool Debug { get; set; }
+        public bool TrackChildProcesses { get; set; }
     }
 }

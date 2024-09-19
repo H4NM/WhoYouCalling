@@ -1,4 +1,5 @@
 ﻿using WhoYouCalling.Network;
+using WhoYouCalling.Network.DNS;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace WhoYouCalling.Utilities
@@ -22,6 +23,8 @@ namespace WhoYouCalling.Utilities
             string folderName = $"{executableName}-{timestamp}";
             return folderName;
         }
+
+        
 
         public static List<string> ConvertDestinationEndpoints(HashSet<DestinationEndpoint> providedHashSet)
         {
