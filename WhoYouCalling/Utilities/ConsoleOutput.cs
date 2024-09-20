@@ -69,7 +69,7 @@ namespace WhoYouCalling.Utilities
         public static void PrintHeader()
         {
             string headerText = @" 
-                                                                   ?
+                                                                   ? 
                                                                    | 
   __      ___      __   __         ___      _ _ _              .===:
   \ \    / / |_  __\ \ / /__ _  _ / __|__ _| | (_)_ _  __ _    |[_]|

@@ -1,37 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Globalization;
 using WhoYouCalling.Network.FPC;
-using WhoYouCalling.Utilities;
 
 namespace WhoYouCalling.Utilities.Arguments
 {
     internal class ArgumentManager
     {
-        private bool executableFlagSet = false;
-        private bool executableNamesToMonitorFlagSet = false;
-        private bool executableArgsFlagSet = false;
-        private bool PIDFlagSet = false;
-        private bool networkInterfaceDeviceFlagSet = false;
-        private bool noPCAPFlagSet = false;
-        private bool killProcessesFlagSet = false;
-
-        private Program _mainClass;
-
-        internal ArgumentManager(Program mainClass)
-        {
-            _mainClass = mainClass;
-        }
-
-
         public ArgumentData ParseArguments(string[] args)
         {
-            ArgumentData argumentData = new ArgumentData();
-
-            // Flags used for reviewing argument combinations
+            ArgumentData argumentData = new ArgumentData(trackChildProcesses: true); 
 
             // Check if no args are provided
             if (args.Length > 0)
@@ -46,8 +22,7 @@ namespace WhoYouCalling.Utilities.Arguments
                         {
                             argumentData.ExecutablePath = args[i + 1];
                             argumentData.ExecutablePathProvided = true;
-                            executableFlagSet = true;
-
+                            argumentData.ExecutableFlagSet = true;
                         }
                         else
                         {
@@ -74,7 +49,7 @@ namespace WhoYouCalling.Utilities.Arguments
                             }
                             argumentData.ExecutableNamesToMonitor.AddRange(execNamesParsed);
                             argumentData.ExecutableNamesToMonitorProvided = true;
-                            executableNamesToMonitorFlagSet = true;
+                            argumentData.ExecutableNamesToMonitorFlagSet = true;
 
                         }
                         else
@@ -87,12 +62,13 @@ namespace WhoYouCalling.Utilities.Arguments
                         if (i + 1 < args.Length)
                         {
                             argumentData.ExecutableArguments = args[i + 1];
-                            executableArgsFlagSet = true;
+                            argumentData.ExecutableArgsFlagSet = true;
                         }
                         else
                         {
                             ConsoleOutput.Print("No arguments specified after -a/--arguments flag", PrintType.Warning);
-                            return null;
+                            argumentData.InvalidArgumentValueProvided = true;
+                            return argumentData;
                         }
                     }
                     else if (args[i] == "-c" || args[i] == "--nochildprocs") // Track the network activity by child processes
@@ -114,7 +90,7 @@ namespace WhoYouCalling.Utilities.Arguments
                     else if (args[i] == "-k" || args[i] == "--killprocesses") // Track the network activity by child processes
                     {
                         argumentData.KillProcesses = true;
-                        killProcessesFlagSet = true;
+                        argumentData.KillProcessesFlagSet = true;
                     }
                     else if (args[i] == "-s" || args[i] == "--savefullpcap") //Save the full pcap
                     {
@@ -145,20 +121,22 @@ namespace WhoYouCalling.Utilities.Arguments
                             else
                             {
                                 ConsoleOutput.Print("Provide full path to an existing catalog.", PrintType.Warning);
-                                return false;
+                                argumentData.InvalidArgumentValueProvided = true;
+                                return argumentData;
                             }
                         }
                         else
                         {
                             ConsoleOutput.Print("No arguments specified after -o/--output flag", PrintType.Warning);
-                            return false;
+                            argumentData.InvalidArgumentValueProvided = true;
+                            return argumentData;
                         }
 
                     }
                     else if (args[i] == "-n" || args[i] == "--nopcap") // Don't collect pcap
                     {
                         argumentData.NoPacketCapture = true;
-                        noPCAPFlagSet = true;
+                        argumentData.NoPCAPFlagSet = true;
                     }
                     else if (args[i] == "-p" || args[i] == "--pid") // Running process id
                     {
@@ -167,18 +145,20 @@ namespace WhoYouCalling.Utilities.Arguments
                             if (int.TryParse(args[i + 1], out int trackedProcessId))
                             {
                                 argumentData.TrackedProcessId = trackedProcessId;
-                                PIDFlagSet = true;
+                                argumentData.PIDFlagSet = true;
                             }
                             else
                             {
                                 ConsoleOutput.Print($"The provided value for PID ({trackedProcessId}) is not a valid integer", PrintType.Warning);
-                                return false;
+                                argumentData.InvalidArgumentValueProvided = true;
+                                return argumentData;
                             }
                         }
                         else
                         {
                             ConsoleOutput.Print("No arguments specified after -p/--pid flag", PrintType.Warning);
-                            return false;
+                            argumentData.InvalidArgumentValueProvided = true;
+                            return argumentData;
                         }
                     }
                     else if (args[i] == "-t" || args[i] == "--timer") // Executable run timer
@@ -193,13 +173,15 @@ namespace WhoYouCalling.Utilities.Arguments
                             else
                             {
                                 ConsoleOutput.Print($"The provided value for timer ({processRunTimer}) is not a valid double", PrintType.Warning);
-                                return false;
+                                argumentData.InvalidArgumentValueProvided = true;
+                                return argumentData;
                             }
                         }
                         else
                         {
                             ConsoleOutput.Print("No arguments specified after -t/--timer flag", PrintType.Warning);
-                            return false;
+                            argumentData.InvalidArgumentValueProvided = true;
+                            return argumentData;
                         }
                     }
                     else if (args[i] == "-i" || args[i] == "--interface") // Network interface device flag
@@ -209,18 +191,20 @@ namespace WhoYouCalling.Utilities.Arguments
                             if (int.TryParse(args[i + 1], out int networkInterfaceChoice))
                             {
                                 argumentData.NetworkInterfaceChoice = networkInterfaceChoice;
-                                networkInterfaceDeviceFlagSet = true;
+                                argumentData.NetworkInterfaceDeviceFlagSet = true;
                             }
                             else
                             {
                                 ConsoleOutput.Print($"The provided value for network device ({networkInterfaceChoice}) is not a valid integer", PrintType.Warning);
-                                return false;
+                                argumentData.InvalidArgumentValueProvided = true;
+                                return argumentData;
                             }
                         }
                         else
                         {
                             ConsoleOutput.Print("No arguments specified after -i/--interface flag", PrintType.Warning);
-                            return false;
+                            argumentData.InvalidArgumentValueProvided = true;
+                            return argumentData;
                         }
                     }
 
@@ -231,7 +215,7 @@ namespace WhoYouCalling.Utilities.Arguments
                     }
                     else if (args[i] == "-d" || args[i] == "--debug") //Save the full pcap
                     {
-                        Program.Debug = true;
+                        argumentData.Debug = true;
                     }
                     else if (args[i] == "-h" || args[i] == "--help") //Output help instructions
                     {
@@ -243,44 +227,37 @@ namespace WhoYouCalling.Utilities.Arguments
             }
             else
             {
-                return false;
+                argumentData.InvalidArgumentValueProvided = true;
+                return argumentData;
             }
 
-            if (IsValidCombinationOfArguments())
-            {
-                _mainClass.SetVariables(argumentData);
-            }
-            else
-            {
-                _mainClass.ResetWithHeaderAndHelp();
-            }
-
+            return argumentData;
         }
 
-        private bool IsValidCombinationOfArguments()
+        public bool IsNotValidCombinationOfArguments(ArgumentData argumentData)
         {
             // Forbidden combination of flags
-            if (executableFlagSet == PIDFlagSet) //Must specify PID or executable file and not both
+            if (argumentData.ExecutableFlagSet == argumentData.PIDFlagSet) //Must specify PID or executable file and not both
             {
                 ConsoleOutput.Print("One of -e or -p must be supplied, and not both", PrintType.Error);
-                return false;
+                return true;
             }
-            else if (executableArgsFlagSet && !executableFlagSet)
+            else if (argumentData.ExecutableArgsFlagSet && !argumentData.ExecutableFlagSet)
             {
                 ConsoleOutput.Print("You need to specify an executable when providing with arguments with -a", PrintType.Error);
-                return false;
+                return true;
             }
-            else if (killProcessesFlagSet && PIDFlagSet)
+            else if (argumentData.KillProcessesFlagSet && argumentData.PIDFlagSet)
             {
                 ConsoleOutput.Print("You can only specify -k for killing process that's been started, and not via listening to a running process", PrintType.Error);
-                return false;
+                return true;
             }
-            else if (networkInterfaceDeviceFlagSet == noPCAPFlagSet)
+            else if (argumentData.NetworkInterfaceDeviceFlagSet == argumentData.NoPCAPFlagSet)
             {
                 ConsoleOutput.Print("You need to specify a network device interface or specify -n/--nopcap to skip packet capture. Run again with -g to view available network devices", PrintType.Error);
-                return false;
+                return true;
             }
-            return true;
+            return false;
         }
     }
 }

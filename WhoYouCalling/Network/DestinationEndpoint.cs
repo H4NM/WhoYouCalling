@@ -13,9 +13,9 @@ namespace WhoYouCalling.Network
             if (obj == null || this.GetType() != obj.GetType())
                 return false;
 
-            var other = (NetworkPacket)obj;
-            return IP == other.DestinationIP &&
-                   Port == other.DestinationPort;
+            var other = (DestinationEndpoint)obj;
+            return IP == other.IP &&
+                   Port == other.Port;
         }
 
         public override int GetHashCode()
