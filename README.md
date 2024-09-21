@@ -64,8 +64,19 @@ There are other tools that can compliment your quest of application network anal
 ### Limitations
 - **DNS**: In ETW, `Microsoft-Windows-DNS-Client` only logs A and AAAA queries, neglecting other DNS query types such as PTR, TXT, MX, SOA etc. It does capture CNAME and it's respective adresses, which are part of the DNS response. However, with the FPC the requests are captured either way, just not portrayed as in registered DNS traffic by the application.
 
-## Bugs or Requests? Create an issue! :) 
+### Installation Instructions
+
+This project has been tested and works with .NET 8 with two external libraries for capturing ETW activity and network packets: 
+- FPC: [SharpCap](https://github.com/dotpcap/sharppcap)
+- ETW: [Microsoft.Diagnostics.Tracing.TraceEvent](https://www.nuget.org/packages/Microsoft.Diagnostics.Tracing.TraceEvent/)
+
+Follow these steps for installment:
+1. Download this repo `git clone git@github.com:microsoft/perfview.git`
+2. Make sure [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/install/windows) is installed
+3. Install the related packages (SharpCap and TraceEvent)
+4. Build and run! :)  
+
+## Bugs or Requests? Create an issue! 
 
 ### To Do:
 - Refactor. Lots and lots to refactor and make more tidy :) 
-  -	Continue adding struct for argument passing. Part of project refactor

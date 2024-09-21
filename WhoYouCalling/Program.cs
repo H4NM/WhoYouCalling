@@ -1,7 +1,5 @@
 ﻿
 using System.Timers;
-using System.Net;
-using System.Globalization;
 using System.Text.Json;
 
 //ETW
