@@ -1,7 +1,4 @@
 ﻿using System.Reflection;
-using WhoYouCalling.Network;
-using WhoYouCalling.Network.DNS;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace WhoYouCalling.Utilities
 {

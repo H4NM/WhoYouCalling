@@ -1,8 +1,4 @@
-﻿using System;
-using System.Diagnostics;
-using WhoYouCalling.Network.FPC;
-using WhoYouCalling.Utilities.Arguments;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+﻿using WhoYouCalling.Utilities.Arguments;
 
 namespace WhoYouCalling.Utilities
 {
@@ -64,18 +60,18 @@ namespace WhoYouCalling.Utilities
             int etwActivities = Program.GetETWActivityCount();
             int dnsActivities = Program.GetDNSActivityCount();
             int processCount = Program.GetProcessesCount();
-            ConsoleOutput.Print($"Processes: {processCount}. ETW Events: {etwActivities}. DNS Queries: {dnsActivities}. Network Packets: {packetCount}", PrintType.RunningMetrics);
+            Print($"Processes: {processCount}. ETW Events: {etwActivities}. DNS Queries: {dnsActivities}. Network Packets: {packetCount}", PrintType.RunningMetrics);
         }
         public static void PrintStartMonitoringText()
         {
             Console.Clear();
-            ConsoleOutput.PrintHeader();
-            ConsoleOutput.Print($"Starting.. Press CTRL+C to cancel process monitoring.", PrintType.InfoTime);
+            PrintHeader();
+            Print($"Starting.. Press CTRL+C to cancel process monitoring.", PrintType.InfoTime);
         }
 
         public static void PrintArgumentValues(ArgumentData argumentData)
         {
-            ConsoleOutput.Print("=== Arguments ===", PrintType.Debug);
+            Print("=== Arguments ===", PrintType.Debug);
             Generic.PrintObjectProperties(argumentData);      
         }
 

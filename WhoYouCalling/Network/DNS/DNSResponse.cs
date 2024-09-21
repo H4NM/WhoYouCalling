@@ -1,5 +1,4 @@
-﻿using System;
-
+﻿
 namespace WhoYouCalling.Network.DNS
 {
     public struct DNSResponse 

@@ -2,7 +2,6 @@
 using SharpPcap;
 using WhoYouCalling.Utilities;
 
-
 namespace WhoYouCalling.Network.FPC
 {
     internal class LivePacketCapture : BasePacketCapture

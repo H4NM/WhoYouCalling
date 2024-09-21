@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-
+﻿
 namespace WhoYouCalling.Network.DNS
 {
     public class DNSResponseResult

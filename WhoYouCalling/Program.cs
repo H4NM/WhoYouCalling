@@ -15,7 +15,6 @@ using WhoYouCalling.Network.FPC;
 using WhoYouCalling.Network.DNS;
 using WhoYouCalling.ETW;
 using WhoYouCalling.WhoYouCalling.Network;
-using System.Reflection;
 using WhoYouCalling.Utilities.Arguments;
 
 namespace WhoYouCalling

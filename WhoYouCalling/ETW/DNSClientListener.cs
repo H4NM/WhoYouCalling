@@ -1,6 +1,5 @@
 ﻿using Microsoft.Diagnostics.Tracing;
 using Microsoft.Diagnostics.Tracing.Session;
-using System.Net;
 using WhoYouCalling.Network.DNS;
 using WhoYouCalling.Utilities;
 using WhoYouCalling.WhoYouCalling.Network;

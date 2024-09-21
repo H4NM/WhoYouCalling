@@ -1,5 +1,4 @@
-﻿using System.Net;
-
+﻿
 namespace WhoYouCalling.Network.DNS
 {
     public struct DNSQuery 

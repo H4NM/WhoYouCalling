@@ -1,4 +1,5 @@
-﻿namespace WhoYouCalling.Network.DNS
+﻿
+namespace WhoYouCalling.Network.DNS
 {
     public static class DnsTypeLookup
     {

@@ -1,7 +1,4 @@
-﻿using PacketDotNet;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using System.Xml.Linq;
-
+﻿
 namespace WhoYouCalling.Network.DNS
 {
     public static class DnsStatusLookup

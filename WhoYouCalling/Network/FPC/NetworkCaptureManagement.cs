@@ -1,7 +1,6 @@
 ﻿using SharpPcap.LibPcap;
 using System.Net;
 using System.Text.RegularExpressions;
-using WhoYouCalling.Network.DNS;
 using WhoYouCalling.Utilities;
 
 namespace WhoYouCalling.Network.FPC
