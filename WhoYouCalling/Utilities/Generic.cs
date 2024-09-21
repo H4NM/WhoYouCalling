@@ -1,4 +1,5 @@
-﻿using WhoYouCalling.Network;
+﻿using System.Reflection;
+using WhoYouCalling.Network;
 using WhoYouCalling.Network.DNS;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
@@ -24,22 +25,30 @@ namespace WhoYouCalling.Utilities
             return folderName;
         }
 
-        
-
-        public static List<string> ConvertDestinationEndpoints(HashSet<DestinationEndpoint> providedHashSet)
-        {
-            List<string> convertedToList = new List<string>();
-            foreach (DestinationEndpoint dstEndpoint in providedHashSet)
-            {
-                convertedToList.Add($"{dstEndpoint.IP}:{dstEndpoint.Port}");
-            }
-            convertedToList.Sort();
-            return convertedToList;
-        }
-
         public static string GetTimestampNow()
         {
             return DateTime.Now.ToString("HH:mm:ss");
+        }
+
+        public static void PrintObjectProperties(object obj)
+        {
+            Type type = obj.GetType();
+
+            // Get all properties of the object
+            PropertyInfo[] properties = type.GetProperties();
+            foreach (var property in properties)
+            {
+                var value = property.GetValue(obj, null);
+                Console.WriteLine($"P   {property.Name}: {value}");
+            }
+
+            // Optionally, get all fields as well (for non-auto properties or public fields)
+            FieldInfo[] fields = type.GetFields();
+            foreach (var field in fields)
+            {
+                var value = field.GetValue(obj);
+                Console.WriteLine($"F   {field.Name}: {value}");
+            }
         }
 
         public static string GetPresentableDuration(DateTime startTime, DateTime endTime)

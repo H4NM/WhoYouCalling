@@ -32,9 +32,8 @@ namespace WhoYouCalling.Utilities.Arguments
         public bool StrictCommunicationEnabled { get; set; }
         public bool OutputBPFFilter { get; set; }
         public bool OutputWiresharkFilter { get; set; }
-
-        public bool Debug; // Gets a default value since it's set to a public variable in Program
-        public bool TrackChildProcesses; // Gets a default value since it's set to a public variable in Program
+        public bool Debug { get; set; } // Gets a default value since it's set to a public variable in Program
+        public bool TrackChildProcesses { get; set; } // Gets a default value since it's set to a public variable in Program
 
         public ArgumentData(bool executableFlagSet = false,
                             bool executableNamesToMonitorFlagSet = false,
@@ -45,7 +44,8 @@ namespace WhoYouCalling.Utilities.Arguments
                             bool killProcessesFlagSet = false,
                             bool invalidArgumentValueProvided = false,
                             bool debug = false,
-                            bool trackChildProcesses = true)
+                            bool trackChildProcesses = true,
+                            string outputDirectory = "")
         {
             this.ExecutableFlagSet = executableFlagSet;
             this.ExecutableNamesToMonitorFlagSet = executableNamesToMonitorFlagSet;
@@ -57,6 +57,7 @@ namespace WhoYouCalling.Utilities.Arguments
             this.InvalidArgumentValueProvided = invalidArgumentValueProvided;
             this.Debug = debug;
             this.TrackChildProcesses = trackChildProcesses;
+            this.OutputDirectory = outputDirectory;
         }
     }
 }

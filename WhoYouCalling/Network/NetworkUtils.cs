@@ -5,6 +5,7 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using WhoYouCalling.Network;
 using WhoYouCalling.Network.DNS;
 using WhoYouCalling.Utilities;
 
@@ -70,6 +71,16 @@ namespace WhoYouCalling.WhoYouCalling.Network
                 }
             }
             return responseResult;
+        }
+        public static List<string> ConvertDestinationEndpoints(HashSet<DestinationEndpoint> providedHashSet)
+        {
+            List<string> convertedToList = new List<string>();
+            foreach (DestinationEndpoint dstEndpoint in providedHashSet)
+            {
+                convertedToList.Add($"{dstEndpoint.IP}:{dstEndpoint.Port}");
+            }
+            convertedToList.Sort();
+            return convertedToList;
         }
 
         private static IPAddress CleanIPAdress(string ip)

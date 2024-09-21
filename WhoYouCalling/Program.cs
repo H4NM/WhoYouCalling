@@ -69,15 +69,19 @@ namespace WhoYouCalling
             }
             
             SetPublicVariablesFromArgument();
-          
+
             SetCancelKeyEvent();
-            PrintStartMonitoringText();
-            ConsoleOutput.Print(s_argumentData.ToString(), PrintType.Debug);
+            ConsoleOutput.PrintStartMonitoringText();
+            if (Debug)
+            {
+                ConsoleOutput.PrintArgumentValues(s_argumentData);
+            }
 
             ConsoleOutput.Print("Retrieving executable filename", PrintType.Debug);
             s_mainExecutableFileName = GetExecutableFileName(s_argumentData.TrackedProcessId, s_argumentData.ExecutablePath);
 
             s_rootFolderName = Generic.NormalizePath(Generic.GetRunInstanceFolderName(s_mainExecutableFileName));
+
             s_argumentData.OutputDirectory = Generic.NormalizePath(s_argumentData.OutputDirectory);
 
             if (s_argumentData.ProvidedOutputDirectory) // If catalog to save data is specified
@@ -350,13 +354,6 @@ namespace WhoYouCalling
             };
         }
 
-        private static void PrintStartMonitoringText()
-        {
-            Console.Clear();
-            ConsoleOutput.PrintHeader();
-            ConsoleOutput.Print($"Starting.. Press CTRL+C to cancel process monitoring.", PrintType.InfoTime);
-        }
-
         private static void SetGeneralMonitoringFileNames()
         {
             s_fullPcapFile = @$"{s_rootFolderName}\Full Network Packet Capture.pcap";
@@ -369,7 +366,7 @@ namespace WhoYouCalling
         {
             if (networkHashSet.Count() > 0)
             {
-                List<string> networkDetails = Generic.ConvertDestinationEndpoints(networkHashSet); // Convert to list from hashset to be able to pass to function
+                List<string> networkDetails = NetworkUtils.ConvertDestinationEndpoints(networkHashSet); // Convert to list from hashset to be able to pass to function
                 ConsoleOutput.Print($"Creating file {outputFile} with all {packetType} details", PrintType.Debug);
                 FileAndFolders.CreateTextFileListOfStrings(outputFile, networkDetails);
             }
