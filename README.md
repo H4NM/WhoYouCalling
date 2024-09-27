@@ -71,7 +71,7 @@ This project has been tested and works with .NET 8 with two external libraries f
 - ETW: [Microsoft.Diagnostics.Tracing.TraceEvent](https://www.nuget.org/packages/Microsoft.Diagnostics.Tracing.TraceEvent/)
 
 Follow these steps for installment:
-1. Download this repo `git clone git@github.com:microsoft/perfview.git`
+1. Download this repo `git clone https://github.com/H4NM/WhoYouCalling.git`
 2. Make sure [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/install/windows) is installed
 3. Install the related packages (SharpCap and TraceEvent). Either via nuget package manager in visual studio or with `dotnet` cli
 4. Build and run! :)  
