@@ -1,5 +1,8 @@
 ﻿# WhoYouCalling 
 
+![Python Versions](imgs/version.svg)
+![Groppy version](imgs/dependencies.svg)
+
 Monitors network activity made by a process through the use of [Windows Event Tracing (ETW)](https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/event-tracing-for-windows--etw-) and Full Packet Capture (FPC). Filters a generated .pcap file with BPF based on the detected network activity made by the process. 
 This application makes process network monitoring hella' easy.
 

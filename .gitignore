@@ -6,6 +6,7 @@ Caps/
 TestApplication*
 args.txt
 requirements.txt
+autobadge.py
 
 
 ## Ignore Visual Studio temporary files, build results, and

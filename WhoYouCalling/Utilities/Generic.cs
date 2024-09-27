@@ -36,7 +36,7 @@ namespace WhoYouCalling.Utilities
             foreach (var property in properties)
             {
                 var value = property.GetValue(obj, null);
-                Console.WriteLine($"P   {property.Name}: {value}");
+                Console.WriteLine($"{property.Name}: {value}");
             }
 
             // Optionally, get all fields as well (for non-auto properties or public fields)
@@ -44,7 +44,7 @@ namespace WhoYouCalling.Utilities
             foreach (var field in fields)
             {
                 var value = field.GetValue(obj);
-                Console.WriteLine($"F   {field.Name}: {value}");
+                Console.WriteLine($"{field.Name}: {value}");
             }
         }
 
