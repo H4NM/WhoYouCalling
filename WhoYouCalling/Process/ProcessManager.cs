@@ -73,8 +73,12 @@ namespace WhoYouCalling.Process
 
         public static int StartProcessAndGetId(string executablePath, string arguments = "")
         {
+            var prevWorkingDirectory = Environment.CurrentDirectory;
             try
             {
+                Environment.CurrentDirectory = Path.GetDirectoryName(executablePath);
+
+                /*
                 ProcessStartInfo startInfo = new ProcessStartInfo(executablePath);
 
                 if (!string.IsNullOrEmpty(arguments))
@@ -85,12 +89,27 @@ namespace WhoYouCalling.Process
                 startInfo.UseShellExecute = true;
                 startInfo.Verb = "open";
 
-                System.Diagnostics.Process process = System.Diagnostics.Process.Start(startInfo);
-
-                if (process != null)
+                */
+                System.Diagnostics.Process proc = new System.Diagnostics.Process
                 {
-                    // Retrieve the PID
-                    return process.Id;
+                    StartInfo =
+                    {
+                       FileName =  executablePath,
+                       UseShellExecute = true,
+                       Verb = "open"
+                    }
+                };
+
+                if (!string.IsNullOrEmpty(arguments))
+                {
+                    proc.StartInfo.Arguments = arguments;
+                }
+
+                //System.Diagnostics.Process process = System.Diagnostics.Process.Start(startInfo);
+                proc.Start();
+                if (proc != null)
+                {
+                    return proc.Id;
                 }
                 else
                 {
@@ -101,6 +120,10 @@ namespace WhoYouCalling.Process
             {
                 ConsoleOutput.Print($"An error occurred: {ex.Message}", PrintType.Error);
                 throw;
+            }
+            finally
+            {
+                Environment.CurrentDirectory = prevWorkingDirectory;
             }
         }
     }

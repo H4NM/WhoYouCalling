@@ -47,7 +47,8 @@ namespace WhoYouCalling.Utilities.Arguments
                                 ConsoleOutput.Print($"One additional executable file name to monitor: {execNamesProvided}", PrintType.Warning);
                                 execNamesParsed.Add(execNamesProvided);
                             }
-                            argumentData.ExecutableNamesToMonitor.AddRange(execNamesParsed);
+                            Console.WriteLine(execNamesParsed);
+                            argumentData.ExecutableNamesToMonitor = execNamesParsed;
                             argumentData.ExecutableNamesToMonitorProvided = true;
                             argumentData.ExecutableNamesToMonitorFlagSet = true;
 

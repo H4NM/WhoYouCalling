@@ -36,7 +36,15 @@ namespace WhoYouCalling.Utilities
             foreach (var property in properties)
             {
                 var value = property.GetValue(obj, null);
-                Console.WriteLine($"{property.Name}: {value}");
+
+                if (value is List<string> stringList)
+                {
+                    Console.WriteLine($"{property.Name}: {string.Join(',', stringList)}");
+                }
+                else
+                {
+                    Console.WriteLine($"{property.Name}: {value}");
+                }
             }
 
             // Optionally, get all fields as well (for non-auto properties or public fields)
@@ -44,7 +52,15 @@ namespace WhoYouCalling.Utilities
             foreach (var field in fields)
             {
                 var value = field.GetValue(obj);
-                Console.WriteLine($"{field.Name}: {value}");
+                if (value is List<string> stringList)
+                {
+                    Console.WriteLine($"{field.Name}: {string.Join(',', stringList)}");
+                }
+                else
+                {
+                    Console.WriteLine($"{field.Name}: {value}");
+                }
+                
             }
         }
 

@@ -123,7 +123,9 @@ namespace WhoYouCalling
                 {
                     ConsoleOutput.Print($"Executing \"{s_argumentData.ExecutablePath}\" with args \"{s_argumentData.ExecutableArguments}\"", PrintType.Debug);
                     ConsoleOutput.Print($"Executing \"{s_argumentData.ExecutablePath}\"", PrintType.Info);
-                    s_argumentData.TrackedProcessId = ProcessManager.StartProcessAndGetId(s_argumentData.ExecutablePath, s_argumentData.ExecutableArguments);
+
+                    s_argumentData.TrackedProcessId = ProcessManager.StartProcessAndGetId(s_argumentData.ExecutablePath, 
+                                                                                          s_argumentData.ExecutableArguments);
                     CatalogETWActivity(eventType: EventType.Process, executable: s_mainExecutableFileName, execType: "Main", execAction: "started", execPID: s_argumentData.TrackedProcessId);
                 }
                 catch (Exception ex)
