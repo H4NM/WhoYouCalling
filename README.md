@@ -83,3 +83,6 @@ Follow these steps for installment:
 
 ### To Do:
 - Refactor. Lots and lots to refactor and make more tidy :) 
+- Bugg:
+  - Fix output stating packets filtered being less than actual available packets. Very confusing.
+- Possibly add wireshark filter per domain name as their resolved IP addresses can be converted
