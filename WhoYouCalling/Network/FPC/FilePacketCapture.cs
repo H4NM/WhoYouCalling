@@ -9,7 +9,7 @@ namespace WhoYouCalling.Network.FPC
         public void FilterCaptureFile(string BPFFilter, string fullPcapFile, string filteredPcapFile)
         {
             ICaptureDevice capturedDevice;
-
+            s_packetCounter = 0;
             try
             {
                 ConsoleOutput.Print($"Opening saved packet capture file {fullPcapFile}", PrintType.Debug);

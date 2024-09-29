@@ -1,6 +1,7 @@
 ﻿# WhoYouCalling 
 
 ![Python Versions](imgs/version.svg)
+![Groppy version](imgs/target_framework.svg)
 ![Groppy version](imgs/dependencies.svg)
 
 Monitors network activity made by a process through the use of [Windows Event Tracing (ETW)](https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/event-tracing-for-windows--etw-) and Full Packet Capture (FPC). Filters a generated .pcap file with BPF based on the detected network activity made by the process. 
@@ -83,7 +84,5 @@ Follow these steps for installment:
 
 ### To Do:
 - Refactor. Lots and lots to refactor and make more tidy :) 
-- Bugg:
-  - Fix output stating packets filtered being less than actual available packets. Very confusing.
 - Possibly add wireshark filter per domain name as their resolved IP addresses can be converted
 - Add privileged execution option to spawn the process as administrator

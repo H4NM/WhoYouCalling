@@ -6,7 +6,7 @@ namespace WhoYouCalling.Network.FPC
 {
     internal class BasePacketCapture
     {
-        protected static int s_packetCounter = 0;
+        protected static int s_packetCounter;
         protected CaptureFileWriterDevice _captureFileWriterDevice;
         protected LibPcapLiveDevice _captureDevice;
 

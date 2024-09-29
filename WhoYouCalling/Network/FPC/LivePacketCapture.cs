@@ -8,6 +8,8 @@ namespace WhoYouCalling.Network.FPC
     {
         public void StartCaptureToFile(string pcapFile)
         {
+            s_packetCounter = 0;
+
             // Register our handler function to the 'packet arrival' event
             _captureDevice.OnPacketArrival += new PacketArrivalEventHandler(device_OnPacketArrival);
 
