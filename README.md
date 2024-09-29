@@ -68,37 +68,47 @@ There are other tools that can compliment your quest of application network anal
 
 ### Dependencies
 This project has been tested and works with .NET 8 with two external libraries for capturing ETW activity and network packets: 
-- FPC: [SharpCap](https://github.com/dotpcap/sharppcap)
+- FPC: 
+  - [SharpCap](https://github.com/dotpcap/sharppcap)
+  - [Npcap](https://npcap.com/#download)
 - ETW: [Microsoft.Diagnostics.Tracing.TraceEvent](https://www.nuget.org/packages/Microsoft.Diagnostics.Tracing.TraceEvent/)
 
-### Installation/Compilation instructions
+### Installing/Compiling instructions
 
-Follow these steps for installment:
+Follow these steps for compiling from source:
 1. Make sure [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/install/windows) is installed
 
-2. Download this repo
+2. Download and install [npcap](https://npcap.com/#download). It's allows for packet capture in Windows.
+
+3. Download this repo
 ```
 git clone https://github.com/H4NM/WhoYouCalling.git
 ```
 
-3. Enter project
+4. Enter project
 ```
 cd WhoYouCalling
 ```
 
-4. Install the related packages (SharpCap and TraceEvent). 
+5. Install the related packages (SharpCap and TraceEvent). 
 ```
 dotnet restore
 ```
 
-5. Build and run! 
+6. Build 
 ```
 dotnet publish -c Release -r win-(x64 or x86) --self-contained true
 ```
 
-## Bugs or Requests? Create an issue! 
+7. Run
+```
+bin\Release\net8.0\win-x64\WhoYouCalling.exe [arguments]...
+```
+
+# 🐛 Bugs or Requests? ✨ Create an issue! 🚀
 
 ### To Do:
 - Refactor. Lots and lots to refactor and make more tidy :) 
 - Add wireshark filter per domain name as their resolved IP addresses can be converted
 - Add privileged execution option to spawn the process as administrator
+- Add requirement of npcap drivers if pcap interface specified. It would be nice if the drivers are not a requirement when you're specifying `--nopcap` flag. 
