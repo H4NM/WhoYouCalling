@@ -68,17 +68,35 @@ There are other tools that can compliment your quest of application network anal
 ### Limitations
 - **DNS**: In ETW, `Microsoft-Windows-DNS-Client` only logs A and AAAA queries, neglecting other DNS query types such as PTR, TXT, MX, SOA etc. It does capture CNAME and it's respective adresses, which are part of the DNS response. However, with the FPC the requests are captured either way, just not portrayed as in registered DNS traffic by the application.
 
-### Installation Instructions
-
+### Dependencies
 This project has been tested and works with .NET 8 with two external libraries for capturing ETW activity and network packets: 
 - FPC: [SharpCap](https://github.com/dotpcap/sharppcap)
 - ETW: [Microsoft.Diagnostics.Tracing.TraceEvent](https://www.nuget.org/packages/Microsoft.Diagnostics.Tracing.TraceEvent/)
 
+### Installation/Compilation instructions
+
 Follow these steps for installment:
-1. Download this repo `git clone https://github.com/H4NM/WhoYouCalling.git`
-2. Make sure [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/install/windows) is installed
-3. Install the related packages (SharpCap and TraceEvent). Either via nuget package manager in visual studio or with `dotnet` cli
-4. Build and run! :)  
+1. Make sure [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/install/windows) is installed
+
+2. Download this repo
+```
+git clone https://github.com/H4NM/WhoYouCalling.git
+```
+
+3. Enter project
+```
+cd WhoYouCalling
+```
+
+4. Install the related packages (SharpCap and TraceEvent). 
+```
+dotnet restore
+```
+
+5. Build and run! 
+```
+dotnet publish -c Release -r win-(x64 or x86) --self-contained true
+```
 
 ## Bugs or Requests? Create an issue! 
 
