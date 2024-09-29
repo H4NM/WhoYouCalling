@@ -35,7 +35,7 @@ However, there are some downsides:
 ## Usage:
 (*Must be run as administrator - for packet capture and listening to ETW*) 
 
-[![Watch the video](imgs/headeroutput.png)](imgs/ExampleUsage.mp4)
+![Example Usage](imgs/ExampleUsage.gif)
 
 **Execute a binary with arguments. Output the results to a folder on the user desktop**:
 ```
@@ -56,10 +56,6 @@ WhoYouCalling.exe -e C:\Users\H4NM\Desktop\sus.exe -t 60 -k -i 8 -o C:\Users\H4N
 ```
 WhoYouCalling.exe --executable "C:\Program Files\Mozilla Firefox\firefox.exe" --nopcap --execnames "firefox.exe"
 ```
-	
-### Example Output 
-![ConsoleResults](imgs/ExampleConsoleOutput.png)
-![FolderResults](imgs/ExampleOutput.png)
 
 ### Complementary Tools
 There are other tools that can compliment your quest of application network analysis:
@@ -104,5 +100,5 @@ dotnet publish -c Release -r win-(x64 or x86) --self-contained true
 
 ### To Do:
 - Refactor. Lots and lots to refactor and make more tidy :) 
-- Possibly add wireshark filter per domain name as their resolved IP addresses can be converted
+- Add wireshark filter per domain name as their resolved IP addresses can be converted
 - Add privileged execution option to spawn the process as administrator
