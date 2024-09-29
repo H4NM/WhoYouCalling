@@ -35,6 +35,8 @@ However, there are some downsides:
 ## Usage:
 (*Must be run as administrator - for packet capture and listening to ETW*) 
 
+[![Watch the video](imgs/headeroutput.png)](imgs/ExampleUsage.mp4)
+
 **Execute a binary with arguments. Output the results to a folder on the user desktop**:
 ```
 WhoYouCalling.exe -e C:\Users\H4NM\Desktop\TestApplication.exe -a "--pass=ETph0n3H0m3" -i 4 -o C:\Users\H4NM\Desktop
@@ -55,7 +57,7 @@ WhoYouCalling.exe -e C:\Users\H4NM\Desktop\sus.exe -t 60 -k -i 8 -o C:\Users\H4N
 WhoYouCalling.exe --executable "C:\Program Files\Mozilla Firefox\firefox.exe" --nopcap --execnames "firefox.exe"
 ```
 	
-### Example results
+### Example Output 
 ![ConsoleResults](imgs/ExampleConsoleOutput.png)
 ![FolderResults](imgs/ExampleOutput.png)
 
