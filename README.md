@@ -14,7 +14,7 @@ One of the best methods of monitoring activities by a process in Windows is with
 However, there are some downsides:
 1. **Manual Work**: To get a Full Packet Capture per process you need to manually start a packet capture with a tool like Wireshark/Tshark, and create a filter for endpoints based on the results of ProcMon, which can be timeconsuming and potential endpoints may be missed due to human error if the process is not automated.
 2. **Child processes**: It can be tedious to maintain a track record of all of the child processes that may spawn and the endpoints they're communicating with.
-3. **DNS queries**: (AFAIK) ProcMon doesn't support capturing DNS queries. It does provide with UDP Send to port 53, but no information of the actual domain name that's queried nor the given address response.
+3. **DNS queries**: (AFAIK) ProcMon doesn't support capturing DNS queries. It does provide with UDP/TCP sent to port 53, but no information of the actual domain name that's queried nor the given address response.
 </details>
 
 ## Features: 
@@ -36,6 +36,17 @@ However, there are some downsides:
 (*Must be run as administrator - for packet capture and listening to ETW*) 
 
 ![Example Usage](imgs/ExampleUsage.gif)
+
+**Get a list of available interfaces to monitor**:
+```
+WhoYouCalling.exe --getinterfaces
+
+[*] 0) \Device\NPF_{NNNNNNNN-8238-4166-B2A1-NNNNNNNNNNNN} WAN Miniport (Network Monitor)
+[*] 1) \Device\NPF_{NNNNNNNN-C41D-4E1C-9F15-NNNNNNNNNNNN} WAN Miniport (IPv6)
+...
+[*] 9) \Device\NPF_Loopback Adapter for loopback traffic capture
+[*] 10) \Device\NPF_{NNNNNNNN-AAB6-44DF-A3B5-NNNNNNNNNNNN} Killer E2600 Gigabit Ethernet Controller
+```
 
 **Execute a binary with arguments. Output the results to a folder on the user desktop**:
 ```
@@ -112,3 +123,7 @@ bin\Release\net8.0\win-x64\WhoYouCalling.exe [arguments]...
 - Add wireshark filter per domain name as their resolved IP addresses can be converted
 - Add privileged execution option to spawn the process as administrator
 - Add requirement of npcap drivers if pcap interface specified. It would be nice if the drivers are not a requirement when you're specifying `--nopcap` flag. 
+
+### Nice to have
+- Network graph visualizing the process tree and summarized network traffic by each process
+- Functionality to not specify an executable nor pid, to monitor all running processes and their network activity on a host. Could be useful during incidents
