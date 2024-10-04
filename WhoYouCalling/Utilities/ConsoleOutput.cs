@@ -10,7 +10,7 @@ namespace WhoYouCalling.Utilities
             switch (type)
             {
                 case PrintType.Info:
-                    if (Program.Debug)
+                    if (Program.Debug())
                     {
                         return;
                     }
@@ -21,7 +21,7 @@ namespace WhoYouCalling.Utilities
                     prefix = $"[{currentTimestamp}]";
                     break;
                 case PrintType.RunningMetrics:
-                    if (Program.Debug)
+                    if (Program.Debug())
                     {
                         return;
                     }
@@ -38,7 +38,7 @@ namespace WhoYouCalling.Utilities
                     prefix = "[!!!]";
                     break;
                 case PrintType.Debug:
-                    if (Program.Debug)
+                    if (Program.Debug())
                     {
                         prefix = $"[DEBUG]";
                     }

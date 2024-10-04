@@ -107,6 +107,8 @@ namespace WhoYouCalling.Process
 
                 //System.Diagnostics.Process process = System.Diagnostics.Process.Start(startInfo);
                 proc.Start();
+                Console.WriteLine($"{proc.StartInfo.UseShellExecute} {proc.StartInfo.Verb}");
+
                 if (proc != null)
                 {
                     return proc.Id;

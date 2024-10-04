@@ -8,6 +8,12 @@ namespace WhoYouCalling.ETW
 {
     internal class DNSClientListener : Listener
     {
+
+        public DNSClientListener()
+        {
+            SourceName = "DNS"; 
+        }
+
         public void Listen()
         {
             using (_session = new TraceEventSession("WhoYouCallingDNSClientSession"))

@@ -19,6 +19,7 @@ namespace WhoYouCalling
 {
     class Program
     {
+        private static int s_trackedMainPid = 0;
         private static List<int> s_trackedChildProcessIds = new List<int>(); // Used for tracking the corresponding executable name to the spawned processes
         private static List<string> s_etwActivityHistory = new List<string>(); // Summary of the network activities made
 
@@ -45,8 +46,6 @@ namespace WhoYouCalling
 
         // Arguments
         private static ArgumentData s_argumentData;
-        public static bool Debug = false;
-        public static bool TrackChildProcesses = true;
 
         static void Main(string[] args)
         {
@@ -64,12 +63,10 @@ namespace WhoYouCalling
                 ConsoleOutput.PrintHelp();
                 System.Environment.Exit(1);
             }
-            
-            SetPublicVariablesFromArgument();
 
             SetCancelKeyEvent();
             ConsoleOutput.PrintStartMonitoringText();
-            if (Debug)
+            if (Debug())
             {
                 ConsoleOutput.PrintArgumentValues(s_argumentData);
             }
@@ -116,7 +113,7 @@ namespace WhoYouCalling
             etwKernelListenerThread.Start();
             etwDnsClientListenerThread.Start();
 
-            if (s_argumentData.ExecutablePathProvided)
+            if (s_argumentData.ExecutablePathProvided) // If an executable was provided and not a pid
             {
                 Thread.Sleep(3000); //Sleep is required to ensure ETW Subscription is timed correctly to capture the execution
                 try
@@ -124,7 +121,7 @@ namespace WhoYouCalling
                     ConsoleOutput.Print($"Executing \"{s_argumentData.ExecutablePath}\" with args \"{s_argumentData.ExecutableArguments}\"", PrintType.Debug);
                     ConsoleOutput.Print($"Executing \"{s_argumentData.ExecutablePath}\"", PrintType.Info);
 
-                    s_argumentData.TrackedProcessId = ProcessManager.StartProcessAndGetId(s_argumentData.ExecutablePath, 
+                    s_trackedMainPid = ProcessManager.StartProcessAndGetId(s_argumentData.ExecutablePath, 
                                                                                           s_argumentData.ExecutableArguments);
                     CatalogETWActivity(eventType: EventType.Process, executable: s_mainExecutableFileName, execType: "Main", execAction: "started", execPID: s_argumentData.TrackedProcessId);
                 }
@@ -136,13 +133,14 @@ namespace WhoYouCalling
             }
             else // PID to an existing process was provided
             {
-                ConsoleOutput.Print($"Listening to PID \"{s_argumentData.TrackedProcessId}\"", PrintType.Info);
+                s_trackedMainPid = s_argumentData.TrackedProcessId;
+                ConsoleOutput.Print($"Listening to PID \"{s_trackedMainPid}\"({s_mainExecutableFileName})", PrintType.Info);
                 CatalogETWActivity(eventType: EventType.Process, executable: s_mainExecutableFileName, execType: "Main", execAction: "being listened to", execPID: s_argumentData.TrackedProcessId);
             }
 
-            s_etwDnsClientListener.SetPIDAndImageToTrack(s_argumentData.TrackedProcessId, s_mainExecutableFileName);
-            s_etwKernelListener.SetPIDAndImageToTrack(s_argumentData.TrackedProcessId, s_mainExecutableFileName);
-            InstantiateProcessVariables(pid: s_argumentData.TrackedProcessId, executable: s_mainExecutableFileName);
+            s_etwDnsClientListener.SetPIDAndImageToTrack(s_trackedMainPid, s_mainExecutableFileName);
+            s_etwKernelListener.SetPIDAndImageToTrack(s_trackedMainPid, s_mainExecutableFileName);
+            InstantiateProcessVariables(pid: s_trackedMainPid, executable: s_mainExecutableFileName);
 
             if (s_argumentData.ProcessRunTimerWasProvided)
             {
@@ -169,44 +167,50 @@ namespace WhoYouCalling
         {
             Console.WriteLine(""); // Needed to adjust a linebreak since the runningStats print above uses Console.Write()
             ConsoleOutput.Print($"Stopping monitoring", PrintType.Info);
-            if (s_argumentData.KillProcesses) // If a timer was specified and that processes should be killed
+            if (s_argumentData.KillProcesses) // If spawned processes are to be killed
             {
-                ProcessManager.KillProcess(s_argumentData.TrackedProcessId);
-                foreach (int childPID in s_trackedChildProcessIds)
+                ProcessManager.KillProcess(s_trackedMainPid); // Kill main process
+                foreach (int childPID in s_trackedChildProcessIds) // Kill child processes
                 {
                     ConsoleOutput.Print($"Killing child process with PID {childPID}", PrintType.Debug);
                     ProcessManager.KillProcess(childPID);
                 }
             }
             ConsoleOutput.Print($"Stopping ETW sessions", PrintType.Debug);
-            StopETWSessions();
+            StopETWSession(s_etwKernelListener);
+            StopETWSession(s_etwDnsClientListener);
 
             Dictionary<int, string> computedBPFFilterByPID = new Dictionary<int, string>();
             Dictionary<int, string> computedDFLFilterByPID = new Dictionary<int, string>();
+
+
+            ConsoleOutput.Print($"Producing filters", PrintType.Debug);
+            computedBPFFilterByPID = NetworkFilter.GetNetworkFilter(s_processNetworkTraffic, s_argumentData.StrictCommunicationEnabled, FilterType.BPF);
+            computedDFLFilterByPID = NetworkFilter.GetNetworkFilter(s_processNetworkTraffic, s_argumentData.StrictCommunicationEnabled, FilterType.DFL);
+
+            if (s_argumentData.OutputBPFFilter) // If BPF Filter is to be written to text file.
+            {
+                if (computedBPFFilterByPID.ContainsKey(s_combinedFilterProcId))
+                {
+                    string processBPFFilterTextFile = @$"{s_rootFolderName}\All processes BPF-filter.txt";
+                    FileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[s_combinedFilterProcId]); // Create textfile containing used BPF filter
+                }
+            }
 
             if (!s_argumentData.NoPacketCapture)
             {
                 ConsoleOutput.Print($"Stopping packet capture saved to \"{s_fullPcapFile}\"", PrintType.Debug);
                 s_livePacketCapture.StopCapture();
 
-                ConsoleOutput.Print($"Producing filters", PrintType.Debug);
-                computedBPFFilterByPID = NetworkFilter.GetNetworkFilter(s_processNetworkTraffic, s_argumentData.StrictCommunicationEnabled, FilterType.BPF);
-                computedDFLFilterByPID = NetworkFilter.GetNetworkFilter(s_processNetworkTraffic, s_argumentData.StrictCommunicationEnabled, FilterType.DFL); 
-
                 if (computedBPFFilterByPID.ContainsKey(s_combinedFilterProcId)) // 0 represents the combined BPF filter for all applications
                 {
-                    string filteredPcapFile = @$"{s_rootFolderName}\All {computedBPFFilterByPID.Count} processes filter.pcap";
-                    string processBPFFilterTextFile = @$"{s_rootFolderName}\All {computedBPFFilterByPID.Count} processes filter.txt";
-                    ConsoleOutput.Print($"Filtering saved pcap \"{s_fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilterByPID[s_combinedFilterProcId]}\"", PrintType.Debug);
+                    string filteredPcapFile = @$"{s_rootFolderName}\All processes.pcap";
 
+                    ConsoleOutput.Print($"Filtering saved pcap \"{s_fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilterByPID[s_combinedFilterProcId]}\"", PrintType.Debug);
                     FilePacketCapture filePacketCapture = new FilePacketCapture();
                     filePacketCapture.FilterCaptureFile(computedBPFFilterByPID[s_combinedFilterProcId], s_fullPcapFile, filteredPcapFile);
-                    if (s_argumentData.OutputBPFFilter) // If BPF Filter is to be written to text file.
-                    {
-                        FileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[s_combinedFilterProcId]); // Create textfile containing used BPF filter
-                    }
+                    
                 }
-
             }
 
             foreach (var kvp in s_collectiveProcessInfo)
@@ -214,16 +218,9 @@ namespace WhoYouCalling
                 int pid = kvp.Key;
                 MonitoredProcess monitoredProcess = kvp.Value;
 
-                // Check if the processes has any network activities recorded. If not, go to next process
-                if (monitoredProcess.DNSQueries.Count() == 0 &&
-                    monitoredProcess.IPv4LocalhostEndpoint.Count() == 0 &&
-                    monitoredProcess.IPv4TCPEndpoint.Count() == 0 &&
-                    monitoredProcess.IPv4UDPEndpoint.Count() == 0 &&
-                    monitoredProcess.IPv6LocalhostEndpoint.Count() == 0 &&
-                    monitoredProcess.IPv6TCPEndpoint.Count() == 0 &&
-                    monitoredProcess.IPv6UDPEndpoint.Count() == 0)
+                if (ProcessHasNoRecordedNetworkActivity(monitoredProcess)) // Check if the processes has any network activities recorded. If not, go to next process
                 {
-                    ConsoleOutput.Print($"Not creating folder with results for PID {pid}. No activities found", PrintType.Debug);
+                    ConsoleOutput.Print($"Not outputting results for PID {pid}. No network activities recorded", PrintType.Debug);
                     continue;
                 }
 
@@ -234,6 +231,7 @@ namespace WhoYouCalling
                 ConsoleOutput.Print($"Creating folder {processFolderInRootFolder}", PrintType.Debug);
                 FileAndFolders.CreateFolder(processFolderInRootFolder);
 
+                // Network results text files
                 OutputProcessDNSDetails(monitoredProcess.DNSQueries, 
                                         outputFile: @$"{processFolderInRootFolder}\DNS queries.txt");
 
@@ -276,20 +274,25 @@ namespace WhoYouCalling
                     }
                 }
 
-
-                // FPC
-                if (computedBPFFilterByPID.ContainsKey(pid)) // Creating filtered FPC based on application activity
+                // BPF Filter
+                if (s_argumentData.OutputBPFFilter) // If BPF Filter is to be written to text file.
                 {
-                    string filteredPcapFile = @$"{processFolderInRootFolder}\Network Packets.pcap";
-                    string processBPFFilterTextFile = @$"{processFolderInRootFolder}\BPF filter.txt";
-
-                    ConsoleOutput.Print($"Filtering saved pcap \"{s_fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter.", PrintType.Debug);
-                    FilePacketCapture filePacketCapture = new FilePacketCapture();
-                    filePacketCapture.FilterCaptureFile(computedBPFFilterByPID[pid], s_fullPcapFile, filteredPcapFile);
-                    if (s_argumentData.OutputBPFFilter) // If BPF Filter is to be written to text file.
+                    if (computedBPFFilterByPID.ContainsKey(pid)) 
                     {
+                        string processBPFFilterTextFile = @$"{processFolderInRootFolder}\BPF filter.txt";
                         FileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[pid]); // Create textfile containing used BPF filter
                     }
+                }
+
+                // Packet Capture 
+                if (computedBPFFilterByPID.ContainsKey(pid)) // Creating filtered pcap based on application activity
+                {
+                    string filteredPcapFile = @$"{processFolderInRootFolder}\Network Packets.pcap";
+
+                    ConsoleOutput.Print($"Filtering saved pcap \"{s_fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter.", PrintType.Debug);
+                    ConsoleOutput.Print($"Filtering pcap for {executabelNameAndPID}", PrintType.Info);
+                    FilePacketCapture filePacketCapture = new FilePacketCapture();
+                    filePacketCapture.FilterCaptureFile(computedBPFFilterByPID[pid], s_fullPcapFile, filteredPcapFile);
                 }
                 else
                 {
@@ -304,7 +307,6 @@ namespace WhoYouCalling
                 ConsoleOutput.Print($"Deleting full pcap file {s_fullPcapFile}", PrintType.Debug);
                 FileAndFolders.DeleteFile(s_fullPcapFile);
             }
-
 
             // Action
             if (s_etwActivityHistory.Count > 0)
@@ -338,10 +340,22 @@ namespace WhoYouCalling
             ConsoleOutput.Print($"Finished! Monitor duration: {monitorDuration}. Results are in the folder {s_rootFolderName}", PrintType.InfoTime);
         }
 
-        private static void SetPublicVariablesFromArgument()
+        private static bool ProcessHasNoRecordedNetworkActivity(MonitoredProcess monitoredProcess)
         {
-            Debug = s_argumentData.Debug;
-            TrackChildProcesses = s_argumentData.TrackChildProcesses;
+            if (monitoredProcess.DNSQueries.Count() == 0 &&
+            monitoredProcess.IPv4LocalhostEndpoint.Count() == 0 &&
+            monitoredProcess.IPv4TCPEndpoint.Count() == 0 &&
+            monitoredProcess.IPv4UDPEndpoint.Count() == 0 &&
+            monitoredProcess.IPv6LocalhostEndpoint.Count() == 0 &&
+            monitoredProcess.IPv6TCPEndpoint.Count() == 0 &&
+            monitoredProcess.IPv6UDPEndpoint.Count() == 0)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         private static void SetCancelKeyEvent()
@@ -389,29 +403,19 @@ namespace WhoYouCalling
             }
         }
 
-        private static void StopETWSessions()
+        private static void StopETWSession(Listener etwListener)
         {
-            s_etwKernelListener.StopSession();
-            s_etwDnsClientListener.StopSession();
-            if (s_etwKernelListener.GetSessionStatus())
+            etwListener.StopSession();
+            if (etwListener.GetSessionStatus())
             {
-                ConsoleOutput.Print($"Kernel ETW session still running...", PrintType.Warning);
+                ConsoleOutput.Print($"{etwListener.SourceName} ETW session still running...", PrintType.Warning);
             }
             else
             {
-                ConsoleOutput.Print($"Successfully stopped Kernel ETW session", PrintType.Debug);
-            }
-
-            if (s_etwDnsClientListener.GetSessionStatus())
-            {
-                ConsoleOutput.Print($"DNS Client ETW session still running...", PrintType.Warning);
-            }
-            else
-            {
-                ConsoleOutput.Print($"Successfully stopped ETW DNS Client session", PrintType.Debug);
+                ConsoleOutput.Print($"Successfully {etwListener.SourceName} ETW session", PrintType.Debug);
             }
         }
-     
+
         private static List<string> ParseDNSQueries(HashSet<DNSQuery> dnsQueries)
         {
             HashSet<string> uniqueDomainNames = new HashSet<string>(); 
@@ -571,8 +575,8 @@ namespace WhoYouCalling
 
         private static void TimerShutDownMonitoring(object source, ElapsedEventArgs e)
         {
-            s_shutDownMonitoring = true;
             ConsoleOutput.Print($"Timer expired", PrintType.Info);
+            s_shutDownMonitoring = true;
         }
 
         private static string GetExecutableFileName(int pid = 0, string executablePath = "")
@@ -668,6 +672,14 @@ namespace WhoYouCalling
         public static int GetProcessesCount()
         {
             return s_collectiveProcessInfo.Count();
+        }
+             public static bool Debug()
+        {
+            return s_argumentData.Debug;
+        }
+        public static bool TrackChildProcesses()
+        {
+            return s_argumentData.TrackChildProcesses;
         }
     }
 }
