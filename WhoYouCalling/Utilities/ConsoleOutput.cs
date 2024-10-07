@@ -85,7 +85,8 @@ namespace WhoYouCalling.Utilities
    \ \/\/ /| ' \/ _ \ V / _ \ || | (__/ _` | | | | ' \/ _` |   |:::|
     \_/\_/ |_||_\___/|_|\___/\_,_|\___\__,_|_|_|_|_||_\__, |   |:::|
                                                       |___/     \___\
-                                                                 @H4NM
+
+By Hannes Michel (@H4NM)
 ";
             ConsoleColor initialForeground = Console.ForegroundColor;
             Console.ForegroundColor = ConsoleColor.Magenta;
@@ -98,9 +99,14 @@ namespace WhoYouCalling.Utilities
             string helpText = @"
 Usage: WhoYouCalling.exe [options]
 Options:
-  -e, --executable    : Executes the specified executable in a non-privileged context.
+  -e, --executable    : Executes the specified executable which is in a non-privileged context
+                        unless --privileged flag is provided.
   -a, --arguments     : Appends arguments contained within quotes to the executable file.
-  -p, --pid           : The running process id to track rather than executing the binary.
+  -R, --privileged    : Executes the specified executable in a privileged context. 
+                        Inherits the integrity level and access token of WhyYouCalling.exe.
+  -u, --user          : The user that the process should run as.
+  -p, --password      : The password for the specified user that the process should run as.
+  -P, --pid           : The running process id to track rather than executing the binary.
   -x, --execnames     : A comma separated list of executable file names to also monitor for.
                         A useful scenario is when C:\Program Files\Mozilla Firefox\firefox.exe is launched.
                         The PPID of the main firefox instance belongs to explorer.exe, which is 

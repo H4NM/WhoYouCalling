@@ -2,7 +2,7 @@
 using Microsoft.Diagnostics.Tracing.Session;
 using WhoYouCalling.Network.DNS;
 using WhoYouCalling.Utilities;
-using WhoYouCalling.WhoYouCalling.Network;
+using WhoYouCalling.Network;
 
 namespace WhoYouCalling.ETW
 {
@@ -41,7 +41,7 @@ namespace WhoYouCalling.ETW
                                 ConsoleOutput.Print($"Attempted to parse retrieved DNS Query type. Failed to parse it", PrintType.Debug);
                                 queryTypeCode = 999999; // Non-existing DNS type value. Is later looked up
                             }
-                            string dnsRecordTypeCodeName = DnsTypeLookup.GetName(queryTypeCode); // Retrieve the DNS type code name
+                            string dnsRecordTypeCodeName = DnsCodeLookup.GetDnsTypeName(queryTypeCode); // Retrieve the DNS type code name
 
                             DNSQuery dnsQuery = new DNSQuery
                             {
@@ -95,8 +95,8 @@ namespace WhoYouCalling.ETW
                                 queryTypeCode = 999999; // Non-existing DNS type value. Is later looked up
                             }
 
-                            string dnsRecordTypeCodeName = DnsTypeLookup.GetName(queryTypeCode); // Retrieve the DNS type code name
-                            string dnsResponseStatusCodeName = DnsStatusLookup.GetName(queryStatusCode); // Retrieve the DNS response status code name
+                            string dnsRecordTypeCodeName = DnsCodeLookup.GetDnsTypeName(queryTypeCode); // Retrieve the DNS type code name
+                            string dnsResponseStatusCodeName = DnsCodeLookup.GetDnsStatusName(queryStatusCode); // Retrieve the DNS response status code name
 
                             DNSResponse dnsResponseQuery = new DNSResponse
                             {

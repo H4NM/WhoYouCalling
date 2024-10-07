@@ -5,7 +5,7 @@ using WhoYouCalling.Network;
 using WhoYouCalling.Network.DNS;
 using WhoYouCalling.Utilities;
 
-namespace WhoYouCalling.WhoYouCalling.Network
+namespace WhoYouCalling.Network
 {
     internal class NetworkUtils
     {
@@ -49,7 +49,7 @@ namespace WhoYouCalling.WhoYouCalling.Network
                     string domain = string.IsNullOrEmpty(retrievedTextPart) ? "N/A" : retrievedTextPart;
 
                     responseResult.BundledRecordTypeCode = recordTypeCode;
-                    responseResult.BundledRecordTypeText = DnsTypeLookup.GetName(recordTypeCode);
+                    responseResult.BundledRecordTypeText = DnsCodeLookup.GetDnsTypeName(recordTypeCode);
                     responseResult.BundledDomain = domain;
                 }
                 else

@@ -21,6 +21,7 @@ However, there are some downsides:
 - Can start and monitor an executable.
 - Can monitor an already running process.
 - Can monitor additional related processes based on executable names.
+- Executables can be run as other users
 - Creates a full packet capture .pcap file per process.
 - Records TCPIP activities made by a processes, netflow style.
 - Records DNS requests and responses made and retrieved by applications.
@@ -76,9 +77,13 @@ There are other tools that can compliment your quest of application network anal
 
 ### Limitations
 - **DNS**: In ETW, `Microsoft-Windows-DNS-Client` only logs A and AAAA queries, neglecting other DNS query types such as PTR, TXT, MX, SOA etc. It does capture CNAME and it's respective adresses, which are part of the DNS response. However, with the FPC the requests are captured either way, just not portrayed as in registered DNS traffic by the application.
+- **Execution integrity**: It's currently not possible to delegate the privilege of executing applications in an elevated state to other users, meaning that if you want to run the application elevated you need to be signed in as the user with administrator rights.   
+  Furthermore, since WhoYouCalling requires elevated privileges to run (*ETW + FPC*), spawned processes naturally inherits the security token making them also posess the same integrity level - and .NET api does not work too well with creating less privileged processes from an already elevated state.
+  The best and most reliable approach was to duplicate the low privileged token of the desktop shell in an interactive logon (explorer.exe).
+  However, there may be use cases in which WhoYouCalling is executed via a remote management tool like PowerShell, SSH or PsExec, where there is no instance of a desktop shell, in these case you need to provide a username and password of a user that may execute it. 
 
 ### Dependencies
-This project has been tested and works with .NET 8 with two external libraries for capturing ETW activity and network packets: 
+This project has been tested and works with .NET 8 with two nuget packages, and drivers for capturing network packets: 
 - FPC: 
   - [SharpCap](https://github.com/dotpcap/sharppcap)
   - [Npcap](https://npcap.com/#download)
@@ -121,7 +126,6 @@ bin\Release\net8.0\win-x64\WhoYouCalling.exe [arguments]...
 ### To Do:
 - Refactor. Lots and lots to refactor and make more tidy :) 
 - Add wireshark filter per domain name as their resolved IP addresses can be converted
-- Add privileged execution option to spawn the process as administrator
 - Add requirement of npcap drivers if pcap interface specified. It would be nice if the drivers are not a requirement when you're specifying `--nopcap` flag. 
 
 ### Nice to have

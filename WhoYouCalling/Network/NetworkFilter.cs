@@ -1,7 +1,7 @@
 ﻿using WhoYouCalling.Network;
 using WhoYouCalling.Utilities;
 
-namespace WhoYouCalling.WhoYouCalling.Network
+namespace WhoYouCalling.Network
 {
     internal class NetworkFilter
     {

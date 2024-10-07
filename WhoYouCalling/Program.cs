@@ -12,8 +12,20 @@ using WhoYouCalling.Network;
 using WhoYouCalling.Network.FPC;
 using WhoYouCalling.Network.DNS;
 using WhoYouCalling.ETW;
-using WhoYouCalling.WhoYouCalling.Network;
 using WhoYouCalling.Utilities.Arguments;
+
+
+/*
+                                                                   ? 
+                                                                   | 
+  __      ___      __   __         ___      _ _ _              .===:
+  \ \    / / |_  __\ \ / /__ _  _ / __|__ _| | (_)_ _  __ _    |[_]|
+   \ \/\/ /| ' \/ _ \ V / _ \ || | (__/ _` | | | | ' \/ _` |   |:::|
+    \_/\_/ |_||_\___/|_|\___/\_,_|\___\__,_|_|_|_|_||_\__, |   |:::|
+                                                      |___/     \___\
+
+By Hannes Michel 
+*/
 
 namespace WhoYouCalling
 {
@@ -40,8 +52,6 @@ namespace WhoYouCalling
         private static string s_jsonResultsFile = "";
         private static string s_jsonDNSFile = "";
 
-        private static int s_combinedFilterProcId = 0;
-
         private static DateTime s_startTime = DateTime.Now;
 
         // Arguments
@@ -49,6 +59,7 @@ namespace WhoYouCalling
 
         static void Main(string[] args)
         {
+
             if (!(TraceEventSession.IsElevated() ?? false))
             {
                 ConsoleOutput.Print("Please run me as Administrator!", PrintType.Warning);
@@ -58,7 +69,7 @@ namespace WhoYouCalling
             ArgumentManager argsManager = new ArgumentManager();
             s_argumentData = argsManager.ParseArguments(args);
 
-            if (s_argumentData.InvalidArgumentValueProvided || argsManager.IsNotValidCombinationOfArguments(s_argumentData)) {
+            if (s_argumentData.InvalidArgumentValueProvided || !argsManager.IsValidCombinationOfArguments(s_argumentData)) {
                 ConsoleOutput.PrintHeader();
                 ConsoleOutput.PrintHelp();
                 System.Environment.Exit(1);
@@ -115,15 +126,44 @@ namespace WhoYouCalling
 
             if (s_argumentData.ExecutablePathProvided) // If an executable was provided and not a pid
             {
-                Thread.Sleep(3000); //Sleep is required to ensure ETW Subscription is timed correctly to capture the execution
+                Thread.Sleep(Constants.ETWSubscriptionTimingTime); //Sleep is required to ensure ETW Subscription is timed correctly to capture the execution
                 try
                 {
-                    ConsoleOutput.Print($"Executing \"{s_argumentData.ExecutablePath}\" with args \"{s_argumentData.ExecutableArguments}\"", PrintType.Debug);
+                    string executionContext = "";
+                    if (s_argumentData.RunExecutableWithHighPrivilege)
+                    {
+                        executionContext = "elevated";
+                        s_trackedMainPid = ProcessManager.StartProcessAndGetId(executablePath: s_argumentData.ExecutablePath, 
+                                                                               arguments: s_argumentData.ExecutableArguments,
+                                                                               runPrivileged: true);
+                    }
+                    else
+                    {
+                        executionContext = "unelevated";
+                        if (s_argumentData.UserNameProvided && s_argumentData.UserPasswordProvided)
+                        {
+                            s_trackedMainPid = ProcessManager.StartProcessAndGetId(executablePath: s_argumentData.ExecutablePath,
+                                                       arguments: s_argumentData.ExecutableArguments,
+                                                       username: s_argumentData.UserName,
+                                                       password: s_argumentData.UserPassword,
+                                                       runPrivileged: false);
+                        }
+                        else if (Win32.WinAPI.HasShellWindow())
+                        {
+                            s_trackedMainPid = ProcessManager.StarProcessAndGetPIDWithShellWindow(s_argumentData.ExecutablePath, s_argumentData.ExecutableArguments);
+                        }
+                        else
+                        {
+                            ConsoleOutput.Print($"Weird state when starting process. Unprivileged execution, no user nor password provided, not interactive session. Aborting", PrintType.Fatal);
+                            System.Environment.Exit(1);
+                        }
+                    }
+
+                 
+                    ConsoleOutput.Print($"Executing \"{s_argumentData.ExecutablePath}\" with args \"{s_argumentData.ExecutableArguments}\" in {executionContext} context", PrintType.Debug);
                     ConsoleOutput.Print($"Executing \"{s_argumentData.ExecutablePath}\"", PrintType.Info);
 
-                    s_trackedMainPid = ProcessManager.StartProcessAndGetId(s_argumentData.ExecutablePath, 
-                                                                                          s_argumentData.ExecutableArguments);
-                    CatalogETWActivity(eventType: EventType.Process, executable: s_mainExecutableFileName, execType: "Main", execAction: "started", execPID: s_argumentData.TrackedProcessId);
+                    CatalogETWActivity(eventType: EventType.Process, executable: s_mainExecutableFileName, execType: "Main", execAction: "started", execPID: s_trackedMainPid);
                 }
                 catch (Exception ex)
                 {
@@ -134,8 +174,8 @@ namespace WhoYouCalling
             else // PID to an existing process was provided
             {
                 s_trackedMainPid = s_argumentData.TrackedProcessId;
-                ConsoleOutput.Print($"Listening to PID \"{s_trackedMainPid}\"({s_mainExecutableFileName})", PrintType.Info);
-                CatalogETWActivity(eventType: EventType.Process, executable: s_mainExecutableFileName, execType: "Main", execAction: "being listened to", execPID: s_argumentData.TrackedProcessId);
+                ConsoleOutput.Print($"Listening to PID {s_trackedMainPid}({s_mainExecutableFileName})", PrintType.Info);
+                CatalogETWActivity(eventType: EventType.Process, executable: s_mainExecutableFileName, execType: "Main", execAction: "being listened to", execPID: s_trackedMainPid);
             }
 
             s_etwDnsClientListener.SetPIDAndImageToTrack(s_trackedMainPid, s_mainExecutableFileName);
@@ -190,10 +230,10 @@ namespace WhoYouCalling
 
             if (s_argumentData.OutputBPFFilter) // If BPF Filter is to be written to text file.
             {
-                if (computedBPFFilterByPID.ContainsKey(s_combinedFilterProcId))
+                if (computedBPFFilterByPID.ContainsKey(Constants.CombinedFilterProcessID))
                 {
-                    string processBPFFilterTextFile = @$"{s_rootFolderName}\All processes BPF-filter.txt";
-                    FileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[s_combinedFilterProcId]); // Create textfile containing used BPF filter
+                    string processBPFFilterTextFile = @$"{s_rootFolderName}\{Constants.RootFolderBPFFilterFileName}";
+                    FileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[Constants.CombinedFilterProcessID]); // Create textfile containing used BPF filter
                 }
             }
 
@@ -202,15 +242,21 @@ namespace WhoYouCalling
                 ConsoleOutput.Print($"Stopping packet capture saved to \"{s_fullPcapFile}\"", PrintType.Debug);
                 s_livePacketCapture.StopCapture();
 
-                if (computedBPFFilterByPID.ContainsKey(s_combinedFilterProcId)) // 0 represents the combined BPF filter for all applications
+                if (computedBPFFilterByPID.ContainsKey(Constants.CombinedFilterProcessID)) // 0 represents the combined BPF filter for all applications
                 {
-                    string filteredPcapFile = @$"{s_rootFolderName}\All processes.pcap";
+                    string filteredPcapFile = @$"{s_rootFolderName}\{Constants.RootFolderAllProcessesFilteredPcapFileName}";
 
-                    ConsoleOutput.Print($"Filtering saved pcap \"{s_fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilterByPID[s_combinedFilterProcId]}\"", PrintType.Debug);
+                    ConsoleOutput.Print($"Filtering saved pcap \"{s_fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilterByPID[Constants.CombinedFilterProcessID]}\"", PrintType.Debug);
                     FilePacketCapture filePacketCapture = new FilePacketCapture();
-                    filePacketCapture.FilterCaptureFile(computedBPFFilterByPID[s_combinedFilterProcId], s_fullPcapFile, filteredPcapFile);
+                    filePacketCapture.FilterCaptureFile(computedBPFFilterByPID[Constants.CombinedFilterProcessID], s_fullPcapFile, filteredPcapFile);
                     
                 }
+            }
+
+            if (s_argumentData.OutputWiresharkFilter && computedDFLFilterByPID.ContainsKey(Constants.CombinedFilterProcessID))
+            {
+                string processDFLFilterTextFile = @$"{s_rootFolderName}\{Constants.RootFolderDFLFilterFileName}";
+                FileAndFolders.CreateTextFileString(processDFLFilterTextFile, computedDFLFilterByPID[Constants.CombinedFilterProcessID]); // Create textfile containing used BPF filter
             }
 
             foreach (var kvp in s_collectiveProcessInfo)
@@ -233,45 +279,39 @@ namespace WhoYouCalling
 
                 // Network results text files
                 OutputProcessDNSDetails(monitoredProcess.DNSQueries, 
-                                        outputFile: @$"{processFolderInRootFolder}\DNS queries.txt");
+                                        outputFile: @$"{processFolderInRootFolder}\{Constants.ProcessFolderDNSQueriesFileName}");
 
                 OutputProcessNetworkDetails(monitoredProcess.IPv4TCPEndpoint,
-                                            outputFile: @$"{processFolderInRootFolder}\IPv4 TCP Endpoints.txt",
+                                            outputFile: @$"{processFolderInRootFolder}\{Constants.ProcessFolderIPv4TCPEndpoints}",
                                             packetType: PacketType.IPv4TCP);
 
                 OutputProcessNetworkDetails(monitoredProcess.IPv6TCPEndpoint,
-                                            outputFile: @$"{processFolderInRootFolder}\IPv6 TCP Endpoints.txt",
+                                            outputFile: @$"{processFolderInRootFolder}\{Constants.ProcessFolderIPv6TCPEndpoints}",
                                             packetType: PacketType.IPv6TCP);
 
                 OutputProcessNetworkDetails(monitoredProcess.IPv4UDPEndpoint,
-                                            outputFile: @$"{processFolderInRootFolder}\IPv4 UDP Endpoints.txt",
+                                            outputFile: @$"{processFolderInRootFolder}\{Constants.ProcessFolderIPv4UDPEndpoints}",
                                             packetType: PacketType.IPv4UDP);
 
                 OutputProcessNetworkDetails(monitoredProcess.IPv6UDPEndpoint,
-                                            outputFile: @$"{processFolderInRootFolder}\IPv6 UDP Endpoints.txt",
+                                            outputFile: @$"{processFolderInRootFolder}\{Constants.ProcessFolderIPv6UDPEndpoints}",
                                             packetType: PacketType.IPv6UDP);
 
                 OutputProcessNetworkDetails(monitoredProcess.IPv4LocalhostEndpoint,
-                                            outputFile: @$"{processFolderInRootFolder}\Localhost Endpoints.txt",
+                                            outputFile: @$"{processFolderInRootFolder}\{Constants.ProcessFolderIPv4LocalhostEndpoints}",
                                             packetType: PacketType.IPv4Localhost);
 
                 OutputProcessNetworkDetails(monitoredProcess.IPv6LocalhostEndpoint,
-                                            outputFile: @$"{processFolderInRootFolder}\Localhost Endpoints IPv6.txt",
+                                            outputFile: @$"{processFolderInRootFolder}\{Constants.ProcessFolderIPv6LocalhostEndpoints}",
                                             packetType: PacketType.IPv6Localhost);
 
+
+                
                 // Wireshark DFL Filter
-                if (s_argumentData.OutputWiresharkFilter)
+                if (s_argumentData.OutputWiresharkFilter && computedDFLFilterByPID.ContainsKey(pid))
                 {
-                    if (computedDFLFilterByPID.ContainsKey(pid))
-                    {
-                        string processDFLFilterTextFile = @$"{processFolderInRootFolder}\Wireshark filter.txt";
-                        FileAndFolders.CreateTextFileString(processDFLFilterTextFile, computedDFLFilterByPID[pid]);
-                    }
-                    else if (computedDFLFilterByPID.ContainsKey(s_combinedFilterProcId))
-                    {
-                        string processDFLFilterTextFile = @$"{s_rootFolderName}\All {computedDFLFilterByPID.Count} processes filter.txt";
-                        FileAndFolders.CreateTextFileString(processDFLFilterTextFile, computedDFLFilterByPID[s_combinedFilterProcId]); // Create textfile containing used BPF filter
-                    }
+                    string processDFLFilterTextFile = @$"{processFolderInRootFolder}\{Constants.ProcessFolderDFLFilterFileName}";
+                    FileAndFolders.CreateTextFileString(processDFLFilterTextFile, computedDFLFilterByPID[pid]);
                 }
 
                 // BPF Filter
@@ -279,15 +319,15 @@ namespace WhoYouCalling
                 {
                     if (computedBPFFilterByPID.ContainsKey(pid)) 
                     {
-                        string processBPFFilterTextFile = @$"{processFolderInRootFolder}\BPF filter.txt";
+                        string processBPFFilterTextFile = @$"{processFolderInRootFolder}\{Constants.ProcessFolderBPFFilterFileName}";
                         FileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[pid]); // Create textfile containing used BPF filter
                     }
                 }
 
                 // Packet Capture 
-                if (computedBPFFilterByPID.ContainsKey(pid)) // Creating filtered pcap based on application activity
+                if (computedBPFFilterByPID.ContainsKey(pid) && !s_argumentData.NoPacketCapture) // Creating filtered pcap based on application activity
                 {
-                    string filteredPcapFile = @$"{processFolderInRootFolder}\Network Packets.pcap";
+                    string filteredPcapFile = @$"{processFolderInRootFolder}\{Constants.ProcessFolderPcapFileName}";
 
                     ConsoleOutput.Print($"Filtering saved pcap \"{s_fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter.", PrintType.Debug);
                     ConsoleOutput.Print($"Filtering pcap for {executabelNameAndPID}", PrintType.Info);
@@ -369,10 +409,10 @@ namespace WhoYouCalling
 
         private static void SetGeneralMonitoringFileNames()
         {
-            s_fullPcapFile = @$"{s_rootFolderName}\Full Network Packet Capture.pcap";
-            s_etwHistoryFile = @$"{s_rootFolderName}\ETW history.txt";
-            s_jsonResultsFile = @$"{s_rootFolderName}\Process details.json";
-            s_jsonDNSFile = @$"{s_rootFolderName}\DNS responses.json";
+            s_fullPcapFile = @$"{s_rootFolderName}\{Constants.RootFolderEntirePcapFileName}";
+            s_etwHistoryFile = @$"{s_rootFolderName}\{Constants.RootFolderETWHistoryFileName}";
+            s_jsonResultsFile = @$"{s_rootFolderName}\{Constants.RootFolderJSONProcessDetailsFileName}";
+            s_jsonDNSFile = @$"{s_rootFolderName}\{Constants.RootFolderJSONDNSResponseFileName}";
         }
 
         private static void OutputProcessNetworkDetails(HashSet<DestinationEndpoint> networkHashSet, string outputFile = "", PacketType packetType = PacketType.IPv4TCP)
@@ -477,8 +517,6 @@ namespace WhoYouCalling
                             IP = networkPacket.DestinationIP,
                             Port = networkPacket.DestinationPort
                         };
-
-                        string bpfBasedIPVersion = "";
 
                         if (networkPacket.IPversion == "IPv4")
                         {
