@@ -6,7 +6,6 @@ namespace WhoYouCalling.Utilities.Arguments
         // Argument meta flags
         public bool InvalidArgumentValueProvided;
         public bool ExecutableFlagSet;
-        public bool ExecutableNamesToMonitorFlagSet;
         public bool ExecutableArgsFlagSet;
         public bool PIDFlagSet;
         public bool NetworkInterfaceDeviceFlagSet;
@@ -23,6 +22,11 @@ namespace WhoYouCalling.Utilities.Arguments
         public string ExecutablePath { get; set; }
         public bool ExecutablePathProvided { get; set; }
         public string ExecutableArguments { get; set; }
+        public bool RunExecutableWithHighPrivilege { get; set; }
+        public string UserName { get; set; }
+        public bool UserNameProvided { get; set; }
+        public string UserPassword { get; set; }
+        public bool UserPasswordProvided { get; set; }
         public string OutputDirectory { get; set; }
         public bool ProvidedOutputDirectory { get; set; }
         public bool KillProcesses { get; set; }
@@ -45,11 +49,16 @@ namespace WhoYouCalling.Utilities.Arguments
                             bool invalidArgumentValueProvided = false,
                             bool debug = false,
                             bool trackChildProcesses = true,
-                            string outputDirectory = "")
+                            bool runExecutableWithHighPrivilege = false,
+                            bool userNameProvided = false,
+                            bool passwordProvided = false,
+                            string outputDirectory = "",
+                            string userName = "",
+                            string password = "")
         {
             this.ExecutableFlagSet = executableFlagSet;
-            this.ExecutableNamesToMonitorFlagSet = executableNamesToMonitorFlagSet;
             this.ExecutableArgsFlagSet = executableArgsFlagSet;
+            this.RunExecutableWithHighPrivilege = runExecutableWithHighPrivilege;
             this.PIDFlagSet = PIDFlagSet;
             this.NetworkInterfaceDeviceFlagSet = networkInterfaceDeviceFlagSet;
             this.NoPCAPFlagSet = noPCAPFlagSet;
@@ -58,6 +67,10 @@ namespace WhoYouCalling.Utilities.Arguments
             this.Debug = debug;
             this.TrackChildProcesses = trackChildProcesses;
             this.OutputDirectory = outputDirectory;
+            this.UserNameProvided = userNameProvided;
+            this.UserPasswordProvided = passwordProvided;
+            this.UserName = userName;
+            this.UserPassword = password;
         }
     }
 }

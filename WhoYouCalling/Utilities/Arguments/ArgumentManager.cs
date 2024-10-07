@@ -47,11 +47,8 @@ namespace WhoYouCalling.Utilities.Arguments
                                 ConsoleOutput.Print($"One additional executable file name to monitor: {execNamesProvided}", PrintType.Warning);
                                 execNamesParsed.Add(execNamesProvided);
                             }
-                            Console.WriteLine(execNamesParsed);
                             argumentData.ExecutableNamesToMonitor = execNamesParsed;
                             argumentData.ExecutableNamesToMonitorProvided = true;
-                            argumentData.ExecutableNamesToMonitorFlagSet = true;
-
                         }
                         else
                         {
@@ -71,6 +68,38 @@ namespace WhoYouCalling.Utilities.Arguments
                             argumentData.InvalidArgumentValueProvided = true;
                             return argumentData;
                         }
+                    }
+                    else if (args[i] == "-u" || args[i] == "--user") // username flag
+                    {
+                        if (i + 1 < args.Length)
+                        {
+                            argumentData.UserName = args[i + 1];
+                            argumentData.UserNameProvided = true;
+                        }
+                        else
+                        {
+                            ConsoleOutput.Print("No arguments specified after -u/--user flag", PrintType.Warning);
+                            argumentData.InvalidArgumentValueProvided = true;
+                            return argumentData;
+                        }
+                    }
+                    else if (args[i] == "-p" || args[i] == "--password") // user password flag
+                    {
+                        if (i + 1 < args.Length)
+                        {
+                            argumentData.UserPassword = args[i + 1];
+                            argumentData.UserPasswordProvided = true;
+                        }
+                        else
+                        {
+                            ConsoleOutput.Print("No arguments specified after -pw/--password flag", PrintType.Warning);
+                            argumentData.InvalidArgumentValueProvided = true;
+                            return argumentData;
+                        }
+                    }
+                    else if (args[i] == "-R" || args[i] == "--privileged") // Run executable with high privileges
+                    {
+                        argumentData.RunExecutableWithHighPrivilege = true;
                     }
                     else if (args[i] == "-c" || args[i] == "--nochildprocs") // Track the network activity by child processes
                     {
@@ -139,7 +168,7 @@ namespace WhoYouCalling.Utilities.Arguments
                         argumentData.NoPacketCapture = true;
                         argumentData.NoPCAPFlagSet = true;
                     }
-                    else if (args[i] == "-p" || args[i] == "--pid") // Running process id
+                    else if (args[i] == "-P" || args[i] == "--pid") // Running process id
                     {
                         if (i + 1 < args.Length)
                         {
@@ -235,30 +264,52 @@ namespace WhoYouCalling.Utilities.Arguments
             return argumentData;
         }
 
-        public bool IsNotValidCombinationOfArguments(ArgumentData argumentData)
+        public bool IsValidCombinationOfArguments(ArgumentData argumentData)
         {
             // Forbidden combination of flags
             if (argumentData.ExecutableFlagSet == argumentData.PIDFlagSet) //Must specify PID or executable file and not both
             {
                 ConsoleOutput.Print("One of -e or -p must be supplied, and not both", PrintType.Error);
-                return true;
+                return false;
             }
             else if (argumentData.ExecutableArgsFlagSet && !argumentData.ExecutableFlagSet)
             {
                 ConsoleOutput.Print("You need to specify an executable when providing with arguments with -a", PrintType.Error);
-                return true;
+                return false;
             }
             else if (argumentData.KillProcessesFlagSet && argumentData.PIDFlagSet)
             {
                 ConsoleOutput.Print("You can only specify -k for killing process that's been started, and not via listening to a running process", PrintType.Error);
-                return true;
+                return false;
             }
             else if (argumentData.NetworkInterfaceDeviceFlagSet == argumentData.NoPCAPFlagSet)
             {
                 ConsoleOutput.Print("You need to specify a network device interface or specify -n/--nopcap to skip packet capture. Run again with -g to view available network devices", PrintType.Error);
-                return true;
+                return false;
             }
-            return false;
+            else if (argumentData.UserNameProvided != argumentData.UserPasswordProvided)
+            {
+                ConsoleOutput.Print("You need to specify a username for a password and vice versa", PrintType.Error);
+                return false;
+            }
+            else if (argumentData.RunExecutableWithHighPrivilege && !argumentData.ExecutableFlagSet)
+            {
+                ConsoleOutput.Print("You need to provide an executable path when using the elevated flag", PrintType.Error);
+                return false;
+            }
+            else if ((argumentData.UserNameProvided && argumentData.UserPasswordProvided) && argumentData.RunExecutableWithHighPrivilege)
+            {
+                ConsoleOutput.Print("You can't execute applications elevated with provided username and password in this version. Sign in with the user and execute it with the elevated flag", PrintType.Error);
+                return false;
+            }
+            else if (!argumentData.RunExecutableWithHighPrivilege && 
+                     (!argumentData.UserNameProvided && !argumentData.UserPasswordProvided) &&
+                     !Win32.WinAPI.HasShellWindow())
+            {
+                ConsoleOutput.Print("You need to specify a username and password when running unprivileged from an uninteractive session. Provide local account details or run as privileged or get desktop access", PrintType.Error);
+                return false;
+            }
+            return true;
         }
     }
 }

@@ -7,6 +7,11 @@ namespace WhoYouCalling.ETW
 {
     internal class KernelListener : Listener
     {
+        public KernelListener()
+        {
+            SourceName = "Kernel";
+        }
+
         public void Listen()
         {
             using (_session = new TraceEventSession(KernelTraceEventParser.KernelSessionName)) //KernelTraceEventParser
@@ -119,7 +124,7 @@ namespace WhoYouCalling.ETW
                                             execObject: data.ImageFileName,
                                             execPID: data.ProcessID,
                                             parentExecPID: data.ParentID);
-                if (Program.TrackChildProcesses)
+                if (Program.TrackChildProcesses())
                 {
                     Program.AddChildPID(data.ProcessID);
                     Program.InstantiateProcessVariables(pid: data.ProcessID, executable: data.ImageFileName);

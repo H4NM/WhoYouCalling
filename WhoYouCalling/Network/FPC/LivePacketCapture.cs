@@ -14,9 +14,8 @@ namespace WhoYouCalling.Network.FPC
             _captureDevice.OnPacketArrival += new PacketArrivalEventHandler(device_OnPacketArrival);
 
             // Open the device for capturing
-            int readTimeoutMilliseconds = 1000;
-            ConsoleOutput.Print($"Opening {_captureDevice.Name} for reading packets with read timeout of {readTimeoutMilliseconds}", PrintType.Debug);
-            _captureDevice.Open(mode: DeviceModes.Promiscuous | DeviceModes.DataTransferUdp | DeviceModes.NoCaptureLocal, read_timeout: readTimeoutMilliseconds);
+            ConsoleOutput.Print($"Opening {_captureDevice.Name} for reading packets with read timeout of {Constants.PacketCaptureTimeoutMilliseconds}", PrintType.Debug);
+            _captureDevice.Open(mode: DeviceModes.Promiscuous | DeviceModes.DataTransferUdp | DeviceModes.NoCaptureLocal, read_timeout: Constants.PacketCaptureTimeoutMilliseconds);
 
             // open the output file
             ConsoleOutput.Print($"Opening {pcapFile} to write packets to", PrintType.Debug);

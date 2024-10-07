@@ -48,8 +48,18 @@ namespace WhoYouCalling.Network.FPC
             _captureFileWriterDevice.Close();
 
             string filterDuration = Generic.GetPresentableDuration(startTime, DateTime.Now);
-            string performanceMsg = $"Filtered {s_packetCounter} packets in {filterDuration}";
-            ConsoleOutput.Print(performanceMsg, PrintType.Info);
+
+            string filteringMsg = "";
+            if (s_packetCounter > 0)
+            {
+                filteringMsg = $"Filtered {s_packetCounter} packets in {filterDuration} for {filteredPcapFile}";
+            }
+            else
+            {
+                filteringMsg = $"No packets were filtered for {filteredPcapFile}";
+            }
+            ConsoleOutput.Print(filteringMsg, PrintType.Debug);
+
         }
     }
 }

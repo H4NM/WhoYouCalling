@@ -9,6 +9,7 @@ namespace WhoYouCalling.ETW
         protected int _trackedProcessId = 0;
         protected string _mainExecutableFileName = "";
         protected TraceEventSession _session;
+        public string SourceName = "";
 
         public bool IsAMonitoredProcess(int pid)
         {

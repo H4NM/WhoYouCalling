@@ -1,7 +1,6 @@
 ﻿using SharpPcap;
 using SharpPcap.LibPcap;
 
-
 namespace WhoYouCalling.Network.FPC
 {
     internal class BasePacketCapture
@@ -31,7 +30,6 @@ namespace WhoYouCalling.Network.FPC
             s_packetCounter++;
             var rawPacket = e.GetPacket();
             _captureFileWriterDevice.Write(rawPacket);
-            //ConsoleOutput.Print($"Captured packets: {packetIndex}", "debug");
         }
     }
 }
