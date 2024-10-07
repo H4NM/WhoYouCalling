@@ -21,7 +21,7 @@ However, there are some downsides:
 - Can start and monitor an executable.
 - Can monitor an already running process.
 - Can monitor additional related processes based on executable names.
-- Executables can be run as other users
+- Executables can be run as other users and in elevated and unelevated states. 
 - Creates a full packet capture .pcap file per process.
 - Records TCPIP activities made by a processes, netflow style.
 - Records DNS requests and responses made and retrieved by applications.

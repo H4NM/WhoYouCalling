@@ -24,7 +24,7 @@ using WhoYouCalling.Utilities.Arguments;
     \_/\_/ |_||_\___/|_|\___/\_,_|\___\__,_|_|_|_|_||_\__, |   |:::|
                                                       |___/     \___\
 
-By Hannes Michel 
+By Hannes Michel (@H4NM)
 */
 
 namespace WhoYouCalling
