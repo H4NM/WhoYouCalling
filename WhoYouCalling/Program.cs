@@ -96,21 +96,22 @@ namespace WhoYouCalling
 
             ConsoleOutput.Print($"Creating folder {s_rootFolderName}", PrintType.Debug);
             FileAndFolders.CreateFolder(s_rootFolderName);
-            SetGeneralMonitoringFileNames();
-
-            // Retrieve network interface devices
-            var devices = NetworkCaptureManagement.GetNetworkInterfaces(); // Returns a LibPcapLiveDeviceList
-            if (devices.Count == 0)
-            {
-                ConsoleOutput.Print($"No network devices were found..", PrintType.Fatal);
-                System.Environment.Exit(1);
-            }
-            using var device = devices[s_argumentData.NetworkInterfaceChoice];
-            s_livePacketCapture.SetCaptureDevice(device);
+            s_fullPcapFile = @$"{s_rootFolderName}\{Constants.RootFolderEntirePcapFileName}";
+            s_etwHistoryFile = @$"{s_rootFolderName}\{Constants.RootFolderETWHistoryFileName}";
+            s_jsonResultsFile = @$"{s_rootFolderName}\{Constants.RootFolderJSONProcessDetailsFileName}";
+            s_jsonDNSFile = @$"{s_rootFolderName}\{Constants.RootFolderJSONDNSResponseFileName}";
 
             ConsoleOutput.Print($"Starting monitoring...", PrintType.Info);
-            // Create and start thread for capturing packets if enabled
-            if (!s_argumentData.NoPacketCapture) { 
+            if (!s_argumentData.NoPacketCapture) {
+                // Retrieve network interface devices
+                var devices = NetworkCaptureManagement.GetNetworkInterfaces(); 
+                if (devices.Count == 0)
+                {
+                    ConsoleOutput.Print($"No network devices were found..", PrintType.Fatal);
+                    System.Environment.Exit(1);
+                }
+                using var device = devices[s_argumentData.NetworkInterfaceChoice];
+                s_livePacketCapture.SetCaptureDevice(device);
                 Thread fpcThread = new Thread(() => s_livePacketCapture.StartCaptureToFile(s_fullPcapFile));
                 ConsoleOutput.Print($"Starting packet capture saved to \"{s_fullPcapFile}\"", PrintType.Debug);
                 fpcThread.Start();
@@ -306,7 +307,6 @@ namespace WhoYouCalling
                                             packetType: PacketType.IPv6Localhost);
 
 
-                
                 // Wireshark DFL Filter
                 if (s_argumentData.OutputWiresharkFilter && computedDFLFilterByPID.ContainsKey(pid))
                 {
@@ -315,17 +315,17 @@ namespace WhoYouCalling
                 }
 
                 // BPF Filter
-                if (s_argumentData.OutputBPFFilter) // If BPF Filter is to be written to text file.
+                if (s_argumentData.OutputBPFFilter) 
                 {
                     if (computedBPFFilterByPID.ContainsKey(pid)) 
                     {
                         string processBPFFilterTextFile = @$"{processFolderInRootFolder}\{Constants.ProcessFolderBPFFilterFileName}";
-                        FileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[pid]); // Create textfile containing used BPF filter
+                        FileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[pid]); 
                     }
                 }
 
                 // Packet Capture 
-                if (computedBPFFilterByPID.ContainsKey(pid) && !s_argumentData.NoPacketCapture) // Creating filtered pcap based on application activity
+                if (computedBPFFilterByPID.ContainsKey(pid) && !s_argumentData.NoPacketCapture)
                 {
                     string filteredPcapFile = @$"{processFolderInRootFolder}\{Constants.ProcessFolderPcapFileName}";
 
@@ -341,14 +341,12 @@ namespace WhoYouCalling
 
             }
 
-            // Cleanup 
             if (!s_argumentData.SaveFullPcap && !s_argumentData.NoPacketCapture)
             {
                 ConsoleOutput.Print($"Deleting full pcap file {s_fullPcapFile}", PrintType.Debug);
                 FileAndFolders.DeleteFile(s_fullPcapFile);
             }
 
-            // Action
             if (s_etwActivityHistory.Count > 0)
             {
                 ConsoleOutput.Print($"Creating ETW history file \"{s_etwHistoryFile}\"", PrintType.Debug);
@@ -407,13 +405,6 @@ namespace WhoYouCalling
             };
         }
 
-        private static void SetGeneralMonitoringFileNames()
-        {
-            s_fullPcapFile = @$"{s_rootFolderName}\{Constants.RootFolderEntirePcapFileName}";
-            s_etwHistoryFile = @$"{s_rootFolderName}\{Constants.RootFolderETWHistoryFileName}";
-            s_jsonResultsFile = @$"{s_rootFolderName}\{Constants.RootFolderJSONProcessDetailsFileName}";
-            s_jsonDNSFile = @$"{s_rootFolderName}\{Constants.RootFolderJSONDNSResponseFileName}";
-        }
 
         private static void OutputProcessNetworkDetails(HashSet<DestinationEndpoint> networkHashSet, string outputFile = "", PacketType packetType = PacketType.IPv4TCP)
         {

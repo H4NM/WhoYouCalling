@@ -79,12 +79,10 @@ namespace WhoYouCalling.Process
             try
             {
                 var process = Win32.WinAPI.GetCurrentProcess();
-                if (!Win32.WinAPI.OpenProcessToken(process, 0x0020, out hProcessToken))
+                if (!Win32.WinAPI.OpenProcessToken(process, Constants.TokenAdjustPrivileges, out hProcessToken))
                 {
                     int errorCode = Marshal.GetLastWin32Error();
-                    string errorMessage = new Win32Exception(errorCode).Message;
-                    throw new Win32Exception(errorCode, $"Failed to lookup privilege value for current process. [ERROR: {errorCode}] - {errorMessage}");
-
+                    Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to lookup privilege value for current process", errorCode);
                 }
 
                 var tkp = new Win32.WinAPI.TOKEN_PRIVILEGES
@@ -96,20 +94,16 @@ namespace WhoYouCalling.Process
                 if (!Win32.WinAPI.LookupPrivilegeValue(null, "SeIncreaseQuotaPrivilege", ref tkp.Privileges[0].Luid))
                 {
                     int errorCode = Marshal.GetLastWin32Error();
-                    string errorMessage = new Win32Exception(errorCode).Message;
-                    throw new Win32Exception(errorCode, $"Failed to lookup privilege value for current process. [ERROR: {errorCode}] - {errorMessage}");
-
+                    Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to lookup privilege value for current process", errorCode);
                 }
 
-                tkp.Privileges[0].Attributes = 0x00000002;
+                tkp.Privileges[0].Attributes = Constants.SePrivilegeEnabled;
 
                 if (!Win32.WinAPI.AdjustTokenPrivileges(hProcessToken, false, ref tkp, 0, IntPtr.Zero, IntPtr.Zero))
                 {
                     int errorCode = Marshal.GetLastWin32Error();
-                    string errorMessage = new Win32Exception(errorCode).Message;
-                    throw new Win32Exception(errorCode, $"Failed to adjust current process token privilege. [ERROR: {errorCode}] - {errorMessage}");
+                    Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to adjust current process token privilege", errorCode);
                 }
-
             }
             finally
             {
@@ -138,22 +132,20 @@ namespace WhoYouCalling.Process
             string tempWorkingDirectory = Path.GetDirectoryName(executablePath);
 
             uint shellProcessId;
-            WinAPI.GetWindowThreadProcessId(shellWnd, out shellProcessId); // Get the process ID of the shell window
+            WinAPI.GetWindowThreadProcessId(shellWnd, out shellProcessId);
 
-            var hShellProcess = Win32.WinAPI.OpenProcess(Constants.QueryInformation, false, shellProcessId); // To query the process for the token
+            var hShellProcess = Win32.WinAPI.OpenProcess(Constants.QueryInformation, false, shellProcessId);
             if (hShellProcess == IntPtr.Zero)
             {
                 int errorCode = Marshal.GetLastWin32Error();
-                string errorMessage = new Win32Exception(errorCode).Message;
-                throw new Win32Exception(errorCode, $"Failed to open desktop shell process. [ERROR: {errorCode}] - {errorMessage}");
+                Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to open desktop shell process", errorCode);
             }
             
             var hShellToken = IntPtr.Zero;
-            if (!Win32.WinAPI.OpenProcessToken(hShellProcess, Constants.TokenDuplicate, out hShellToken)) // Read the token of the shell process, the DesiredAccess is 2 which is duplicate token
+            if (!Win32.WinAPI.OpenProcessToken(hShellProcess, Constants.TokenDuplicate, out hShellToken)) 
             {
                 int errorCode = Marshal.GetLastWin32Error();
-                string errorMessage = new Win32Exception(errorCode).Message;
-                throw new Win32Exception(errorCode, $"Failed to open process token from desktop shell window. [ERROR: {errorCode}] - {errorMessage}");
+                Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to open process token from desktop shell window", errorCode);
             }
 
             uint tokenAccess = Constants.TokenQuery | Constants.TokenAssignPrimary | Constants.TokenDuplicate | Constants.TokenAdjustDefault | Constants.TokenAdjustSessionID;
@@ -161,11 +153,9 @@ namespace WhoYouCalling.Process
             if (!Win32.WinAPI.DuplicateTokenEx(hShellToken, tokenAccess, IntPtr.Zero, Constants.ImpersonationSecurity, Constants.TokenAssignPrimary, out hToken))
             {
                 int errorCode = Marshal.GetLastWin32Error();
-                string errorMessage = new Win32Exception(errorCode).Message;
-                throw new Win32Exception(errorCode, $"Failed to duplicate token for new unprivileged process. [ERROR: {errorCode}] - {errorMessage}");
+                Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to duplicate token for new unprivileged process", errorCode);
             }
 
-            // Set up the startup information for the new process
             var startInfo = new Win32.WinAPI.STARTUPINFO();
             startInfo.cb = Marshal.SizeOf(startInfo);
             var processInfo = new Win32.WinAPI.PROCESS_INFORMATION();
@@ -174,10 +164,8 @@ namespace WhoYouCalling.Process
             if (!Win32.WinAPI.CreateProcessWithTokenW(hToken, Constants.LogonFlags, null, commandLine, Constants.CreationFlags, IntPtr.Zero, tempWorkingDirectory, ref startInfo, out processInfo))
             {
                 int errorCode = Marshal.GetLastWin32Error();
-                string errorMessage = new Win32Exception(errorCode).Message;
-                throw new Win32Exception(errorCode, $"Failed to create unprivileged process with duplicated token. [ERROR: {errorCode}] - {errorMessage}. Maybe try running it with the elevated flag?");
+                Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to create unprivileged process with duplicated token", errorCode);
             }
-
             return (int)(processInfo.dwProcessId); 
         }
 

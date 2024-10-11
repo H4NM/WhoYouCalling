@@ -3,14 +3,18 @@ namespace WhoYouCalling
 {
     static class Constants
     {
-        public const uint QueryInformation = 0x00000400;
+
+        public const uint QueryInformation = 0x400;
         public const uint LogonFlags = 0;
         public const uint CreationFlags = 0;
+        public const uint SePrivilegeEnabled = 0x2;
+
 
         public const Int32 ImpersonationSecurity = 2;
         public const Int32 TokenDuplicate = 2;
         public const Int32 TokenQuery = 8;
         public const Int32 TokenAssignPrimary = 1;
+        public const Int32 TokenAdjustPrivileges = 0x20;
         public const Int32 TokenAdjustDefault = 0x80;
         public const Int32 TokenAdjustSessionID= 0x100;
 
