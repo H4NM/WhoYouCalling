@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Platforms>AnyCPU;x64;x86</Platforms>
-    <FileVersion>1.1</FileVersion>
+    <FileVersion>1.1.1</FileVersion>
     <ApplicationManifest>WhoYouCalling\app.manifest</ApplicationManifest>
   </PropertyGroup>
 

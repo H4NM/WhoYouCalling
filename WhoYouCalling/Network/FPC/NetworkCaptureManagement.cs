@@ -1,5 +1,6 @@
 ﻿using SharpPcap.LibPcap;
 using System.Net;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using WhoYouCalling.Utilities;
 
@@ -7,6 +8,21 @@ namespace WhoYouCalling.Network.FPC
 {
     internal class NetworkCaptureManagement
     {
+        public static bool NpcapDriverExists()
+        {
+            string system32Path = Environment.SystemDirectory;
+            string npcapPath = Path.Combine(system32Path, @"Drivers\npcap.sys");
+
+            if (File.Exists(npcapPath))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         public static bool IsIPv4MappedToIPv6Address(string ip)
         {
             IPAddress address = IPAddress.Parse(ip);

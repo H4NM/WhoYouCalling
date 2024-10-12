@@ -78,7 +78,7 @@ There are other tools that can compliment your quest of application network anal
 ### Limitations
 - **DNS**: In ETW, `Microsoft-Windows-DNS-Client` only logs A and AAAA queries, neglecting other DNS query types such as PTR, TXT, MX, SOA etc. It does capture CNAME and it's respective adresses, which are part of the DNS response. However, with the FPC the requests are captured either way, just not portrayed as in registered DNS traffic by the application.
 - **Execution integrity**: It's currently not possible to delegate the privilege of executing applications in an elevated state to other users, meaning that if you want to run the application elevated you need to be signed in as the user with administrator rights.   
-  Furthermore, since WhoYouCalling requires elevated privileges to run (*ETW + FPC*), spawned processes naturally inherits the security token making them also posess the same integrity level - and .NET api does not work too well with creating less privileged processes from an already elevated state.
+  Since WhoYouCalling requires elevated privileges to run (*ETW + FPC*), spawned processes naturally inherits the security token making them also posess the same integrity level - and .NET api does not work too well with creating less privileged processes from an already elevated state.
   The best and most reliable approach was to duplicate the low privileged token of the desktop shell in an interactive logon (explorer.exe).
   However, there may be use cases in which WhoYouCalling is executed via a remote management tool like PowerShell, SSH or PsExec, where there is no instance of a desktop shell, in these case you need to provide a username and password of a user that may execute it. 
 
@@ -94,7 +94,7 @@ This project has been tested and works with .NET 8 with two nuget packages, and 
 Follow these steps for compiling from source:
 1. Make sure [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/install/windows) is installed
 
-2. Download and install [npcap](https://npcap.com/#download). It's allows for packet capture in Windows.
+2. Download and install [npcap](https://npcap.com/#download). It enables packet capture in Windows. It's not needed if the flag for not capturing packets is provided.
 
 3. Download this repo
 ```

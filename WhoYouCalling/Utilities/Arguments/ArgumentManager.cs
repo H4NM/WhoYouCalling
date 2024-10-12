@@ -216,6 +216,12 @@ namespace WhoYouCalling.Utilities.Arguments
                     }
                     else if (args[i] == "-i" || args[i] == "--interface") // Network interface device flag
                     {
+                        if (!NetworkCaptureManagement.NpcapDriverExists())
+                        {
+                            ConsoleOutput.Print("Npcap does not seem to be installed. It's required to capture network packets", PrintType.Warning);
+                            Environment.Exit(1);
+                        }
+
                         if (i + 1 < args.Length)
                         {
                             if (int.TryParse(args[i + 1], out int networkInterfaceChoice))
@@ -240,8 +246,16 @@ namespace WhoYouCalling.Utilities.Arguments
 
                     else if (args[i] == "-g" || args[i] == "--getinterfaces") //Print available interfaces
                     {
-                        NetworkCaptureManagement.PrintNetworkInterfaces();
+                        if (NetworkCaptureManagement.NpcapDriverExists())
+                        {
+                            NetworkCaptureManagement.PrintNetworkInterfaces();
+                        }
+                        else
+                        {
+                            ConsoleOutput.Print("Npcap does not seem to be installed. It's required to capture network packets", PrintType.Warning);
+                        }
                         Environment.Exit(1);
+
                     }
                     else if (args[i] == "-d" || args[i] == "--debug") //Save the full pcap
                     {

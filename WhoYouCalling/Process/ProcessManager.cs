@@ -73,6 +73,50 @@ namespace WhoYouCalling.Process
             }
         }
 
+        private static void EnableSeIncreaseQuotaPrivilege()
+        {
+            var hProcessToken = IntPtr.Zero;
+            try
+            {
+                var process = Win32.WinAPI.GetCurrentProcess();
+                if (!Win32.WinAPI.OpenProcessToken(process, Constants.TokenPrivileges.AdjustPrivileges, out hProcessToken))
+                {
+                    int errorCode = Marshal.GetLastWin32Error();
+                    Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to lookup privilege value for current process", errorCode);
+                }
+
+                var tkp = new Win32.WinAPI.TOKEN_PRIVILEGES
+                {
+                    PrivilegeCount = 1,
+                    Privileges = new Win32.WinAPI.LUID_AND_ATTRIBUTES[1]
+                };
+
+                if (!Win32.WinAPI.LookupPrivilegeValue(null, "SeIncreaseQuotaPrivilege", ref tkp.Privileges[0].Luid))
+                {
+                    int errorCode = Marshal.GetLastWin32Error();
+                    Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to lookup privilege value for current process", errorCode);
+                }
+
+                tkp.Privileges[0].Attributes = Constants.SecurityFlags.SePrivilegeEnabled;
+
+                if (!Win32.WinAPI.AdjustTokenPrivileges(hProcessToken, false, ref tkp, 0, IntPtr.Zero, IntPtr.Zero))
+                {
+                    int errorCode = Marshal.GetLastWin32Error();
+                    Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to adjust current process token privilege", errorCode);
+                }
+                ConsoleOutput.Print($"Successfully enabled the SeIncreaseQuotaPrivilege", PrintType.Debug);
+            }
+            catch (Exception ex)
+            {
+                // This exception is not set as fatal at the moment as this function may not be needed
+                ConsoleOutput.Print($"An error occurred while attempting to enable the SeIncreaseQuotaPrivilege: {ex.Message}", PrintType.Warning);
+            }
+            finally
+            {
+                Win32.WinAPI.CloseHandle(hProcessToken);
+            }
+        }
+
         public static int StarProcessAndGetPIDWithShellWindow(string executablePath, string arguments = "")
         {
             /*
@@ -82,38 +126,58 @@ namespace WhoYouCalling.Process
             the target process with a duplicate of that token. Spawning unprivileged processes from an already privileged 
             process is tricky and this was deemed as the best approach. For now. 
              */
+
+            EnableSeIncreaseQuotaPrivilege();
+
             var shellWnd = Win32.WinAPI.GetShellWindow();
             if (shellWnd == IntPtr.Zero)
-                throw new Exception("Could not find shell window to retrieve token for spawning unprivileged process");
+            {
+                throw new Exception($"Could not find shell window to retrieve token for spawning unprivileged process");
+            }
 
             string tempWorkingDirectory = Path.GetDirectoryName(executablePath);
 
             uint shellProcessId;
-            WinAPI.GetWindowThreadProcessId(shellWnd, out shellProcessId); // Get the process ID of the shell window
+            WinAPI.GetWindowThreadProcessId(shellWnd, out shellProcessId);
 
-            var hShellProcess = Win32.WinAPI.OpenProcess(Constants.QueryInformation, false, shellProcessId); // To query the process for the token
+            var hShellProcess = Win32.WinAPI.OpenProcess(Constants.SecurityFlags.QueryInformation, false, shellProcessId);
             if (hShellProcess == IntPtr.Zero)
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "Failed to open desktop shell process");
-
+            {
+                int errorCode = Marshal.GetLastWin32Error();
+                Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to open desktop shell process", errorCode);
+            }
             
             var hShellToken = IntPtr.Zero;
-            if (!Win32.WinAPI.OpenProcessToken(hShellProcess, Constants.TokenDuplicate, out hShellToken)) // Read the token of the shell process, the DesiredAccess is 2 which is duplicate token
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "Failed to open process token from desktop shell window");
+            if (!Win32.WinAPI.OpenProcessToken(hShellProcess, Constants.TokenPrivileges.Duplicate, out hShellToken)) 
+            {
+                int errorCode = Marshal.GetLastWin32Error();
+                Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to open process token from desktop shell window", errorCode);
+            }
 
-            uint tokenAccess = Constants.TokenQuery | Constants.TokenAssignPrimary | Constants.TokenDuplicate | Constants.TokenAdjustDefault | Constants.TokenAdjustSessionID;
+            uint tokenAccess = Constants.TokenPrivileges.Query | 
+                               Constants.TokenPrivileges.AssignPrimary |
+                               Constants.TokenPrivileges.Duplicate |
+                               Constants.TokenPrivileges.AdjustDefault |
+                               Constants.TokenPrivileges.AdjustSessionID;
+
             var hToken = IntPtr.Zero;
-            if (!Win32.WinAPI.DuplicateTokenEx(hShellToken, tokenAccess, IntPtr.Zero, Constants.ImpersonationSecurity, Constants.TokenAssignPrimary, out hToken))
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "Failed to duplicate token for new unprivileged process");
 
-            // Set up the startup information for the new process
+            if (!Win32.WinAPI.DuplicateTokenEx(hShellToken, tokenAccess, IntPtr.Zero, Constants.SecurityFlags.ImpersonationSecurity, Constants.TokenPrivileges.AssignPrimary, out hToken))
+            {
+                int errorCode = Marshal.GetLastWin32Error();
+                Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to duplicate token for new unprivileged process", errorCode);
+            }
+
             var startInfo = new Win32.WinAPI.STARTUPINFO();
             startInfo.cb = Marshal.SizeOf(startInfo);
             var processInfo = new Win32.WinAPI.PROCESS_INFORMATION();
 
             string commandLine = $"{executablePath} {arguments}";
-            if (!Win32.WinAPI.CreateProcessWithTokenW(hToken, Constants.LogonFlags, null, commandLine, Constants.CreationFlags, IntPtr.Zero, tempWorkingDirectory, ref startInfo, out processInfo))
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "Failed to create unprivileged process with duplicated token");
-
+            if (!Win32.WinAPI.CreateProcessWithTokenW(hToken, Constants.SecurityFlags.LogonFlags, null, commandLine, Constants.SecurityFlags.CreationFlags, IntPtr.Zero, tempWorkingDirectory, ref startInfo, out processInfo))
+            {
+                int errorCode = Marshal.GetLastWin32Error();
+                Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to create unprivileged process with duplicated token", errorCode);
+            }
             return (int)(processInfo.dwProcessId); 
         }
 
