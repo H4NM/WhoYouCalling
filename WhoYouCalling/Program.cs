@@ -40,6 +40,7 @@ namespace WhoYouCalling
         private static Dictionary<string, HashSet<DNSResponse>> s_dnsQueryResults = new Dictionary<string, HashSet<DNSResponse>>();
 
         private static bool s_shutDownMonitoring = false;
+        private static bool s_timerExpired = false;
         private static string s_mainExecutableFileName = "";
 
         private static LivePacketCapture s_livePacketCapture = new LivePacketCapture();
@@ -96,10 +97,10 @@ namespace WhoYouCalling
 
             ConsoleOutput.Print($"Creating folder {s_rootFolderName}", PrintType.Debug);
             FileAndFolders.CreateFolder(s_rootFolderName);
-            s_fullPcapFile = @$"{s_rootFolderName}\{Constants.RootFolderEntirePcapFileName}";
-            s_etwHistoryFile = @$"{s_rootFolderName}\{Constants.RootFolderETWHistoryFileName}";
-            s_jsonResultsFile = @$"{s_rootFolderName}\{Constants.RootFolderJSONProcessDetailsFileName}";
-            s_jsonDNSFile = @$"{s_rootFolderName}\{Constants.RootFolderJSONDNSResponseFileName}";
+            s_fullPcapFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderEntirePcapFileName}";
+            s_etwHistoryFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderETWHistoryFileName}";
+            s_jsonResultsFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderJSONProcessDetailsFileName}";
+            s_jsonDNSFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderJSONDNSResponseFileName}";
 
             ConsoleOutput.Print($"Starting monitoring...", PrintType.Info);
             if (!s_argumentData.NoPacketCapture) {
@@ -127,7 +128,7 @@ namespace WhoYouCalling
 
             if (s_argumentData.ExecutablePathProvided) // If an executable was provided and not a pid
             {
-                Thread.Sleep(Constants.ETWSubscriptionTimingTime); //Sleep is required to ensure ETW Subscription is timed correctly to capture the execution
+                Thread.Sleep(Constants.Timeouts.ETWSubscriptionTimingTime); //Sleep is required to ensure ETW Subscription is timed correctly to capture the execution
                 try
                 {
                     string executionContext = "";
@@ -160,7 +161,6 @@ namespace WhoYouCalling
                         }
                     }
 
-                 
                     ConsoleOutput.Print($"Executing \"{s_argumentData.ExecutablePath}\" with args \"{s_argumentData.ExecutableArguments}\" in {executionContext} context", PrintType.Debug);
                     ConsoleOutput.Print($"Executing \"{s_argumentData.ExecutablePath}\"", PrintType.Info);
 
@@ -193,11 +193,19 @@ namespace WhoYouCalling
                 timer.Start();
             }
 
+
+
             while (true) // Continue monitoring and output statistics
             {
                 ConsoleOutput.PrintMetrics();
                 if (s_shutDownMonitoring) // If shutdown has been signaled
                 {
+                    Console.WriteLine(""); // Needed to adjust a linebreak since the runningStats print above uses Console.Write
+                    if (s_timerExpired)
+                    {
+                        ConsoleOutput.Print($"Timer expired", PrintType.Info);
+                    }
+                    ConsoleOutput.Print($"Stopping monitoring", PrintType.Info);
                     ShutdownMonitoring();
                     break;
                 }
@@ -206,8 +214,6 @@ namespace WhoYouCalling
 
         private static void ShutdownMonitoring()
         {
-            Console.WriteLine(""); // Needed to adjust a linebreak since the runningStats print above uses Console.Write()
-            ConsoleOutput.Print($"Stopping monitoring", PrintType.Info);
             if (s_argumentData.KillProcesses) // If spawned processes are to be killed
             {
                 ProcessManager.KillProcess(s_trackedMainPid); // Kill main process
@@ -231,10 +237,10 @@ namespace WhoYouCalling
 
             if (s_argumentData.OutputBPFFilter) // If BPF Filter is to be written to text file.
             {
-                if (computedBPFFilterByPID.ContainsKey(Constants.CombinedFilterProcessID))
+                if (computedBPFFilterByPID.ContainsKey(Constants.Miscellaneous.CombinedFilterProcessID))
                 {
-                    string processBPFFilterTextFile = @$"{s_rootFolderName}\{Constants.RootFolderBPFFilterFileName}";
-                    FileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[Constants.CombinedFilterProcessID]); // Create textfile containing used BPF filter
+                    string processBPFFilterTextFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderBPFFilterFileName}";
+                    FileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[Constants.Miscellaneous.CombinedFilterProcessID]); // Create textfile containing used BPF filter
                 }
             }
 
@@ -243,21 +249,21 @@ namespace WhoYouCalling
                 ConsoleOutput.Print($"Stopping packet capture saved to \"{s_fullPcapFile}\"", PrintType.Debug);
                 s_livePacketCapture.StopCapture();
 
-                if (computedBPFFilterByPID.ContainsKey(Constants.CombinedFilterProcessID)) // 0 represents the combined BPF filter for all applications
+                if (computedBPFFilterByPID.ContainsKey(Constants.Miscellaneous.CombinedFilterProcessID)) // 0 represents the combined BPF filter for all applications
                 {
-                    string filteredPcapFile = @$"{s_rootFolderName}\{Constants.RootFolderAllProcessesFilteredPcapFileName}";
+                    string filteredPcapFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderAllProcessesFilteredPcapFileName}";
 
-                    ConsoleOutput.Print($"Filtering saved pcap \"{s_fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilterByPID[Constants.CombinedFilterProcessID]}\"", PrintType.Debug);
+                    ConsoleOutput.Print($"Filtering saved pcap \"{s_fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedBPFFilterByPID[Constants.Miscellaneous.CombinedFilterProcessID]}\"", PrintType.Debug);
                     FilePacketCapture filePacketCapture = new FilePacketCapture();
-                    filePacketCapture.FilterCaptureFile(computedBPFFilterByPID[Constants.CombinedFilterProcessID], s_fullPcapFile, filteredPcapFile);
+                    filePacketCapture.FilterCaptureFile(computedBPFFilterByPID[Constants.Miscellaneous.CombinedFilterProcessID], s_fullPcapFile, filteredPcapFile);
                     
                 }
             }
 
-            if (s_argumentData.OutputWiresharkFilter && computedDFLFilterByPID.ContainsKey(Constants.CombinedFilterProcessID))
+            if (s_argumentData.OutputWiresharkFilter && computedDFLFilterByPID.ContainsKey(Constants.Miscellaneous.CombinedFilterProcessID))
             {
-                string processDFLFilterTextFile = @$"{s_rootFolderName}\{Constants.RootFolderDFLFilterFileName}";
-                FileAndFolders.CreateTextFileString(processDFLFilterTextFile, computedDFLFilterByPID[Constants.CombinedFilterProcessID]); // Create textfile containing used BPF filter
+                string processDFLFilterTextFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderDFLFilterFileName}";
+                FileAndFolders.CreateTextFileString(processDFLFilterTextFile, computedDFLFilterByPID[Constants.Miscellaneous.CombinedFilterProcessID]); // Create textfile containing used BPF filter
             }
 
             foreach (var kvp in s_collectiveProcessInfo)
@@ -280,37 +286,37 @@ namespace WhoYouCalling
 
                 // Network results text files
                 OutputProcessDNSDetails(monitoredProcess.DNSQueries, 
-                                        outputFile: @$"{processFolderInRootFolder}\{Constants.ProcessFolderDNSQueriesFileName}");
+                                        outputFile: @$"{processFolderInRootFolder}\{Constants.FileNames.ProcessFolderDNSQueriesFileName}");
 
                 OutputProcessNetworkDetails(monitoredProcess.IPv4TCPEndpoint,
-                                            outputFile: @$"{processFolderInRootFolder}\{Constants.ProcessFolderIPv4TCPEndpoints}",
+                                            outputFile: @$"{processFolderInRootFolder}\{Constants.FileNames.ProcessFolderIPv4TCPEndpoints}",
                                             packetType: PacketType.IPv4TCP);
 
                 OutputProcessNetworkDetails(monitoredProcess.IPv6TCPEndpoint,
-                                            outputFile: @$"{processFolderInRootFolder}\{Constants.ProcessFolderIPv6TCPEndpoints}",
+                                            outputFile: @$"{processFolderInRootFolder}\{Constants.FileNames.ProcessFolderIPv6TCPEndpoints}",
                                             packetType: PacketType.IPv6TCP);
 
                 OutputProcessNetworkDetails(monitoredProcess.IPv4UDPEndpoint,
-                                            outputFile: @$"{processFolderInRootFolder}\{Constants.ProcessFolderIPv4UDPEndpoints}",
+                                            outputFile: @$"{processFolderInRootFolder}\{Constants.FileNames.ProcessFolderIPv4UDPEndpoints}",
                                             packetType: PacketType.IPv4UDP);
 
                 OutputProcessNetworkDetails(monitoredProcess.IPv6UDPEndpoint,
-                                            outputFile: @$"{processFolderInRootFolder}\{Constants.ProcessFolderIPv6UDPEndpoints}",
+                                            outputFile: @$"{processFolderInRootFolder}\{Constants.FileNames.ProcessFolderIPv6UDPEndpoints}",
                                             packetType: PacketType.IPv6UDP);
 
                 OutputProcessNetworkDetails(monitoredProcess.IPv4LocalhostEndpoint,
-                                            outputFile: @$"{processFolderInRootFolder}\{Constants.ProcessFolderIPv4LocalhostEndpoints}",
+                                            outputFile: @$"{processFolderInRootFolder}\{Constants.FileNames.ProcessFolderIPv4LocalhostEndpoints}",
                                             packetType: PacketType.IPv4Localhost);
 
                 OutputProcessNetworkDetails(monitoredProcess.IPv6LocalhostEndpoint,
-                                            outputFile: @$"{processFolderInRootFolder}\{Constants.ProcessFolderIPv6LocalhostEndpoints}",
+                                            outputFile: @$"{processFolderInRootFolder}\{Constants.FileNames.ProcessFolderIPv6LocalhostEndpoints}",
                                             packetType: PacketType.IPv6Localhost);
 
 
                 // Wireshark DFL Filter
                 if (s_argumentData.OutputWiresharkFilter && computedDFLFilterByPID.ContainsKey(pid))
                 {
-                    string processDFLFilterTextFile = @$"{processFolderInRootFolder}\{Constants.ProcessFolderDFLFilterFileName}";
+                    string processDFLFilterTextFile = @$"{processFolderInRootFolder}\{Constants.FileNames.ProcessFolderDFLFilterFileName}";
                     FileAndFolders.CreateTextFileString(processDFLFilterTextFile, computedDFLFilterByPID[pid]);
                 }
 
@@ -319,7 +325,7 @@ namespace WhoYouCalling
                 {
                     if (computedBPFFilterByPID.ContainsKey(pid)) 
                     {
-                        string processBPFFilterTextFile = @$"{processFolderInRootFolder}\{Constants.ProcessFolderBPFFilterFileName}";
+                        string processBPFFilterTextFile = @$"{processFolderInRootFolder}\{Constants.FileNames.ProcessFolderBPFFilterFileName}";
                         FileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedBPFFilterByPID[pid]); 
                     }
                 }
@@ -327,7 +333,7 @@ namespace WhoYouCalling
                 // Packet Capture 
                 if (computedBPFFilterByPID.ContainsKey(pid) && !s_argumentData.NoPacketCapture)
                 {
-                    string filteredPcapFile = @$"{processFolderInRootFolder}\{Constants.ProcessFolderPcapFileName}";
+                    string filteredPcapFile = @$"{processFolderInRootFolder}\{Constants.FileNames.ProcessFolderPcapFileName}";
 
                     ConsoleOutput.Print($"Filtering saved pcap \"{s_fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter.", PrintType.Debug);
                     ConsoleOutput.Print($"Filtering pcap for {executabelNameAndPID}", PrintType.Info);
@@ -604,7 +610,7 @@ namespace WhoYouCalling
 
         private static void TimerShutDownMonitoring(object source, ElapsedEventArgs e)
         {
-            ConsoleOutput.Print($"Timer expired", PrintType.Info);
+            s_timerExpired = true;
             s_shutDownMonitoring = true;
         }
 

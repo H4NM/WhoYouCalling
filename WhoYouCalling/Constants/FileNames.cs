@@ -1,31 +1,8 @@
 ﻿
-namespace WhoYouCalling
+namespace WhoYouCalling.Constants
 {
-    static class Constants
+    static class FileNames
     {
-
-        public const uint QueryInformation = 0x400;
-        public const uint LogonFlags = 0;
-        public const uint CreationFlags = 0;
-        public const uint SePrivilegeEnabled = 0x2;
-
-
-        public const Int32 ImpersonationSecurity = 2;
-        public const Int32 TokenDuplicate = 2;
-        public const Int32 TokenQuery = 8;
-        public const Int32 TokenAssignPrimary = 1;
-        public const Int32 TokenAdjustPrivileges = 0x20;
-        public const Int32 TokenAdjustDefault = 0x80;
-        public const Int32 TokenAdjustSessionID= 0x100;
-
-        public const Int32 PacketCaptureTimeoutMilliseconds = 1000;
-
-        public const Int32 ETWSubscriptionTimingTime = 3000;
-
-        public const Int32 CombinedFilterProcessID = 0;
-            
-
-        // File names 
         //// Root folder
         public const string RootFolderEntirePcapFileName = "Full network packet capture.pcap";
         public const string RootFolderAllProcessesFilteredPcapFileName = "All processes network packets.pcap";
