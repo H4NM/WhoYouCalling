@@ -1,6 +1,4 @@
 ﻿
-using WhoYouCalling.Network.DNS;
-
 namespace WhoYouCalling.Network
 {
     public struct NetworkPacket

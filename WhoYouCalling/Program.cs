@@ -288,6 +288,10 @@ namespace WhoYouCalling
                 OutputProcessDNSDetails(monitoredProcess.DNSQueries, 
                                         outputFile: @$"{processFolderInRootFolder}\{Constants.FileNames.ProcessFolderDNSQueriesFileName}");
 
+                OutputDNSWiresharkFilters(strictComsEnabled: s_argumentData.StrictCommunicationEnabled,
+                                          dnsQueries: monitoredProcess.DNSQueries,
+                                          processFolder: processFolderInRootFolder);
+
                 OutputProcessNetworkDetails(monitoredProcess.IPv4TCPEndpoint,
                                             outputFile: @$"{processFolderInRootFolder}\{Constants.FileNames.ProcessFolderIPv4TCPEndpoints}",
                                             packetType: PacketType.IPv4TCP);
@@ -453,19 +457,57 @@ namespace WhoYouCalling
             }
         }
 
-        private static List<string> ParseDNSQueries(HashSet<DNSQuery> dnsQueries)
+
+        private static void OutputDNSWiresharkFilters(bool strictComsEnabled, HashSet<DNSQuery> dnsQueries, string processFolder = "")
         {
-            HashSet<string> uniqueDomainNames = new HashSet<string>(); 
-            foreach (DNSQuery dnsQuery in dnsQueries) // Get the unique domain names only since the DNSQuery objects also contains DNS query type
+            if (dnsQueries.Count() > 0)
+            {
+                string processDNSFolder = $"{processFolder}/${Constants.FileNames.ProcessFolderDNSWiresharkFolderName}";
+                FileAndFolders.CreateFolder(processDNSFolder);
+
+                HashSet<string> uniqueDomainNames = GetUniqueDomainNameFromDNSQueryObject(dnsQueries: dnsQueries);
+
+                foreach (string domainName in uniqueDomainNames)
+                {
+                    if (s_dnsQueryResults.ContainsKey(domainName))
+                    {
+                        HashSet<string> ipsForDomain = new HashSet<string>();
+                        NetworkPacket packet = new NetworkPacket();
+                        foreach (DNSResponse response in s_dnsQueryResults[domainName])
+                        {
+                            foreach (string ip in response.QueryResult.IPs)
+                            {
+                                ipsForDomain.Add(ip);
+                            }
+                        }
+
+                        string domainWiresharkFilter = Network.NetworkFilter.GetDFLFilter(strictComsEnabled: strictComsEnabled, );
+                    }
+                }
+            }
+        }
+        private static HashSet<string> GetUniqueDomainNameFromDNSQueryObject(HashSet<DNSQuery> dnsQueries)
+        {
+            /*
+             * Get the unique domain names only since the DNSQuery objects also contains DNS query type
+             */
+
+            HashSet<string> uniqueDomainNames = new HashSet<string>();
+            foreach (DNSQuery dnsQuery in dnsQueries) 
             {
                 uniqueDomainNames.Add(dnsQuery.DomainQueried);
             }
+            return uniqueDomainNames;
+        }
 
-            List<string> enrichedDNSQueries = new List<string>();
+        private static List<string> ParseDNSQueries(HashSet<DNSQuery> dnsQueries)
+        {
+            HashSet<string> uniqueDomainNames = GetUniqueDomainNameFromDNSQueryObject(dnsQueries: dnsQueries);
+            List<string> presentableDNSQueryFormat = new List<string>();
 
             foreach (string domainName in uniqueDomainNames)
             {
-                string enrichedQuery = domainName;
+                string presentableQuery = domainName;
 
                 if (s_dnsQueryResults.ContainsKey(domainName))
                 {
@@ -479,13 +521,13 @@ namespace WhoYouCalling
                         }
                     }
 
-                    enrichedQuery = $"{domainName}   {string.Join(", ", ipsForDomain)}";
+                    presentableQuery = $"{domainName}   {string.Join(", ", ipsForDomain)}";
                 }
-                enrichedDNSQueries.Add(enrichedQuery);
+                presentableDNSQueryFormat.Add(presentableQuery);
             }
 
-            enrichedDNSQueries.Sort();
-            return enrichedDNSQueries;
+            presentableDNSQueryFormat.Sort();
+            return presentableDNSQueryFormat;
         }
 
         public static void CatalogETWActivity(string executable = "N/A",

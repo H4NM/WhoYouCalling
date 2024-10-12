@@ -74,7 +74,7 @@ namespace WhoYouCalling.Network
             return joinedString;
         }
 
-        private static string GetBPFFilter(bool strictComsEnabled, NetworkPacket packet)
+        public static string GetBPFFilter(bool strictComsEnabled, NetworkPacket packet)
         {
             string partialFilter;
             string filterIPVersion;
@@ -102,7 +102,7 @@ namespace WhoYouCalling.Network
         }
 
 
-        private static string GetDFLFilter(bool strictComsEnabled, NetworkPacket packet)
+        public static string GetDFLFilter(bool strictComsEnabled, NetworkPacket packet)
         {
             string partialFilter;
             string filterIPVersion;

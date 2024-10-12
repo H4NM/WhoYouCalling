@@ -86,11 +86,12 @@ There are other tools that can compliment your quest of application network anal
 This project has been tested and works with .NET 8 with two nuget packages, and drivers for capturing network packets: 
 - FPC: 
   - [SharpCap](https://github.com/dotpcap/sharppcap)
-  - [Npcap](https://npcap.com/#download)
+  - [npcap](https://npcap.com/#download)
 - ETW: [Microsoft.Diagnostics.Tracing.TraceEvent](https://www.nuget.org/packages/Microsoft.Diagnostics.Tracing.TraceEvent/)
 
-### Installing/Compiling instructions
+*npcap is optional when running WhoYouCalling if packet capture is not needed*
 
+### Installing/Compiling instructions
 Follow these steps for compiling from source:
 1. Make sure [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/install/windows) is installed
 
@@ -126,7 +127,6 @@ bin\Release\net8.0\win-x64\WhoYouCalling.exe [arguments]...
 ### To Do:
 - Refactor. Lots and lots to refactor and make more tidy :) 
 - Add wireshark filter per domain name as their resolved IP addresses can be converted
-- Add requirement of npcap drivers if pcap interface specified. It would be nice if the drivers are not a requirement when you're specifying `--nopcap` flag. 
 
 ### Nice to have
 - Network graph visualizing the process tree and summarized network traffic by each process
