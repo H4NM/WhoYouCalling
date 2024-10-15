@@ -126,7 +126,6 @@ bin\Release\net8.0\win-x64\WhoYouCalling.exe [arguments]...
 
 ### To Do:
 - Refactor. Lots and lots to refactor and make more tidy :) 
-- Add wireshark filter per domain name as their resolved IP addresses can be converted
 
 ### Nice to have
 - Network graph visualizing the process tree and summarized network traffic by each process

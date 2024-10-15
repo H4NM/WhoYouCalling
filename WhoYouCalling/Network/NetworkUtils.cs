@@ -62,6 +62,7 @@ namespace WhoYouCalling.Network
                     }
                     else
                     {
+                        // DETERMINE IF IPv6 OR IPv4
                         responseResult.IPs.Add(result);
                     }
                 }

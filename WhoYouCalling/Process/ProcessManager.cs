@@ -1,11 +1,8 @@
-﻿using System.IO;
-using System.Diagnostics;
+﻿
 using System.Runtime.InteropServices;
 using System.Text;
 using WhoYouCalling.Utilities;
-using System.ComponentModel;
 using WhoYouCalling.Win32;
-using System;
 using System.Security;
 
 namespace WhoYouCalling.Process

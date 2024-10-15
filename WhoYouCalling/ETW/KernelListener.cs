@@ -36,12 +36,12 @@ namespace WhoYouCalling.ETW
             }
         }
 
-        private void ProcessNetworkPacket(dynamic data, string ipVersion = "", string transportProto = "")
+        private void ProcessNetworkPacket(dynamic data, IPVersion ipVersion, TransportProtocol transportProto)
         {
             NetworkPacket ipv4TCPPacket = new NetworkPacket
             {
-                IPversion = "IPv4",
-                TransportProtocol = "TCP",
+                IPversion = Network.IPVersion.IPv4,
+                TransportProtocol = Network.TransportProtocol.TCP,
                 SourceIP = data.saddr.ToString(),
                 SourcePort = data.sport,
                 DestinationIP = data.daddr.ToString(),
@@ -72,7 +72,7 @@ namespace WhoYouCalling.ETW
         {
             if (IsAMonitoredProcess(data.ProcessID)) // If main or child monitored process
             {
-                ProcessNetworkPacket(data, ipVersion: "IPv4", transportProto: "TCP");
+                ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.TCP);
             }
         }
 
@@ -80,7 +80,7 @@ namespace WhoYouCalling.ETW
         {
             if (IsAMonitoredProcess(data.ProcessID)) // If main or child monitored process
             {
-                ProcessNetworkPacket(data, ipVersion: "IPv6", transportProto: "TCP");
+                ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.TCP);
             }
         }
 
@@ -88,7 +88,7 @@ namespace WhoYouCalling.ETW
         {
             if (IsAMonitoredProcess(data.ProcessID)) // If main or child monitored process
             {
-                ProcessNetworkPacket(data, ipVersion: "IPv4", transportProto: "UDP");
+                ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.UDP);
             }
         }
 
@@ -96,7 +96,7 @@ namespace WhoYouCalling.ETW
         {
             if (IsAMonitoredProcess(data.ProcessID)) // If main or child monitored process
             {
-                ProcessNetworkPacket(data, ipVersion: "IPv6", transportProto: "UDP");
+                ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.UDP);
             }
         }
 

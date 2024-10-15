@@ -8,6 +8,7 @@ namespace WhoYouCalling.Network.DNS
         public string BundledDomain { get; set; }
         public List<string> IPs { get; set; }
         public bool IPv4MappedIPv6Adresses { get; set; }
+        public IPVersion IPVersion { get; set; }
 
         public override bool Equals(object obj)
         {
@@ -19,7 +20,8 @@ namespace WhoYouCalling.Network.DNS
                    BundledRecordTypeText == other.BundledRecordTypeText &&
                    BundledDomain == other.BundledDomain &&
                    IPv4MappedIPv6Adresses == other.IPv4MappedIPv6Adresses &&
-                   IPs.SequenceEqual(other.IPs);
+                   IPs.SequenceEqual(other.IPs) &&
+                   Equals(IPVersion, other.IPVersion);
         }
 
         public override int GetHashCode()
@@ -29,6 +31,7 @@ namespace WhoYouCalling.Network.DNS
             hash = hash * 31 + BundledRecordTypeCode.GetHashCode();
             hash = hash * 31 + (BundledDomain != null ? BundledDomain.GetHashCode() : 0);
             hash = hash * 31 + IPv4MappedIPv6Adresses.GetHashCode();
+            hash = hash * 31 + IPVersion.GetHashCode();
 
             if (IPs != null)
             {

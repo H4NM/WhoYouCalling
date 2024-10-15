@@ -13,6 +13,8 @@ using WhoYouCalling.Network.FPC;
 using WhoYouCalling.Network.DNS;
 using WhoYouCalling.ETW;
 using WhoYouCalling.Utilities.Arguments;
+using PacketDotNet;
+using System.Net.Sockets;
 
 
 /*
@@ -232,8 +234,8 @@ namespace WhoYouCalling
 
 
             ConsoleOutput.Print($"Producing filters", PrintType.Debug);
-            computedBPFFilterByPID = NetworkFilter.GetNetworkFilter(s_processNetworkTraffic, s_argumentData.StrictCommunicationEnabled, FilterType.BPF);
-            computedDFLFilterByPID = NetworkFilter.GetNetworkFilter(s_processNetworkTraffic, s_argumentData.StrictCommunicationEnabled, FilterType.DFL);
+            computedBPFFilterByPID = GetProcessNetworkFilter(s_processNetworkTraffic, s_argumentData.StrictCommunicationEnabled, FilterType.BPF);
+            computedDFLFilterByPID = GetProcessNetworkFilter(s_processNetworkTraffic, s_argumentData.StrictCommunicationEnabled, FilterType.DFL);
 
             if (s_argumentData.OutputBPFFilter) // If BPF Filter is to be written to text file.
             {
@@ -462,26 +464,38 @@ namespace WhoYouCalling
         {
             if (dnsQueries.Count() > 0)
             {
-                string processDNSFolder = $"{processFolder}/${Constants.FileNames.ProcessFolderDNSWiresharkFolderName}";
+                string processDNSFolder = $"{processFolder}/{Constants.FileNames.ProcessFolderDNSWiresharkFolderName}";
                 FileAndFolders.CreateFolder(processDNSFolder);
 
                 HashSet<string> uniqueDomainNames = GetUniqueDomainNameFromDNSQueryObject(dnsQueries: dnsQueries);
+                List<string> fullFilterListOfIPs = new List<string>();
 
                 foreach (string domainName in uniqueDomainNames)
                 {
                     if (s_dnsQueryResults.ContainsKey(domainName))
                     {
-                        HashSet<string> ipsForDomain = new HashSet<string>();
-                        NetworkPacket packet = new NetworkPacket();
+                        HashSet<NetworkPacket> domainIPAdresses = new HashSet<NetworkPacket>();
+                        string domainWiresharkFilterFileName = $"{processDNSFolder}/{domainName}.txt";
+
                         foreach (DNSResponse response in s_dnsQueryResults[domainName])
                         {
                             foreach (string ip in response.QueryResult.IPs)
                             {
-                                ipsForDomain.Add(ip);
-                            }
-                        }
+                                NetworkPacket packet = new NetworkPacket
+                                {
+                                    DestinationIP = ip
+                                };
 
-                        string domainWiresharkFilter = Network.NetworkFilter.GetDFLFilter(strictComsEnabled: strictComsEnabled, );
+                                domainIPAdresses.Add(packet);
+                            }
+
+                        }
+                        string domainFilter = Network.NetworkFilter.GetCombinedNetworkFilter(strictComsEnabled: strictComsEnabled,
+                                                                                           networkPackets: domainIPAdresses,
+                                                                                           filterPorts: false,
+                                                                                           onlyDestIP: true,
+                                                                                           filter: FilterType.DFL);
+                        FileAndFolders.CreateTextFileString(filePath: domainWiresharkFilterFileName, text: domainFilter);
                     }
                 }
             }
@@ -529,6 +543,37 @@ namespace WhoYouCalling
             presentableDNSQueryFormat.Sort();
             return presentableDNSQueryFormat;
         }
+        private static Dictionary<int, string> GetProcessNetworkFilter(Dictionary<int, HashSet<NetworkPacket>> processNetworkPackets, bool strictComsEnabled, FilterType filter, bool filterPorts = true)
+        {
+            Dictionary<int, string> filterPerExecutable = new Dictionary<int, string>();
+
+            foreach (KeyValuePair<int, HashSet<NetworkPacket>> entry in processNetworkPackets) //For each Process 
+            {
+                int pid = entry.Key;
+                if (entry.Value.Count == 0) // Check if the executable has any recorded network activity
+                {
+                    ConsoleOutput.Print($"Not calculating {filter} filter for PID {pid}. No recored network activity", PrintType.Debug);
+                    continue;
+                }
+
+                string executableFilter = NetworkFilter.GetCombinedNetworkFilter(networkPackets: entry.Value,
+                                                                   filter: filter,
+                                                                   strictComsEnabled: strictComsEnabled);
+                filterPerExecutable[entry.Key] = executableFilter; // Add filter for executable
+            }
+
+
+            if (filterPerExecutable.Count > 1)
+            {
+                List<string> tempFilterList = new List<string>();
+                foreach (KeyValuePair<int, string> processFilter in filterPerExecutable)
+                {
+                    tempFilterList.Add($"({processFilter.Value})");
+                }
+                filterPerExecutable[Constants.Miscellaneous.CombinedFilterProcessID] = NetworkFilter.JoinFilterList(filter, tempFilterList);
+            }
+            return filterPerExecutable;
+        }
 
         public static void CatalogETWActivity(string executable = "N/A",
                                              string execType = "N/A", // Main or child process
@@ -551,40 +596,41 @@ namespace WhoYouCalling
                     {
                         historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) sent a {networkPacket.IPversion} {networkPacket.TransportProtocol} packet to {networkPacket.DestinationIP}:{networkPacket.DestinationPort}";
                         // Create BPF filter objects
+ 
                         DestinationEndpoint dstEndpoint = new DestinationEndpoint
                         {
                             IP = networkPacket.DestinationIP,
                             Port = networkPacket.DestinationPort
                         };
 
-                        if (networkPacket.IPversion == "IPv4")
+                        if (networkPacket.IPversion == Network.IPVersion.IPv4)
                         {
 
                             if (networkPacket.DestinationIP == "127.0.0.1")
                             {
                                 s_collectiveProcessInfo[execPID].IPv4LocalhostEndpoint.Add(dstEndpoint);
                             }
-                            else if (networkPacket.TransportProtocol == "TCP")
+                            else if (networkPacket.TransportProtocol == Network.TransportProtocol.TCP)
                             {
                                 s_collectiveProcessInfo[execPID].IPv4TCPEndpoint.Add(dstEndpoint);
                             }
-                            else if (networkPacket.TransportProtocol == "UDP")
+                            else if (networkPacket.TransportProtocol == Network.TransportProtocol.UDP)
                             {
                                 s_collectiveProcessInfo[execPID].IPv4UDPEndpoint.Add(dstEndpoint);
                             }
                         }
-                        else if (networkPacket.IPversion == "IPv6")
+                        else if (networkPacket.IPversion == Network.IPVersion.IPv6)
                         {
                 
                             if (networkPacket.DestinationIP == "::1")
                             {
                                 s_collectiveProcessInfo[execPID].IPv6LocalhostEndpoint.Add(dstEndpoint);
                             }
-                            else if (networkPacket.TransportProtocol == "TCP")
+                            else if (networkPacket.TransportProtocol == Network.TransportProtocol.TCP)
                             {
                                 s_collectiveProcessInfo[execPID].IPv6TCPEndpoint.Add(dstEndpoint);
                             }
-                            else if (networkPacket.TransportProtocol == "UDP")
+                            else if (networkPacket.TransportProtocol == Network.TransportProtocol.UDP)
                             {
                                 s_collectiveProcessInfo[execPID].IPv6UDPEndpoint.Add(dstEndpoint);
                             }

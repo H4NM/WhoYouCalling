@@ -23,6 +23,6 @@ namespace WhoYouCalling.Constants
         public const string ProcessFolderIPv6UDPEndpoints = "IPv6 UDP Endpoints.txt";
         public const string ProcessFolderIPv4LocalhostEndpoints = "Localhost Endpoints.txt";
         public const string ProcessFolderIPv6LocalhostEndpoints = "Localhost Endpoints IPv6.txt";
-        public const string ProcessFolderDNSWiresharkFolderName = "Domain wireshark filter";
+        public const string ProcessFolderDNSWiresharkFolderName = "Domain Wireshark filters";
     }
 }

@@ -5,57 +5,43 @@ namespace WhoYouCalling.Network
 {
     internal class NetworkFilter
     {
-        public static Dictionary<int, string> GetNetworkFilter(Dictionary<int, HashSet<NetworkPacket>> networkPackets, bool strictComsEnabled, FilterType filter)
+
+        public static string GetCombinedNetworkFilter(HashSet<NetworkPacket> networkPackets, FilterType filter, bool strictComsEnabled = false, bool filterPorts = true, bool onlyDestIP = false)
         {
-            Dictionary<int, string> filterPerExecutable = new Dictionary<int, string>();
-
-            foreach (KeyValuePair<int, HashSet<NetworkPacket>> entry in networkPackets) //For each Process 
+            List<string> collectedFilterParts = new List<string>();
+            ConsoleOutput.Print($"In GetCombined sc {strictComsEnabled},fp {filterPorts}, od {onlyDestIP}", PrintType.Fatal);
+            foreach (NetworkPacket packet in networkPackets) //For each recorded unique network activity
             {
-                if (entry.Value.Count == 0) // Check if the executable has any recorded network activity
+                string partialFilter = "";
+
+                switch (filter)
                 {
-                    ConsoleOutput.Print($"Not calculating {filter} filter for PID {entry.Key}. No recored network activity", PrintType.Debug);
-                    continue;
+                    case FilterType.BPF:
+                        {
+                            partialFilter = GetBPFFilter(strictComsEnabled: strictComsEnabled, 
+                                                         packet: packet, 
+                                                         filterPorts: filterPorts,
+                                                         onlyDestIP: onlyDestIP);
+                            break;
+                        }
+                    case FilterType.DFL:
+                        {
+                            partialFilter = GetDFLFilter(strictComsEnabled: strictComsEnabled, 
+                                                         packet: packet, 
+                                                         filterPorts: filterPorts,
+                                                         onlyDestIP: onlyDestIP);
+                            break;
+                        }
                 }
-                List<string> fullFilterListForProcess = new List<string>();
-                foreach (NetworkPacket packet in entry.Value) //For each recorded unique network activity
-                {
-
-                    string partialFilter = "";
-
-                    switch (filter)
-                    {
-                        case FilterType.BPF: 
-                            {
-                                partialFilter = GetBPFFilter(strictComsEnabled: strictComsEnabled, packet: packet);
-                                break;
-                            }
-                        case FilterType.DFL:
-                            {
-                                partialFilter = GetDFLFilter(strictComsEnabled: strictComsEnabled, packet: packet);
-                                break;
-                            }
-                    }
-     
-                    fullFilterListForProcess.Add(partialFilter);
-                }
-
-                string executableFilter = JoinFilterList(filter, fullFilterListForProcess);
-                filterPerExecutable[entry.Key] = executableFilter; // Add filter for executable
+                collectedFilterParts.Add(partialFilter);
             }
 
-            if (filterPerExecutable.Count > 1)
-            {
-                List<string> tempFilterList = new List<string>();
-                foreach (KeyValuePair<int, string> processFilter in filterPerExecutable)
-                {
-                    tempFilterList.Add($"({processFilter.Value})");
-                }
-                filterPerExecutable[0] = JoinFilterList(filter, tempFilterList); //0 is the combined PID number for all
-            }
-            return filterPerExecutable;
+            string fullCombinedFilter = JoinFilterList(filter, collectedFilterParts);
+
+            return fullCombinedFilter;
         }
 
-        private static string JoinFilterList(FilterType filter, List<string> listOfFilters)
+        public static string JoinFilterList(FilterType filter, List<string> listOfFilters)
         {
             string joinedString = "";
             switch (filter) 
@@ -74,13 +60,14 @@ namespace WhoYouCalling.Network
             return joinedString;
         }
 
-        public static string GetBPFFilter(bool strictComsEnabled, NetworkPacket packet)
+        private static string GetBPFFilter(bool strictComsEnabled, NetworkPacket packet, bool filterPorts = true, bool onlyDestIP = false)
         {
             string partialFilter;
             string filterIPVersion;
-            string filterTransportProto = packet.TransportProtocol.ToLower();
+            string filterTransportProto;
 
-            if (packet.IPversion == "IPv4") // If it's ipv4 version
+
+            if (packet.IPversion == Network.IPVersion.IPv4) // If it's ipv4 version
             {
                 filterIPVersion = "ip";
             }
@@ -88,27 +75,61 @@ namespace WhoYouCalling.Network
             {
                 filterIPVersion = "ip6"; // For BPF its ip6, for wireshark DFL its ipv6
             }
-
-            if (strictComsEnabled)
+            if (packet.TransportProtocol == Network.TransportProtocol.TCP)
             {
-                partialFilter = $"({filterIPVersion} and {filterTransportProto} and src host {packet.SourceIP} and src port {packet.SourcePort} and dst host {packet.DestinationIP} and dst port {packet.DestinationPort})";
+                filterTransportProto = "tcp";
             }
-            else
+            else // else it's UDP
             {
-                partialFilter = $"({filterIPVersion} and {filterTransportProto} and ((host {packet.SourceIP} and host {packet.DestinationIP}) and ((dst port {packet.DestinationPort} and src port {packet.SourcePort}) or (dst port {packet.SourcePort} and src port {packet.DestinationPort}))))";
+                filterTransportProto = "udp";
             }
 
+            if (onlyDestIP)
+            {
+                if (strictComsEnabled)
+                {
+                    partialFilter = $"({filterIPVersion} and {filterTransportProto} and dst host {packet.DestinationIP})";
+                }
+                else
+                {
+                    partialFilter = $"({filterIPVersion} and {filterTransportProto} and host {packet.DestinationIP})";
+                }
+            }
+            else 
+            { 
+                if (filterPorts)
+                {
+                    if (strictComsEnabled)
+                    {
+                        partialFilter = $"({filterIPVersion} and {filterTransportProto} and src host {packet.SourceIP} and src port {packet.SourcePort} and dst host {packet.DestinationIP} and dst port {packet.DestinationPort})";
+                    }
+                    else
+                    {
+                        partialFilter = $"({filterIPVersion} and {filterTransportProto} and ((host {packet.SourceIP} and host {packet.DestinationIP}) and ((dst port {packet.DestinationPort} and src port {packet.SourcePort}) or (dst port {packet.SourcePort} and src port {packet.DestinationPort}))))";
+                    }
+                }
+                else
+                {
+                    if (strictComsEnabled)
+                    {
+                        partialFilter = $"({filterIPVersion} and {filterTransportProto} and src host {packet.SourceIP} and dst host {packet.DestinationIP})";
+                    }
+                    else
+                    {
+                        partialFilter = $"({filterIPVersion} and {filterTransportProto} and ((host {packet.SourceIP} and host {packet.DestinationIP})))";
+                    }
+                }
+            }
             return partialFilter;
         }
 
-
-        public static string GetDFLFilter(bool strictComsEnabled, NetworkPacket packet)
+        private static string GetDFLFilter(bool strictComsEnabled, NetworkPacket packet, bool filterPorts = true, bool onlyDestIP = false)
         {
             string partialFilter;
             string filterIPVersion;
-            string filterTransportProto = packet.TransportProtocol.ToLower();
+            string filterTransportProto;
 
-            if (packet.IPversion == "IPv4") // If it's ipv4 version
+            if (packet.IPversion == Network.IPVersion.IPv4) // If it's ipv4 version
             {
                 filterIPVersion = "ip";
             }
@@ -117,16 +138,51 @@ namespace WhoYouCalling.Network
                 filterIPVersion = "ipv6"; // For BPF its ip6, for wireshark DFL its ipv6
             }
 
-            if (strictComsEnabled)
+            if (packet.TransportProtocol == Network.TransportProtocol.TCP)
             {
-                partialFilter = $"({filterIPVersion}.src == {packet.SourceIP} && {filterTransportProto}.srcport == {packet.SourcePort} && {filterIPVersion}.dst == {packet.DestinationIP} && {filterTransportProto}.dstport == {packet.DestinationPort})";
-                //partialFilter = $"({filterIPVersion} and {filterTransportProto} and src host {packet.SourceIP} and src port {packet.SourcePort} and dst host {packet.DestinationIP} and dst port {packet.DestinationPort})";
+                filterTransportProto = "tcp";
+            }
+            else // else it's UDP
+            {
+                filterTransportProto = "udp";
+            }
+
+
+            if (onlyDestIP)
+            {
+                if (strictComsEnabled)
+                {
+                    partialFilter = $"({filterIPVersion}.dst == {packet.DestinationIP})";
+                }
+                else
+                {
+                    partialFilter = $"({filterIPVersion}.addr == {packet.DestinationIP})";
+                }
             }
             else
             {
-                //partialFilter = "((ip.src == 123.123.123.123 && ip.dst == 123.123.123.124) || ()  && tcp.srcport == 443 && ip.dst == 123.123.123.124 && tcp.dstport == 593434)";
-                //partialFilter = $"({filterIPVersion} and {filterTransportProto} and ((host {packet.SourceIP} and host {packet.DestinationIP}) and ((dst port {packet.DestinationPort} and src port {packet.SourcePort}) or (dst port {packet.SourcePort} and src port {packet.DestinationPort}))))";
-                partialFilter = $"(({filterIPVersion}.addr == {packet.SourceIP} && {filterIPVersion}.addr == {packet.DestinationIP}) && (({filterTransportProto}.srcport == {packet.DestinationPort} && {filterTransportProto}.dstport == {packet.SourcePort}) || ({filterTransportProto}.srcport == {packet.SourcePort} && {filterTransportProto}.dstport == {packet.DestinationPort})))";
+                if (filterPorts)
+                {
+                    if (strictComsEnabled)
+                    {
+                        partialFilter = $"({filterIPVersion}.src == {packet.SourceIP} && {filterTransportProto}.srcport == {packet.SourcePort} && {filterIPVersion}.dst == {packet.DestinationIP} && {filterTransportProto}.dstport == {packet.DestinationPort})";
+                    }
+                    else
+                    {
+                        partialFilter = $"(({filterIPVersion}.addr == {packet.SourceIP} && {filterIPVersion}.addr == {packet.DestinationIP}) && (({filterTransportProto}.srcport == {packet.DestinationPort} && {filterTransportProto}.dstport == {packet.SourcePort}) || ({filterTransportProto}.srcport == {packet.SourcePort} && {filterTransportProto}.dstport == {packet.DestinationPort})))";
+                    }
+                }
+                else
+                {
+                    if (strictComsEnabled)
+                    {
+                        partialFilter = $"({filterIPVersion}.src == {packet.SourceIP} && {filterIPVersion}.dst == {packet.DestinationIP})";
+                    }
+                    else
+                    {
+                        partialFilter = $"({filterIPVersion}.addr == {packet.SourceIP} && {filterIPVersion}.addr == {packet.DestinationIP})";
+                    }
+                }
             }
 
             return partialFilter;
