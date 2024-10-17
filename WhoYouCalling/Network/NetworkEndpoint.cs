@@ -1,7 +1,7 @@
 ﻿
 namespace WhoYouCalling.Network
 {
-    public struct DestinationEndpoint
+    public struct NetworkEndpoint
     {
         public string IP { get; set; }
         public int Port { get; set; }
@@ -11,7 +11,7 @@ namespace WhoYouCalling.Network
             if (obj == null || this.GetType() != obj.GetType())
                 return false;
 
-            var other = (DestinationEndpoint)obj;
+            var other = (NetworkEndpoint)obj;
             return IP == other.IP &&
                    Port == other.Port;
         }

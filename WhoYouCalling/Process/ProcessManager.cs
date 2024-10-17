@@ -132,7 +132,7 @@ namespace WhoYouCalling.Process
                 throw new Exception($"Could not find shell window to retrieve token for spawning unprivileged process");
             }
 
-            string tempWorkingDirectory = Path.GetDirectoryName(executablePath);
+            string tempWorkingDirectory = Path.GetDirectoryName(executablePath) ?? Directory.GetCurrentDirectory();
 
             uint shellProcessId;
             WinAPI.GetWindowThreadProcessId(shellWnd, out shellProcessId);
@@ -178,7 +178,7 @@ namespace WhoYouCalling.Process
             return (int)(processInfo.dwProcessId); 
         }
 
-        public static int StartProcessAndGetId(string executablePath, 
+        public static int StartProcessAndGetId(string executablePath = "", 
                                                string arguments = "",
                                                string username = "",
                                                string password = "",
@@ -187,7 +187,7 @@ namespace WhoYouCalling.Process
             var prevWorkingDirectory = Environment.CurrentDirectory;
             try
             {
-                string tempWorkingDirectory = Path.GetDirectoryName(executablePath);
+                string tempWorkingDirectory = Path.GetDirectoryName(executablePath) ?? Directory.GetCurrentDirectory();
                 Environment.CurrentDirectory = tempWorkingDirectory;
    
                 System.Diagnostics.Process proc = new System.Diagnostics.Process

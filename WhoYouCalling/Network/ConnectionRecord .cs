@@ -1,7 +1,7 @@
 ﻿
 namespace WhoYouCalling.Network
 {
-    public struct NetworkPacket
+    public struct ConnectionRecord
     {
         public IPVersion IPversion { get; set; }
         public TransportProtocol TransportProtocol { get; set; }
@@ -15,7 +15,7 @@ namespace WhoYouCalling.Network
             if (obj == null || this.GetType() != obj.GetType())
                 return false;
 
-            var other = (NetworkPacket)obj;
+            var other = (ConnectionRecord)obj;
             return IPversion == other.IPversion &&
                    TransportProtocol == other.TransportProtocol &&
                    SourceIP == other.SourceIP &&

@@ -6,20 +6,18 @@ namespace WhoYouCalling.Network
     internal class NetworkFilter
     {
 
-        public static string GetCombinedNetworkFilter(HashSet<NetworkPacket> networkPackets, FilterType filter, bool strictComsEnabled = false, bool filterPorts = true, bool onlyDestIP = false)
+        public static string GetCombinedNetworkFilter(HashSet<ConnectionRecord> connectionRecords, FilterType filter, bool strictComsEnabled = false, bool filterPorts = true, bool onlyDestIP = false)
         {
-            List<string> collectedFilterParts = new List<string>();
-            ConsoleOutput.Print($"In GetCombined sc {strictComsEnabled},fp {filterPorts}, od {onlyDestIP}", PrintType.Fatal);
-            foreach (NetworkPacket packet in networkPackets) //For each recorded unique network activity
+            List<string> collectedFilterParts = new();
+            foreach (ConnectionRecord connectionRecord in connectionRecords) //For each recorded unique network activity
             {
                 string partialFilter = "";
-
                 switch (filter)
                 {
                     case FilterType.BPF:
                         {
-                            partialFilter = GetBPFFilter(strictComsEnabled: strictComsEnabled, 
-                                                         packet: packet, 
+                            partialFilter = GetBPFFilter(strictComsEnabled: strictComsEnabled,
+                                                         connectionRecord: connectionRecord, 
                                                          filterPorts: filterPorts,
                                                          onlyDestIP: onlyDestIP);
                             break;
@@ -27,7 +25,7 @@ namespace WhoYouCalling.Network
                     case FilterType.DFL:
                         {
                             partialFilter = GetDFLFilter(strictComsEnabled: strictComsEnabled, 
-                                                         packet: packet, 
+                                                         connectionRecord: connectionRecord, 
                                                          filterPorts: filterPorts,
                                                          onlyDestIP: onlyDestIP);
                             break;
@@ -60,14 +58,14 @@ namespace WhoYouCalling.Network
             return joinedString;
         }
 
-        private static string GetBPFFilter(bool strictComsEnabled, NetworkPacket packet, bool filterPorts = true, bool onlyDestIP = false)
+        private static string GetBPFFilter(bool strictComsEnabled, ConnectionRecord connectionRecord, bool filterPorts = true, bool onlyDestIP = false)
         {
             string partialFilter;
             string filterIPVersion;
             string filterTransportProto;
 
 
-            if (packet.IPversion == Network.IPVersion.IPv4) // If it's ipv4 version
+            if (connectionRecord.IPversion == Network.IPVersion.IPv4) // If it's ipv4 version
             {
                 filterIPVersion = "ip";
             }
@@ -75,7 +73,7 @@ namespace WhoYouCalling.Network
             {
                 filterIPVersion = "ip6"; // For BPF its ip6, for wireshark DFL its ipv6
             }
-            if (packet.TransportProtocol == Network.TransportProtocol.TCP)
+            if (connectionRecord.TransportProtocol == Network.TransportProtocol.TCP)
             {
                 filterTransportProto = "tcp";
             }
@@ -88,11 +86,11 @@ namespace WhoYouCalling.Network
             {
                 if (strictComsEnabled)
                 {
-                    partialFilter = $"({filterIPVersion} and {filterTransportProto} and dst host {packet.DestinationIP})";
+                    partialFilter = $"({filterIPVersion} and {filterTransportProto} and dst host {connectionRecord.DestinationIP})";
                 }
                 else
                 {
-                    partialFilter = $"({filterIPVersion} and {filterTransportProto} and host {packet.DestinationIP})";
+                    partialFilter = $"({filterIPVersion} and {filterTransportProto} and host {connectionRecord.DestinationIP})";
                 }
             }
             else 
@@ -101,35 +99,35 @@ namespace WhoYouCalling.Network
                 {
                     if (strictComsEnabled)
                     {
-                        partialFilter = $"({filterIPVersion} and {filterTransportProto} and src host {packet.SourceIP} and src port {packet.SourcePort} and dst host {packet.DestinationIP} and dst port {packet.DestinationPort})";
+                        partialFilter = $"({filterIPVersion} and {filterTransportProto} and src host {connectionRecord.SourceIP} and src port {connectionRecord.SourcePort} and dst host {connectionRecord.DestinationIP} and dst port {connectionRecord.DestinationPort})";
                     }
                     else
                     {
-                        partialFilter = $"({filterIPVersion} and {filterTransportProto} and ((host {packet.SourceIP} and host {packet.DestinationIP}) and ((dst port {packet.DestinationPort} and src port {packet.SourcePort}) or (dst port {packet.SourcePort} and src port {packet.DestinationPort}))))";
+                        partialFilter = $"({filterIPVersion} and {filterTransportProto} and ((host {connectionRecord.SourceIP} and host {connectionRecord.DestinationIP}) and ((dst port {connectionRecord.DestinationPort} and src port {connectionRecord.SourcePort}) or (dst port {connectionRecord.SourcePort} and src port {connectionRecord.DestinationPort}))))";
                     }
                 }
                 else
                 {
                     if (strictComsEnabled)
                     {
-                        partialFilter = $"({filterIPVersion} and {filterTransportProto} and src host {packet.SourceIP} and dst host {packet.DestinationIP})";
+                        partialFilter = $"({filterIPVersion} and {filterTransportProto} and src host {connectionRecord.SourceIP} and dst host {connectionRecord.DestinationIP})";
                     }
                     else
                     {
-                        partialFilter = $"({filterIPVersion} and {filterTransportProto} and ((host {packet.SourceIP} and host {packet.DestinationIP})))";
+                        partialFilter = $"({filterIPVersion} and {filterTransportProto} and ((host {connectionRecord.SourceIP} and host {connectionRecord.DestinationIP})))";
                     }
                 }
             }
             return partialFilter;
         }
 
-        private static string GetDFLFilter(bool strictComsEnabled, NetworkPacket packet, bool filterPorts = true, bool onlyDestIP = false)
+        private static string GetDFLFilter(bool strictComsEnabled, ConnectionRecord connectionRecord, bool filterPorts = true, bool onlyDestIP = false)
         {
             string partialFilter;
             string filterIPVersion;
             string filterTransportProto;
 
-            if (packet.IPversion == Network.IPVersion.IPv4) // If it's ipv4 version
+            if (connectionRecord.IPversion == Network.IPVersion.IPv4) // If it's ipv4 version
             {
                 filterIPVersion = "ip";
             }
@@ -138,7 +136,7 @@ namespace WhoYouCalling.Network
                 filterIPVersion = "ipv6"; // For BPF its ip6, for wireshark DFL its ipv6
             }
 
-            if (packet.TransportProtocol == Network.TransportProtocol.TCP)
+            if (connectionRecord.TransportProtocol == Network.TransportProtocol.TCP)
             {
                 filterTransportProto = "tcp";
             }
@@ -152,11 +150,11 @@ namespace WhoYouCalling.Network
             {
                 if (strictComsEnabled)
                 {
-                    partialFilter = $"({filterIPVersion}.dst == {packet.DestinationIP})";
+                    partialFilter = $"({filterIPVersion}.dst == {connectionRecord.DestinationIP})";
                 }
                 else
                 {
-                    partialFilter = $"({filterIPVersion}.addr == {packet.DestinationIP})";
+                    partialFilter = $"({filterIPVersion}.addr == {connectionRecord.DestinationIP})";
                 }
             }
             else
@@ -165,22 +163,22 @@ namespace WhoYouCalling.Network
                 {
                     if (strictComsEnabled)
                     {
-                        partialFilter = $"({filterIPVersion}.src == {packet.SourceIP} && {filterTransportProto}.srcport == {packet.SourcePort} && {filterIPVersion}.dst == {packet.DestinationIP} && {filterTransportProto}.dstport == {packet.DestinationPort})";
+                        partialFilter = $"({filterIPVersion}.src == {connectionRecord.SourceIP} && {filterTransportProto}.srcport == {connectionRecord.SourcePort} && {filterIPVersion}.dst == {connectionRecord.DestinationIP} && {filterTransportProto}.dstport == {connectionRecord.DestinationPort})";
                     }
                     else
                     {
-                        partialFilter = $"(({filterIPVersion}.addr == {packet.SourceIP} && {filterIPVersion}.addr == {packet.DestinationIP}) && (({filterTransportProto}.srcport == {packet.DestinationPort} && {filterTransportProto}.dstport == {packet.SourcePort}) || ({filterTransportProto}.srcport == {packet.SourcePort} && {filterTransportProto}.dstport == {packet.DestinationPort})))";
+                        partialFilter = $"(({filterIPVersion}.addr == {connectionRecord.SourceIP} && {filterIPVersion}.addr == {connectionRecord.DestinationIP}) && (({filterTransportProto}.srcport == {connectionRecord.DestinationPort} && {filterTransportProto}.dstport == {connectionRecord.SourcePort}) || ({filterTransportProto}.srcport == {connectionRecord.SourcePort} && {filterTransportProto}.dstport == {connectionRecord.DestinationPort})))";
                     }
                 }
                 else
                 {
                     if (strictComsEnabled)
                     {
-                        partialFilter = $"({filterIPVersion}.src == {packet.SourceIP} && {filterIPVersion}.dst == {packet.DestinationIP})";
+                        partialFilter = $"({filterIPVersion}.src == {connectionRecord.SourceIP} && {filterIPVersion}.dst == {connectionRecord.DestinationIP})";
                     }
                     else
                     {
-                        partialFilter = $"({filterIPVersion}.addr == {packet.SourceIP} && {filterIPVersion}.addr == {packet.DestinationIP})";
+                        partialFilter = $"({filterIPVersion}.addr == {connectionRecord.SourceIP} && {filterIPVersion}.addr == {connectionRecord.DestinationIP})";
                     }
                 }
             }

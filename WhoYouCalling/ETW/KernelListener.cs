@@ -38,10 +38,10 @@ namespace WhoYouCalling.ETW
 
         private void ProcessNetworkPacket(dynamic data, IPVersion ipVersion, TransportProtocol transportProto)
         {
-            NetworkPacket ipv4TCPPacket = new NetworkPacket
+            ConnectionRecord ipv4TCPConnRecord = new ConnectionRecord
             {
-                IPversion = Network.IPVersion.IPv4,
-                TransportProtocol = Network.TransportProtocol.TCP,
+                IPversion = ipVersion,
+                TransportProtocol = transportProto,
                 SourceIP = data.saddr.ToString(),
                 SourcePort = data.sport,
                 DestinationIP = data.daddr.ToString(),
@@ -65,7 +65,7 @@ namespace WhoYouCalling.ETW
                                     executable: executable,
                                     execPID: data.ProcessID,
                                     execType: execType,
-                                    networkPacket: ipv4TCPPacket);
+                                    connectionRecord: ipv4TCPConnRecord);
         }
 
         private void Ipv4TcpStart(TcpIpSendTraceData data)

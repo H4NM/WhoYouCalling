@@ -9,17 +9,61 @@ namespace WhoYouCalling.Network
 {
     internal class NetworkUtils
     {
-        public static bool IsIPv4MappedToIPv6Address(string ip)
+
+        public static string GetActualIP(string ipAdress)
         {
-            IPAddress address = IPAddress.Parse(ip);
-            if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 && address.IsIPv4MappedToIPv6)
+            string actualIPAdress = "";
+            IPAddress address = IPAddress.Parse(ipAdress);
+            if (address.IsIPv4MappedToIPv6)
             {
-                return true;
+                actualIPAdress = address.MapToIPv4().ToString();
             }
             else
             {
-                return false;
+                actualIPAdress = ipAdress;
             }
+            return actualIPAdress;
+        }
+
+        public static HashSet<ConnectionRecord> GetNetworkAdressesFromDNSResponse(HashSet<DNSResponse>? dnsResponses)
+        {
+            HashSet<ConnectionRecord> domainIPAdresses = new();
+            foreach (DNSResponse response in dnsResponses)
+            {
+                foreach (string ipAdress in response.QueryResult.IPs)
+                {
+                    IPAddress address = IPAddress.Parse(ipAdress);
+                    IPVersion ipVersion;
+                    string actualIPAdress = "";
+                    if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+                    {
+                        if (address.IsIPv4MappedToIPv6)
+                        {
+                            actualIPAdress = address.MapToIPv4().ToString();
+                            ipVersion = IPVersion.IPv4;
+                        }
+                        else
+                        {
+                            actualIPAdress = ipAdress;
+                            ipVersion = IPVersion.IPv6;
+                        }
+                    }
+                    else
+                    {
+                        ipVersion = IPVersion.IPv4;
+                        actualIPAdress = ipAdress;
+                    }
+
+                    ConnectionRecord connectionRecord = new ConnectionRecord
+                    {
+                        IPversion = ipVersion,
+                        DestinationIP = actualIPAdress
+                    };
+
+                    domainIPAdresses.Add(connectionRecord);
+                }
+            }
+            return domainIPAdresses;
         }
 
         public static DNSResponseResult ParseDNSResult(string queryResults)
@@ -42,7 +86,6 @@ namespace WhoYouCalling.Network
                 }
                 else if (result.Contains("type: "))
                 {
-
                     MatchCollection matches = Regex.Matches(result, "type\\:\\s(\\d+)\\s(.*)");
                     int recordTypeCode = int.Parse(matches[0].Groups[1].Value);
                     string retrievedTextPart = matches[0].Groups[2].Value;
@@ -54,25 +97,15 @@ namespace WhoYouCalling.Network
                 }
                 else
                 {
-                    if (IsIPv4MappedToIPv6Address(result))
-                    {
-                        responseResult.IPv4MappedIPv6Adresses = true;
-                        IPAddress address = IPAddress.Parse(result);
-                        responseResult.IPs.Add(address.MapToIPv4().ToString());
-                    }
-                    else
-                    {
-                        // DETERMINE IF IPv6 OR IPv4
-                        responseResult.IPs.Add(result);
-                    }
+                    responseResult.IPs.Add(result);
                 }
             }
             return responseResult;
         }
-        public static List<string> ConvertDestinationEndpoints(HashSet<DestinationEndpoint> providedHashSet)
+        public static List<string> ConvertDestinationEndpoints(HashSet<NetworkEndpoint> providedHashSet)
         {
             List<string> convertedToList = new List<string>();
-            foreach (DestinationEndpoint dstEndpoint in providedHashSet)
+            foreach (NetworkEndpoint dstEndpoint in providedHashSet)
             {
                 convertedToList.Add($"{dstEndpoint.IP}:{dstEndpoint.Port}");
             }
@@ -91,9 +124,9 @@ namespace WhoYouCalling.Network
             string pattern = @"[^0-9a-fA-F\.:]";
             string cleanedIpAddress = Regex.Replace(ip, pattern, "").Trim();
 
-            if (IPAddress.TryParse(cleanedIpAddress, out IPAddress cleanedIPAddressObject)) // Parsing IP address
+            if (IPAddress.TryParse(cleanedIpAddress, out IPAddress? cleanedIPAddressObject)) // Parsing IP address
             {
-                return cleanedIPAddressObject;
+                return cleanedIPAddressObject!;
             }
             else
             {
