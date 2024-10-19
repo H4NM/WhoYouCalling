@@ -42,6 +42,7 @@ namespace WhoYouCalling
         private static bool s_shutDownMonitoring = false;
         private static bool s_timerExpired = false;
         private static string s_mainExecutableFileName = "";
+        private static string s_mainExecutableCommandLine = "";
 
         private static LivePacketCapture s_livePacketCapture = new();
         private static KernelListener s_etwKernelListener = new();
@@ -84,8 +85,8 @@ namespace WhoYouCalling
             }
 
             ConsoleOutput.Print("Retrieving executable filename", PrintType.Debug);
-            s_mainExecutableFileName = GetExecutableFileName(s_argumentData.TrackedProcessId, s_argumentData.ExecutablePath);
-
+            s_mainExecutableFileName = GetExecutableFileNameWithPIDOrPath(s_argumentData.TrackedProcessId, s_argumentData.ExecutablePath);
+            s_mainExecutableCommandLine = GetMainExecutableCommandLine(s_mainExecutableFileName, s_argumentData.ExecutableArguments);
             s_rootFolderName = Generic.NormalizePath(Generic.GetRunInstanceFolderName(s_mainExecutableFileName));
 
             s_argumentData.OutputDirectory = Generic.NormalizePath(s_argumentData.OutputDirectory);
@@ -164,7 +165,7 @@ namespace WhoYouCalling
                     ConsoleOutput.Print($"Executing \"{s_argumentData.ExecutablePath}\" with args \"{s_argumentData.ExecutableArguments}\" in {executionContext} context", PrintType.Debug);
                     ConsoleOutput.Print($"Executing \"{s_argumentData.ExecutablePath}\"", PrintType.Info);
 
-                    CatalogETWActivity(eventType: EventType.Process, executable: s_mainExecutableFileName, execType: "Main", execAction: "started", execPID: s_trackedMainPid);
+                    CatalogETWActivity(eventType: EventType.Process, executable: s_mainExecutableFileName, execAction: "started", execPID: s_trackedMainPid);
                 }
                 catch (Exception ex)
                 {
@@ -176,12 +177,12 @@ namespace WhoYouCalling
             {
                 s_trackedMainPid = s_argumentData.TrackedProcessId;
                 ConsoleOutput.Print($"Listening to PID {s_trackedMainPid}({s_mainExecutableFileName})", PrintType.Info);
-                CatalogETWActivity(eventType: EventType.Process, executable: s_mainExecutableFileName, execType: "Main", execAction: "being listened to", execPID: s_trackedMainPid);
+                CatalogETWActivity(eventType: EventType.Process, executable: s_mainExecutableFileName, execAction: "being listened to", execPID: s_trackedMainPid);
             }
 
             s_etwDnsClientListener.SetPIDAndImageToTrack(s_trackedMainPid, s_mainExecutableFileName);
             s_etwKernelListener.SetPIDAndImageToTrack(s_trackedMainPid, s_mainExecutableFileName);
-            InstantiateProcessVariables(pid: s_trackedMainPid, executable: s_mainExecutableFileName);
+            InstantiateProcessVariables(pid: s_trackedMainPid, executable: s_mainExecutableFileName, commandLine: s_mainExecutableCommandLine);
 
             if (s_argumentData.ProcessRunTimerWasProvided)
             {
@@ -560,9 +561,9 @@ namespace WhoYouCalling
         }
 
         public static void CatalogETWActivity(string executable = "N/A",
-                                             string execType = "N/A", // Main or child process
                                              string execAction = "started",
                                              string execObject = "N/A",
+                                             string execObjectCommandLine = "",
                                              int execPID = 0,
                                              int parentExecPID = 0,
                                              EventType eventType = EventType.Network,
@@ -576,10 +577,9 @@ namespace WhoYouCalling
 
             switch (eventType)
             {
-                case EventType.Network: // If its a network related activity
+                case EventType.Network:
                     {
-                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) sent a {connectionRecord.IPversion} {connectionRecord.TransportProtocol} packet to {connectionRecord.DestinationIP}:{connectionRecord.DestinationPort}";
-                        // Create BPF filter objects
+                        historyMsg = $"{timestamp} - {executable}[{execPID}] sent a {connectionRecord.IPversion} {connectionRecord.TransportProtocol} packet to {connectionRecord.DestinationIP}:{connectionRecord.DestinationPort}";
  
                         NetworkEndpoint dstEndpoint = new NetworkEndpoint
                         {
@@ -623,25 +623,25 @@ namespace WhoYouCalling
                         s_processNetworkTraffic[execPID].Add(connectionRecord);
                         break;
                     }
-                case EventType.Process: // If its a process related activity
+                case EventType.Process:
                     {
-                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) {execAction}";
+                        historyMsg = $"{timestamp} - {executable}[{execPID}] {execAction}";
                         break;
                     }
-                case EventType.Childprocess: // If its a process starting another process
+                case EventType.Childprocess: 
                     {
-                        historyMsg = $"{timestamp} - {executable}[{parentExecPID}]({execType}) {execAction} {execObject}[{execPID}]";
+                        historyMsg = $"{timestamp} - {executable}[{parentExecPID}] {execAction} {execObject}[{execPID}] with commandline: {execObjectCommandLine}";
                         s_collectiveProcessInfo[parentExecPID].ChildProcess.Add(execPID);
                         break;
                     }
-                case EventType.DNSQuery: // If its a DNS query made 
+                case EventType.DNSQuery:
                     {
                         s_collectiveProcessInfo[execPID].DNSQueries.Add(dnsQuery);
                         
-                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) made a DNS lookup for {dnsQuery.DomainQueried}";
+                        historyMsg = $"{timestamp} - {executable}[{execPID}] made a DNS lookup for {dnsQuery.DomainQueried}";
                         break;
                     }
-                case EventType.DNSResponse: // If its a DNS response 
+                case EventType.DNSResponse:  
                     {
                         if (dnsResponse.StatusCode == 87) // DNS status code 87 is not an official status code of the DNS standard.
                         {                                 // Only something made up by Windows.
@@ -671,7 +671,14 @@ namespace WhoYouCalling
                             RecordTypeText = dnsResponse.RecordTypeText
                         }); // See comment above to why this is also here. 
 
-                        historyMsg = $"{timestamp} - {executable}[{execPID}]({execType}) received {dnsResponse.RecordTypeText}({dnsResponse.RecordTypeCode}) DNS response {dnsResponse.StatusText}({dnsResponse.StatusCode}) for {dnsResponse.DomainQueried} is {String.Join(", ", dnsResponse.QueryResult.IPs)}";
+                        if (dnsResponse.QueryResult.IPs.Any())
+                        {
+                            historyMsg = $"{timestamp} - {executable}[{execPID}] received {dnsResponse.RecordTypeText}({dnsResponse.RecordTypeCode}) DNS response {dnsResponse.StatusText}({dnsResponse.StatusCode}) for {dnsResponse.DomainQueried} with IPs: {String.Join(", ", dnsResponse.QueryResult.IPs)}";
+                        }
+                        else
+                        {
+                            historyMsg = $"{timestamp} - {executable}[{execPID}] received {dnsResponse.RecordTypeText}({dnsResponse.RecordTypeCode}) DNS response {dnsResponse.StatusText}({dnsResponse.StatusCode}) for {dnsResponse.DomainQueried}";
+                        }
                         break;
 
                     }
@@ -686,10 +693,10 @@ namespace WhoYouCalling
             s_shutDownMonitoring = true;
         }
 
-        private static string GetExecutableFileName(int pid = 0, string executablePath = "")
+        private static string GetExecutableFileNameWithPIDOrPath(int pid = 0, string executablePath = "")
         {
             string executableFileName = "";
-            if (pid != 0) //When a PID was provided rather than the path to an executable
+            if (pid != 0) 
             {
                 if (ProcessManager.IsProcessRunning(pid)) {
                     executableFileName = ProcessManager.GetProcessFileName(pid);
@@ -700,20 +707,35 @@ namespace WhoYouCalling
                     System.Environment.Exit(1);
                 }
             }
-            else // When the path to an executable was provided
+            else 
             {
                 executableFileName = Path.GetFileName(executablePath);
             }
             return executableFileName;
         }
 
-        public static void InstantiateProcessVariables(int pid, string executable)
+        private static string GetMainExecutableCommandLine(string executable, string arguments)
+        {
+            string commandLine;
+            if (string.IsNullOrEmpty(arguments))
+            {
+                commandLine = "";
+            }
+            else
+            {
+                commandLine = $"{executable} {arguments}";
+            }
+            return commandLine;
+        }
+
+        public static void InstantiateProcessVariables(int pid, string executable, string commandLine)
         {
             if (!s_collectiveProcessInfo.ContainsKey(pid) && !s_processNetworkTraffic.ContainsKey(pid))
             {
                 s_collectiveProcessInfo[pid] = new MonitoredProcess
                 {
-                    ImageName = executable
+                    ImageName = executable,
+                    CommandLine = commandLine
                 };
                 s_processNetworkTraffic[pid] = new HashSet<ConnectionRecord>(); // Add the main executable processname
             }
@@ -724,9 +746,11 @@ namespace WhoYouCalling
             return s_argumentData.ExecutableNamesToMonitorProvided;
         }
 
-       public static bool IsTrackedExecutableName(string executable)
+       public static bool IsTrackedExecutableName(int pid)
         {
-            if (s_argumentData.ExecutableNamesToMonitor.Contains(executable)) 
+            string processFileName = ProcessManager.GetProcessFileName(pid);
+
+            if (s_argumentData.ExecutableNamesToMonitor.Contains(processFileName))
             {
                 return true;
             }
