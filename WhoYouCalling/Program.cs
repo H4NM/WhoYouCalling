@@ -180,8 +180,6 @@ namespace WhoYouCalling
                 CatalogETWActivity(eventType: EventType.Process, executable: s_mainExecutableFileName, execAction: "being listened to", execPID: s_trackedMainPid);
             }
 
-            s_etwDnsClientListener.SetPIDAndImageToTrack(s_trackedMainPid, s_mainExecutableFileName);
-            s_etwKernelListener.SetPIDAndImageToTrack(s_trackedMainPid, s_mainExecutableFileName);
             InstantiateProcessVariables(pid: s_trackedMainPid, executable: s_mainExecutableFileName, commandLine: s_mainExecutableCommandLine);
 
             if (s_argumentData.ProcessRunTimerWasProvided)
@@ -391,6 +389,18 @@ namespace WhoYouCalling
             var endTime = DateTime.Now;
             string monitorDuration = Generic.GetPresentableDuration(s_startTime, endTime);
             ConsoleOutput.Print($"Finished! Monitor duration: {monitorDuration}. Results are in the folder {s_rootFolderName}", PrintType.InfoTime);
+        }
+
+        public static bool IsAMonitoredProcess(int pid)
+        {
+            if (s_collectiveProcessInfo.ContainsKey(pid))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         private static bool ProcessHasNoRecordedNetworkActivity(MonitoredProcess monitoredProcess)
