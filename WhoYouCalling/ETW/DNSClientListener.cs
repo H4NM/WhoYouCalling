@@ -31,7 +31,7 @@ namespace WhoYouCalling.ETW
             {
                 case "EventID(3006)":
                     {
-                        if (IsAMonitoredProcess(data.ProcessID))
+                        if (Program.IsAMonitoredProcess(data.ProcessID))
                         {
                             string retrievedQuery = data.PayloadByName("QueryName").ToString().Trim();
                             string dnsDomainQueried = string.IsNullOrWhiteSpace(retrievedQuery) ? "N/A" : retrievedQuery;
@@ -61,7 +61,7 @@ namespace WhoYouCalling.ETW
                     }
                 case "EventID(3008)":
                     {
-                        if (IsAMonitoredProcess(data.ProcessID))
+                        if (Program.IsAMonitoredProcess(data.ProcessID))
                         {
                             string retrievedQuery = data.PayloadByName("QueryName").ToString().Trim();
                             string dnsQuery = string.IsNullOrWhiteSpace(retrievedQuery) ? "N/A" : retrievedQuery;

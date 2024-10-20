@@ -4,6 +4,7 @@ using Microsoft.Diagnostics.Tracing.Session;
 using System.Security.Cryptography;
 using WhoYouCalling.Network;
 using WhoYouCalling.Process;
+using WhoYouCalling.Utilities;
 
 namespace WhoYouCalling.ETW
 {
@@ -30,7 +31,7 @@ namespace WhoYouCalling.ETW
                 _session.Source.Kernel.UdpIpSendIPV6 += Ipv6UdpIpStart;
 
                 // Process
-                _session.Source.Kernel.ProcessStart += childProcessStarted;
+                _session.Source.Kernel.ProcessStart += processStarted;
                 _session.Source.Kernel.ProcessStop += processStopped;
 
                 // Start Kernel ETW session
@@ -59,7 +60,7 @@ namespace WhoYouCalling.ETW
 
         private void Ipv4TcpStart(TcpIpSendTraceData data)
         {
-            if (IsAMonitoredProcess(data.ProcessID)) // If main or child monitored process
+            if (Program.IsAMonitoredProcess(data.ProcessID)) // If main or child monitored process
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.TCP);
             }
@@ -67,7 +68,7 @@ namespace WhoYouCalling.ETW
 
         private void Ipv6TcpStart(TcpIpV6SendTraceData data)
         {
-            if (IsAMonitoredProcess(data.ProcessID)) // If main or child monitored process
+            if (Program.IsAMonitoredProcess(data.ProcessID)) // If main or child monitored process
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.TCP);
             }
@@ -75,7 +76,7 @@ namespace WhoYouCalling.ETW
 
         private void Ipv4UdpIpStart(UdpIpTraceData data)
         {
-            if (IsAMonitoredProcess(data.ProcessID)) // If main or child monitored process
+            if (Program.IsAMonitoredProcess(data.ProcessID)) // If main or child monitored process
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.UDP);
             }
@@ -83,19 +84,20 @@ namespace WhoYouCalling.ETW
 
         private void Ipv6UdpIpStart(UpdIpV6TraceData data)
         {
-            if (IsAMonitoredProcess(data.ProcessID)) // If main or child monitored process
+            if (Program.IsAMonitoredProcess(data.ProcessID)) // If main or child monitored process
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.UDP);
             }
         }
 
-        private void childProcessStarted(ProcessTraceData data)
+        private void processStarted(ProcessTraceData data)
         {
 
-            if (IsAMonitoredProcess(data.ParentID)) //Tracks child processes by monitored process
+            if (Program.IsAMonitoredProcess(data.ParentID)) //If current process is child process of already started process
             {
                 string parentExectuable = Program.GetTrackedPIDImageName(data.ParentID);
-                
+                ConsoleOutput.Print($"DEBUGIN_FROM_IS_MONITORED_PPID: {parentExectuable}", PrintType.Fatal);
+
                 Program.CatalogETWActivity(eventType: EventType.Childprocess,
                                             executable: parentExectuable,
                                             execAction: "started",
@@ -111,14 +113,10 @@ namespace WhoYouCalling.ETW
             }
             else if(Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID))
             {
-                string parentExectuable = ProcessManager.GetProcessFileName(data.ParentID);
-
                 Program.InstantiateProcessVariables(pid: data.ProcessID, executable: data.ImageFileName, commandLine: data.CommandLine);
-                Program.CatalogETWActivity(eventType: EventType.Childprocess,
-                            executable: parentExectuable,
+                Program.CatalogETWActivity(eventType: EventType.Process,
+                            executable: data.ImageFileName,
                             execAction: "started by name",
-                            execObject: data.ImageFileName,
-                            execObjectCommandLine: data.CommandLine,
                             execPID: data.ProcessID,
                             parentExecPID: data.ParentID);
             }
@@ -126,7 +124,7 @@ namespace WhoYouCalling.ETW
 
         private void processStopped(ProcessTraceData data)
         {
-            if (IsAMonitoredProcess(data.ProcessID)) // Main or child process stopped
+            if (Program.IsAMonitoredProcess(data.ProcessID)) // Main or child process stopped
             {
                 Program.CatalogETWActivity(eventType: EventType.Process,
                                         executable: data.ImageFileName,
