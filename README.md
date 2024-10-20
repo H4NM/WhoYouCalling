@@ -25,6 +25,7 @@ However, there are some downsides:
 - Creates a full packet capture .pcap file per process.
 - Records TCPIP activities made by a processes, netflow style.
 - Records DNS requests and responses made and retrieved by applications.
+- Creates Wireshark filter for domains queried via DNS with the DNS responses
 - Can specify pcap filtering to only record TCPIP activity being sent from the process. This is applied to the recorded .pcap.
 - Can be automated with a timer.
 - By default all monitoring is applied to all spawned child processes.
