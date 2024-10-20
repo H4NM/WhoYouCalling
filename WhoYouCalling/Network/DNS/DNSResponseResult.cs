@@ -7,7 +7,6 @@ namespace WhoYouCalling.Network.DNS
         public string BundledRecordTypeText { get; set; }
         public string BundledDomain { get; set; }
         public List<string> IPs { get; set; }
-        public bool IPv4MappedIPv6Adresses { get; set; }
 
         public override bool Equals(object obj)
         {
@@ -18,7 +17,6 @@ namespace WhoYouCalling.Network.DNS
             return BundledRecordTypeCode == other.BundledRecordTypeCode &&
                    BundledRecordTypeText == other.BundledRecordTypeText &&
                    BundledDomain == other.BundledDomain &&
-                   IPv4MappedIPv6Adresses == other.IPv4MappedIPv6Adresses &&
                    IPs.SequenceEqual(other.IPs);
         }
 
@@ -28,8 +26,6 @@ namespace WhoYouCalling.Network.DNS
             hash = hash * 31 + (BundledRecordTypeText != null ? BundledRecordTypeText.GetHashCode() : 0);
             hash = hash * 31 + BundledRecordTypeCode.GetHashCode();
             hash = hash * 31 + (BundledDomain != null ? BundledDomain.GetHashCode() : 0);
-            hash = hash * 31 + IPv4MappedIPv6Adresses.GetHashCode();
-
             if (IPs != null)
             {
                 foreach (var ip in IPs)
@@ -37,7 +33,6 @@ namespace WhoYouCalling.Network.DNS
                     hash = hash * 31 + (ip != null ? ip.GetHashCode() : 0);
                 }
             }
-
             return hash;
         }
     }

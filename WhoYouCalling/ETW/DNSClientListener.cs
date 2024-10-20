@@ -50,23 +50,11 @@ namespace WhoYouCalling.ETW
                                 RecordTypeText = dnsRecordTypeCodeName
                             };
 
-                            string executable;
-                            string execType;
+                            string executable = Program.GetTrackedPIDImageName(data.ProcessID);
 
-                            if (_trackedProcessId == data.ProcessID) // DNS Lookup made by main process 
-                            {
-                                executable = _mainExecutableFileName;
-                                execType = "Main";
-                            }
-                            else // DNS Lookup made by child process
-                            {
-                                executable = Program.GetTrackedPIDImageName(data.ProcessID);
-                                execType = "Child";
-                            }
                             Program.CatalogETWActivity(eventType: EventType.DNSQuery,
                                   executable: executable,
                                   execPID: data.ProcessID,
-                                  execType: execType,
                                   dnsQuery: dnsQuery);
                         }
                         break;
@@ -78,11 +66,11 @@ namespace WhoYouCalling.ETW
                             string retrievedQuery = data.PayloadByName("QueryName").ToString().Trim();
                             string dnsQuery = string.IsNullOrWhiteSpace(retrievedQuery) ? "N/A" : retrievedQuery;
                             string retrievedQueryResults = data.PayloadByName("QueryResults").ToString().Trim();
+                            string executable = Program.GetTrackedPIDImageName(data.ProcessID);
+
 
                             int queryTypeCode;
                             int queryStatusCode;
-                            string executable;
-                            string execType;
 
                             if (!int.TryParse(data.PayloadByName("QueryStatus").ToString(), out queryStatusCode))
                             {
@@ -108,21 +96,9 @@ namespace WhoYouCalling.ETW
                                 QueryResult = NetworkUtils.ParseDNSResult(retrievedQueryResults)
                             };
 
-                            if (_trackedProcessId == data.ProcessID) // DNS response to by main process 
-                            {
-                                executable = _mainExecutableFileName;
-                                execType = "Main";
-                            }
-                            else  // DNS response to child process 
-                            {
-                                executable = Program.GetTrackedPIDImageName(data.ProcessID); 
-                                execType = "Child";
-                            }
-
                             Program.CatalogETWActivity(eventType: EventType.DNSResponse,
                                     executable: executable,
                                     execPID: data.ProcessID,
-                                    execType: execType,
                                     dnsResponse: dnsResponseQuery);
                         }
                         break;

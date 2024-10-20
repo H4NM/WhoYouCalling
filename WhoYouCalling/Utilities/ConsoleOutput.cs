@@ -28,6 +28,9 @@ namespace WhoYouCalling.Utilities
                     prefix = "\r[~]";
                     Console.Write($"{prefix} {message}");
                     return;
+                case PrintType.NetworkInterface:
+                    prefix = "";
+                    break;
                 case PrintType.Warning:
                     prefix = "[!]";
                     break;
