@@ -341,9 +341,13 @@ namespace WhoYouCalling
                     string filteredPcapFile = @$"{processFolderInRootFolder}\{Constants.FileNames.ProcessFolderPcapFileName}";
 
                     ConsoleOutput.Print($"Filtering saved pcap \"{s_fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter.", PrintType.Debug);
-                    ConsoleOutput.Print($"Filtering pcap for {executabelNameAndPID}", PrintType.Info);
+
+                    var filteringStartTime = DateTime.Now;
                     FilePacketCapture filePacketCapture = new();
                     filePacketCapture.FilterCaptureFile(processBPFFilterForFiltering, s_fullPcapFile, filteredPcapFile);
+                    string filterDuration = Generic.GetPresentableDuration(filteringStartTime, DateTime.Now);
+
+                    ConsoleOutput.Print($"Filtered pcap for {executabelNameAndPID} in {filterDuration}", PrintType.Info);
                 }
                 else
                 {

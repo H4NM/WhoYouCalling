@@ -9,6 +9,7 @@ namespace WhoYouCalling
         Warning,
         Error,
         Fatal,
+        NetworkInterface,
         Debug
     }
 }

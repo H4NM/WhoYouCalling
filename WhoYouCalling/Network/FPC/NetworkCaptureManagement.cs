@@ -71,14 +71,55 @@ namespace WhoYouCalling.Network.FPC
                 Environment.Exit(1);
             }
 
+            ConsoleOutput.Print("Available interfaces:", PrintType.Info);
             int i = 0;
             string deviceMsg;
             foreach (var dev in devices)
             {
-                deviceMsg = $"{i}) {dev.Name} {dev.Description}";
-                ConsoleOutput.Print(deviceMsg);
+                deviceMsg = $"{i}) {dev.Description}";
+                ConsoleOutput.Print(deviceMsg, PrintType.NetworkInterface);
                 i++;
+                foreach (PcapAddress addr in dev.Addresses)
+                {
+                    if (addr.Addr != null && addr.Addr.ipAddress != null)
+                    {
+                        IPAddress ip = addr.Addr.ipAddress;
+                        if (!IsSelfAssignedIPv4(ip) && !IsLinkLocalIPv6(ip))
+                        {
+                            IPVersion ipVersion;
+                            if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+                            {
+                                ipVersion = IPVersion.IPv6;
+                            }
+                            else
+                            {
+                                ipVersion = IPVersion.IPv4;
+                            }
+                            ConsoleOutput.Print($"\t{ipVersion}: {ip}", PrintType.NetworkInterface);
+                        }
+                    }
+                }
             }
+        }
+
+        static bool IsSelfAssignedIPv4(IPAddress ipAddress)
+        {
+            if (ipAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) 
+            {
+                byte[] bytes = ipAddress.GetAddressBytes();
+                return bytes[0] == 169 && bytes[1] == 254;
+            }
+            return false;
+        }
+
+        static bool IsLinkLocalIPv6(IPAddress ipAddress)
+        {
+            if (ipAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6) 
+            {
+                byte[] bytes = ipAddress.GetAddressBytes();
+                return bytes[0] == 0xFE && (bytes[1] & 0xC0) == 0x80;
+            }
+            return false;
         }
     }
 }

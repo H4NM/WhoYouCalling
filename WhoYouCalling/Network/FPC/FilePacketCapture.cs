@@ -47,19 +47,6 @@ namespace WhoYouCalling.Network.FPC
             ConsoleOutput.Print($"Finished writing packets to {filteredPcapFile}", PrintType.Debug);
             _captureFileWriterDevice.Close();
 
-            string filterDuration = Generic.GetPresentableDuration(startTime, DateTime.Now);
-
-            string filteringMsg = "";
-            if (s_packetCounter > 0)
-            {
-                filteringMsg = $"Filtered {s_packetCounter} packets in {filterDuration} for {filteredPcapFile}";
-            }
-            else
-            {
-                filteringMsg = $"No packets were filtered for {filteredPcapFile}";
-            }
-            ConsoleOutput.Print(filteringMsg, PrintType.Debug);
-
         }
     }
 }

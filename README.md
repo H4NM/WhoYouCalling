@@ -41,12 +41,16 @@ However, there are some downsides:
 **Get a list of available interfaces to monitor**:
 ```
 WhoYouCalling.exe --getinterfaces
-
-[*] 0) \Device\NPF_{NNNNNNNN-8238-4166-B2A1-NNNNNNNNNNNN} WAN Miniport (Network Monitor)
-[*] 1) \Device\NPF_{NNNNNNNN-C41D-4E1C-9F15-NNNNNNNNNNNN} WAN Miniport (IPv6)
+[*] Available interfaces:
+ 0) WAN Miniport (Network Monitor)
+ 1) WAN Miniport (IPv6)
 ...
-[*] 9) \Device\NPF_Loopback Adapter for loopback traffic capture
-[*] 10) \Device\NPF_{NNNNNNNN-AAB6-44DF-A3B5-NNNNNNNNNNNN} Killer E2600 Gigabit Ethernet Controller
+ 8) Realtek USB GbE Family Controller
+        IPv4: 192.168.1.10
+        IPv6: fd12:3456:789a:1::2
+ 9) Adapter for loopback traffic capture
+        IPv6: ::1
+        IPv4: 127.0.0.1
 ```
 
 **Execute a binary with arguments. Output the results to a folder on the user desktop**:
@@ -74,6 +78,7 @@ There are other tools that can compliment your quest of application network anal
 - [Frida](https://frida.re/): Provides the most granular interaction with applications in which you can view API calls made. 
 	- *"It lets you inject snippets of JavaScript or your own library into native apps on Windows, macOS, GNU/Linux, iOS, watchOS, tvOS, Android, FreeBSD, and QNX."*
 - [Deluder](https://github.com/Warxim/deluder) and [PETEP (PEnetration TEsting Proxy)](https://github.com/Warxim/petep): Deluder uses frida but acts as an interface towards capturing the network traffic made by the application, similar to **WhoYoucalling**. Deluder also allows for many other fun things, including integration with the PETEP proxy for viewing and editing packets live.
+- [Windows Sandbox](https://learn.microsoft.com/en-us/windows/security/application-security/application-isolation/windows-sandbox/windows-sandbox-overview): A simple and native sandbox in Windows. I strongly recommend using a sandbox or VM when when executing unknown applications. There's also the possibility of adding your own configuration for the Windows Sandbox to harden it a bit further or include WhoYouCalling with the sandbox on start. See more [here](https://learn.microsoft.com/en-us/windows/security/application-security/application-isolation/windows-sandbox/windows-sandbox-configure-using-wsb-file)
 
 ### Limitations
 - **DNS**: In ETW, `Microsoft-Windows-DNS-Client` only logs A and AAAA queries, neglecting other DNS query types such as PTR, TXT, MX, SOA etc. It does capture CNAME and it's respective adresses, which are part of the DNS response. However, with the FPC the requests are captured either way, just not portrayed as in registered DNS traffic by the application.
@@ -121,6 +126,8 @@ dotnet publish -c Release -r win-(x64 or x86) --self-contained true
 ```
 bin\Release\net8.0\win-x64\WhoYouCalling.exe [arguments]...
 ```
+
+
 
 # 🐛 Bugs or Requests? ✨ Create an issue! 🚀
 
