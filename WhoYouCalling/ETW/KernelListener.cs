@@ -96,8 +96,6 @@ namespace WhoYouCalling.ETW
             if (Program.IsAMonitoredProcess(data.ParentID)) //If current process is child process of already started process
             {
                 string parentExectuable = Program.GetTrackedPIDImageName(data.ParentID);
-                ConsoleOutput.Print($"DEBUGIN_FROM_IS_MONITORED_PPID: {parentExectuable}", PrintType.Fatal);
-
                 Program.CatalogETWActivity(eventType: EventType.Childprocess,
                                             executable: parentExectuable,
                                             execAction: "started",
