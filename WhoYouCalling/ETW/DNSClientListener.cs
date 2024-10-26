@@ -3,6 +3,7 @@ using Microsoft.Diagnostics.Tracing.Session;
 using WhoYouCalling.Network.DNS;
 using WhoYouCalling.Utilities;
 using WhoYouCalling.Network;
+using WhoYouCalling.Process;
 
 namespace WhoYouCalling.ETW
 {
@@ -25,81 +26,101 @@ namespace WhoYouCalling.ETW
 
         }
 
+        private void ProcessDnsQuery(dynamic data, string executable)
+        {
+            string retrievedQuery = data.PayloadByName("QueryName").ToString().Trim();
+            string dnsDomainQueried = string.IsNullOrWhiteSpace(retrievedQuery) ? "N/A" : retrievedQuery;
+            int queryTypeCode = 0;
+            if (!int.TryParse(data.PayloadByName("QueryType").ToString(), out queryTypeCode))
+            {
+                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query type. Failed to parse it", PrintType.Debug);
+                queryTypeCode = 999999; // Non-existing DNS type value. Is later looked up
+            }
+            string dnsRecordTypeCodeName = DnsCodeLookup.GetDnsTypeName(queryTypeCode); // Retrieve the DNS type code name
+
+            DNSQuery dnsQuery = new DNSQuery
+            {
+                DomainQueried = dnsDomainQueried,
+                RecordTypeCode = queryTypeCode,
+                RecordTypeText = dnsRecordTypeCodeName
+            };
+
+            Program.CatalogETWActivity(eventType: EventType.DNSQuery,
+                  executable: executable,
+                  execPID: data.ProcessID,
+                  dnsQuery: dnsQuery);
+        }
+
+        private void ProcessDnsResponse(dynamic data, string executable)
+        {
+            string retrievedQuery = data.PayloadByName("QueryName").ToString().Trim();
+            string dnsQuery = string.IsNullOrWhiteSpace(retrievedQuery) ? "N/A" : retrievedQuery;
+            string retrievedQueryResults = data.PayloadByName("QueryResults").ToString().Trim();
+
+            int queryTypeCode;
+            int queryStatusCode;
+
+            if (!int.TryParse(data.PayloadByName("QueryStatus").ToString(), out queryStatusCode))
+            {
+                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query status. Failed to parse it", PrintType.Debug);
+                queryStatusCode = 999999; // Non-existing DNS status value. Is later looked up
+            }
+            if (!int.TryParse(data.PayloadByName("QueryType").ToString(), out queryTypeCode))
+            {
+                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query type. Failed to parse it", PrintType.Debug);
+                queryTypeCode = 999999; // Non-existing DNS type value. Is later looked up
+            }
+
+            string dnsRecordTypeCodeName = DnsCodeLookup.GetDnsTypeName(queryTypeCode); // Retrieve the DNS type code name
+            string dnsResponseStatusCodeName = DnsCodeLookup.GetDnsStatusName(queryStatusCode); // Retrieve the DNS response status code name
+
+            DNSResponse dnsResponseQuery = new DNSResponse
+            {
+                DomainQueried = retrievedQuery,
+                RecordTypeCode = queryTypeCode,
+                RecordTypeText = dnsRecordTypeCodeName,
+                StatusCode = queryStatusCode,
+                StatusText = dnsResponseStatusCodeName,
+                QueryResult = NetworkUtils.ParseDNSResult(retrievedQueryResults)
+            };
+
+            Program.CatalogETWActivity(eventType: EventType.DNSResponse,
+                    executable: executable,
+                    execPID: data.ProcessID,
+                    dnsResponse: dnsResponseQuery);
+        }
+
         private void DnsClientEvent(TraceEvent data)
         {
             switch (data.EventName)
             {
                 case "EventID(3006)":
                     {
-                        if (Program.IsAMonitoredProcess(data.ProcessID))
+                        if (Program.IsTrackedPID(data.ProcessID))
                         {
-                            string retrievedQuery = data.PayloadByName("QueryName").ToString().Trim();
-                            string dnsDomainQueried = string.IsNullOrWhiteSpace(retrievedQuery) ? "N/A" : retrievedQuery;
-                            int queryTypeCode = 0;
-                            if (!int.TryParse(data.PayloadByName("QueryType").ToString(), out queryTypeCode))
-                            {
-                                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query type. Failed to parse it", PrintType.Debug);
-                                queryTypeCode = 999999; // Non-existing DNS type value. Is later looked up
-                            }
-                            string dnsRecordTypeCodeName = DnsCodeLookup.GetDnsTypeName(queryTypeCode); // Retrieve the DNS type code name
-
-                            DNSQuery dnsQuery = new DNSQuery
-                            {
-                                DomainQueried = dnsDomainQueried,
-                                RecordTypeCode = queryTypeCode,
-                                RecordTypeText = dnsRecordTypeCodeName
-                            };
-
                             string executable = Program.GetTrackedPIDImageName(data.ProcessID);
-
-                            Program.CatalogETWActivity(eventType: EventType.DNSQuery,
-                                  executable: executable,
-                                  execPID: data.ProcessID,
-                                  dnsQuery: dnsQuery);
+                            ProcessDnsQuery(data, executable);
+                        }
+                        else if ((Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID)) || Program.MonitorEverything())
+                        {
+                            string executable = ProcessManager.GetProcessFileName(data.ProcessID);
+                            Program.InstantiateProcessVariables(pid: data.ProcessID, executable: executable);
+                            ProcessDnsQuery(data, executable);
                         }
                         break;
                     }
                 case "EventID(3008)":
                     {
-                        if (Program.IsAMonitoredProcess(data.ProcessID))
+                        if (Program.IsTrackedPID(data.ProcessID))
                         {
-                            string retrievedQuery = data.PayloadByName("QueryName").ToString().Trim();
-                            string dnsQuery = string.IsNullOrWhiteSpace(retrievedQuery) ? "N/A" : retrievedQuery;
-                            string retrievedQueryResults = data.PayloadByName("QueryResults").ToString().Trim();
                             string executable = Program.GetTrackedPIDImageName(data.ProcessID);
-
-
-                            int queryTypeCode;
-                            int queryStatusCode;
-
-                            if (!int.TryParse(data.PayloadByName("QueryStatus").ToString(), out queryStatusCode))
-                            {
-                                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query status. Failed to parse it", PrintType.Debug);
-                                queryStatusCode = 999999; // Non-existing DNS status value. Is later looked up
-                            }
-                            if (!int.TryParse(data.PayloadByName("QueryType").ToString(), out queryTypeCode))
-                            {
-                                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query type. Failed to parse it", PrintType.Debug);
-                                queryTypeCode = 999999; // Non-existing DNS type value. Is later looked up
-                            }
-
-                            string dnsRecordTypeCodeName = DnsCodeLookup.GetDnsTypeName(queryTypeCode); // Retrieve the DNS type code name
-                            string dnsResponseStatusCodeName = DnsCodeLookup.GetDnsStatusName(queryStatusCode); // Retrieve the DNS response status code name
-
-                            DNSResponse dnsResponseQuery = new DNSResponse
-                            {
-                                DomainQueried = retrievedQuery,
-                                RecordTypeCode = queryTypeCode,
-                                RecordTypeText = dnsRecordTypeCodeName,
-                                StatusCode = queryStatusCode,
-                                StatusText = dnsResponseStatusCodeName,
-                                QueryResult = NetworkUtils.ParseDNSResult(retrievedQueryResults)
-                            };
-
-                            Program.CatalogETWActivity(eventType: EventType.DNSResponse,
-                                    executable: executable,
-                                    execPID: data.ProcessID,
-                                    dnsResponse: dnsResponseQuery);
+                            ProcessDnsResponse(data, executable);
+                        }
+                        else if ((Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID)) || Program.MonitorEverything())
+                        {
+                            string executable = ProcessManager.GetProcessFileName(data.ProcessID);
+                            Program.InstantiateProcessVariables(pid: data.ProcessID, executable: executable);
+                            ProcessDnsResponse(data, executable);
                         }
                         break;
                 }

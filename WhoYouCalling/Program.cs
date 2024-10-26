@@ -91,7 +91,7 @@ namespace WhoYouCalling
 
             s_argumentData.OutputDirectory = Generic.NormalizePath(s_argumentData.OutputDirectory);
 
-            if (s_argumentData.ProvidedOutputDirectory) // If catalog to save data is specified
+            if (s_argumentData.OutputDirectoryFlagSet) // If catalog to save data is specified
             {
                 s_rootFolderName = $"{s_argumentData.OutputDirectory}{s_rootFolderName}";
             }
@@ -127,7 +127,7 @@ namespace WhoYouCalling
             etwKernelListenerThread.Start();
             etwDnsClientListenerThread.Start();
 
-            if (s_argumentData.ExecutablePathProvided) // If an executable was provided and not a pid
+            if (s_argumentData.ExecutableFlagSet) // If an executable was provided and not a pid
             {
                 Thread.Sleep(Constants.Timeouts.ETWSubscriptionTimingTime); //Sleep is required to ensure ETW Subscription is timed correctly to capture the execution
                 try
@@ -143,7 +143,7 @@ namespace WhoYouCalling
                     else
                     {
                         executionContext = "unelevated";
-                        if (s_argumentData.UserNameProvided && s_argumentData.UserPasswordProvided)
+                        if (s_argumentData.UserNameFlagSet && s_argumentData.UserPasswordFlagSet)
                         {
                             s_trackedMainPid = ProcessManager.StartProcessAndGetId(executablePath: s_argumentData.ExecutablePath,
                                                        arguments: s_argumentData.ExecutableArguments,
@@ -164,7 +164,7 @@ namespace WhoYouCalling
 
                     ConsoleOutput.Print($"Executing \"{s_argumentData.ExecutablePath}\" with args \"{s_argumentData.ExecutableArguments}\" in {executionContext} context", PrintType.Debug);
                     ConsoleOutput.Print($"Executing \"{s_argumentData.ExecutablePath}\"", PrintType.Info);
-
+                    InstantiateProcessVariables(pid: s_trackedMainPid, executable: s_mainExecutableFileName, commandLine: s_mainExecutableCommandLine);
                     CatalogETWActivity(eventType: EventType.Process, executable: s_mainExecutableFileName, execAction: "started", execPID: s_trackedMainPid);
                 }
                 catch (Exception ex)
@@ -173,16 +173,20 @@ namespace WhoYouCalling
                     System.Environment.Exit(1);
                 }
             }
-            else // PID to an existing process was provided
+            else if (s_argumentData.PIDFlagSet)// PID to an existing process was provided
             {
                 s_trackedMainPid = s_argumentData.TrackedProcessId;
+                InstantiateProcessVariables(pid: s_trackedMainPid, executable: s_mainExecutableFileName, commandLine: s_mainExecutableCommandLine);
                 ConsoleOutput.Print($"Listening to PID {s_trackedMainPid}({s_mainExecutableFileName})", PrintType.Info);
                 CatalogETWActivity(eventType: EventType.Process, executable: s_mainExecutableFileName, execAction: "being listened to", execPID: s_trackedMainPid);
+
+            }
+            else
+            {
+                ConsoleOutput.Print($"Illuminating...", PrintType.Info);
             }
 
-            InstantiateProcessVariables(pid: s_trackedMainPid, executable: s_mainExecutableFileName, commandLine: s_mainExecutableCommandLine);
-
-            if (s_argumentData.ProcessRunTimerWasProvided)
+            if (s_argumentData.ProcessRunTimerFlagSet)
             {
                 double processRunTimerInMilliseconds = Generic.ConvertToMilliseconds(s_argumentData.ProcessRunTimer);
                 System.Timers.Timer timer = new(processRunTimerInMilliseconds);
@@ -389,18 +393,6 @@ namespace WhoYouCalling
             var endTime = DateTime.Now;
             string monitorDuration = Generic.GetPresentableDuration(s_startTime, endTime);
             ConsoleOutput.Print($"Finished! Monitor duration: {monitorDuration}. Results are in the folder {s_rootFolderName}", PrintType.InfoTime);
-        }
-
-        public static bool IsAMonitoredProcess(int pid)
-        {
-            if (s_collectiveProcessInfo.ContainsKey(pid))
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
         }
 
         private static bool ProcessHasNoRecordedNetworkActivity(MonitoredProcess monitoredProcess)
@@ -742,7 +734,7 @@ namespace WhoYouCalling
             return commandLine;
         }
 
-        public static void InstantiateProcessVariables(int pid, string executable, string commandLine)
+        public static void InstantiateProcessVariables(int pid, string executable, string commandLine = "")
         {
             if (!s_collectiveProcessInfo.ContainsKey(pid) && !s_processNetworkTraffic.ContainsKey(pid))
             {
@@ -757,7 +749,7 @@ namespace WhoYouCalling
 
         public static bool TrackExecutablesByName()
         {
-            return s_argumentData.ExecutableNamesToMonitorProvided;
+            return s_argumentData.ExecutableNamesToMonitorFlagSet;
         }
 
        public static bool IsTrackedExecutableName(int pid)
@@ -774,7 +766,33 @@ namespace WhoYouCalling
             }
         }
 
-       public static bool IsTrackedChildPID(int pid)
+
+        public static void RemoveChildPID(int pid)
+        {
+            s_trackedChildProcessIds.Remove(pid);
+        }
+        public static void AddChildPID(int pid)
+        {
+            s_trackedChildProcessIds.Add(pid);
+        }
+
+        public static bool MonitorEverything()
+        {
+            return s_argumentData.MonitorEverythingFlagSet;
+        }
+
+        public static bool IsTrackedPID(int pid)
+        {
+            if (s_collectiveProcessInfo.ContainsKey(pid))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        public static bool IsTrackedChildPID(int pid)
         {
             if (s_trackedChildProcessIds.Contains(pid))
             {
@@ -784,14 +802,6 @@ namespace WhoYouCalling
             {
                 return false;
             }
-        }
-        public static void RemoveChildPID(int pid)
-        {
-            s_trackedChildProcessIds.Remove(pid);
-        }
-        public static void AddChildPID(int pid)
-        {
-            s_trackedChildProcessIds.Add(pid);
         }
 
         public static string GetTrackedPIDImageName(int pid)

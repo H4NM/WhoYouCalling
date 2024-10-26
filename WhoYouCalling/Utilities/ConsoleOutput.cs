@@ -109,11 +109,12 @@ Options:
                         Inherits the integrity level and access token of WhyYouCalling.exe.
   -u, --user          : The user that the process should run as.
   -p, --password      : The password for the specified user that the process should run as.
-  -P, --pid           : The running process id to track rather than executing the binary.
+  -P, --PID           : The running process id to track rather than executing the binary.
   -x, --execnames     : A comma separated list of executable file names to also monitor for.
                         A useful scenario is when C:\Program Files\Mozilla Firefox\firefox.exe is launched.
                         The PPID of the main firefox instance belongs to explorer.exe, which is 
                         an already running process, meaning that following a PPID/PID trail misses the process.
+  -I, --illuminate    : Captures everything from everything.
   -i, --interface     : The network interface number. Retrievable with the -g/--getinterfaces flag.
   -g, --getinterfaces : Prints the network interface devices with corresponding number (usually 0-10).
   -t, --timer         : The number of seconds the execute binary will run for. Is a double variable so can take floating-point values.
@@ -134,6 +135,7 @@ Options:
 Examples:
   WhoYouCalling.exe -e C:\Windows\System32\calc.exe -t 10.5 -k -i 8 -o C:\Users\H4NM\Desktop 
   WhoYouCalling.exe --pid 4351 --nopcap --outputdfl --output C:\Windows\Temp 
+  WhoYouCalling.exe --illuminate --nopcap
 ";
             Console.WriteLine(helpText);
         }
