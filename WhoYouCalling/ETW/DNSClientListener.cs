@@ -111,6 +111,7 @@ namespace WhoYouCalling.ETW
                     }
                 case "EventID(3008)":
                     {
+
                         if (Program.IsTrackedPID(data.ProcessID))
                         {
                             string executable = Program.GetTrackedPIDImageName(data.ProcessID);

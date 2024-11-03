@@ -1,10 +1,8 @@
 ﻿
 using System.Net;
 using System.Text.RegularExpressions;
-using WhoYouCalling.Network;
 using WhoYouCalling.Network.DNS;
 using WhoYouCalling.Utilities;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace WhoYouCalling.Network
 {

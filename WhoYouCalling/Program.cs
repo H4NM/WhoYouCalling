@@ -56,6 +56,8 @@ namespace WhoYouCalling
 
         private static DateTime s_startTime = DateTime.Now;
 
+        public static WYCMainMode RunningMode;
+
         // Arguments
         private static ArgumentData s_argumentData;
 
@@ -77,22 +79,31 @@ namespace WhoYouCalling
                 System.Environment.Exit(1);
             }
 
+            RunningMode = GetMainMode(s_argumentData);
             SetCancelKeyEvent();
+
             ConsoleOutput.PrintStartMonitoringText();
             if (Debug())
             {
                 ConsoleOutput.PrintArgumentValues(s_argumentData);
             }
 
-            ConsoleOutput.Print("Retrieving executable filename", PrintType.Debug);
-            s_mainExecutableFileName = GetExecutableFileNameWithPIDOrPath(s_argumentData.TrackedProcessId, s_argumentData.ExecutablePath);
-            s_mainExecutableCommandLine = GetMainExecutableCommandLine(s_mainExecutableFileName, s_argumentData.ExecutableArguments);
-            s_rootFolderName = Generic.NormalizePath(Generic.GetRunInstanceFolderName(s_mainExecutableFileName));
-
-            s_argumentData.OutputDirectory = Generic.NormalizePath(s_argumentData.OutputDirectory);
-
-            if (s_argumentData.OutputDirectoryFlagSet) // If catalog to save data is specified
+            if (RunningMode == WYCMainMode.Illuminate)
             {
+                s_rootFolderName = Generic.GetRunInstanceFolderName(RunningMode.ToString());
+            }
+            else
+            {
+                ConsoleOutput.Print("Retrieving executable filename", PrintType.Debug);
+                s_mainExecutableFileName = GetExecutableFileNameWithPIDOrPath(s_argumentData.TrackedProcessId, s_argumentData.ExecutablePath);
+                s_mainExecutableCommandLine = GetMainExecutableCommandLine(s_mainExecutableFileName, s_argumentData.ExecutableArguments);
+                s_rootFolderName = Generic.NormalizePath(Generic.GetRunInstanceFolderName(s_mainExecutableFileName));
+            }
+
+
+            if (s_argumentData.OutputDirectoryFlagSet)
+            {
+                s_argumentData.OutputDirectory = Generic.NormalizePath(s_argumentData.OutputDirectory);
                 s_rootFolderName = $"{s_argumentData.OutputDirectory}{s_rootFolderName}";
             }
 
@@ -183,7 +194,7 @@ namespace WhoYouCalling
             }
             else
             {
-                ConsoleOutput.Print($"Illuminating...", PrintType.Info);
+                ConsoleOutput.Print($"Illuminating machine...", PrintType.Info);
             }
 
             if (s_argumentData.ProcessRunTimerFlagSet)
@@ -691,6 +702,22 @@ namespace WhoYouCalling
             }
             ConsoleOutput.Print(historyMsg, PrintType.Debug);
             s_etwActivityHistory.Add(historyMsg);
+        }
+
+        private static WYCMainMode GetMainMode(ArgumentData s_argumentData)
+        {
+            if (s_argumentData.ExecutableFlagSet)
+            {
+                return WYCMainMode.Execute;
+            }
+            else if (s_argumentData.PIDFlagSet)
+            {
+                return WYCMainMode.Listen;
+            }
+            else 
+            {
+                return WYCMainMode.Illuminate;
+            }
         }
 
         private static void TimerShutDownMonitoring(object source, ElapsedEventArgs e)

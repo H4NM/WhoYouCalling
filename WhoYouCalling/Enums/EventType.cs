@@ -1,4 +1,5 @@
-﻿namespace WhoYouCalling.ETW
+﻿
+namespace WhoYouCalling.ETW
 {
     public enum EventType
     {

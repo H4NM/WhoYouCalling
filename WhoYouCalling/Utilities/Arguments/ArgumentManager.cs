@@ -14,7 +14,7 @@ namespace WhoYouCalling.Utilities.Arguments
             {
                 for (int i = 0; i < args.Length; i++)
                 {
-                    if (args[i] == "-e" || args[i] == "--executable") // Executable flag
+                    if (args[i] == ArgumentFlags.ExecutableFlagShort || args[i] == ArgumentFlags.ExecutableFlagLong)
                     {
                         // Ensure there's a subsequent argument that represents the executable
                         if (i + 1 < args.Length)
@@ -24,10 +24,10 @@ namespace WhoYouCalling.Utilities.Arguments
                         }
                         else
                         {
-                            ConsoleOutput.Print("No arguments specified after -e/--executable flag", PrintType.Warning);
+                            ConsoleOutput.Print($"No arguments specified after {ArgumentFlags.ExecutableFlagShort}/{ArgumentFlags.ExecutableFlagLong} flag", PrintType.Warning);
                         }
                     }
-                    else if (args[i] == "-x" || args[i] == "--execnames") // Executable flag
+                    else if (args[i] == ArgumentFlags.MultipleExecutableNamesFlagShort || args[i] == ArgumentFlags.MultipleExecutableNamesFlagLong) 
                     {
                         // Ensure there's a subsequent argument that represents the executable
                         if (i + 1 < args.Length)
@@ -50,10 +50,10 @@ namespace WhoYouCalling.Utilities.Arguments
                         }
                         else
                         {
-                            ConsoleOutput.Print("No arguments specified after -e/--executable flag", PrintType.Warning);
+                            ConsoleOutput.Print($"No arguments specified after {ArgumentFlags.MultipleExecutableNamesFlagShort}/{ArgumentFlags.MultipleExecutableNamesFlagLong} flag", PrintType.Warning);
                         }
                     }
-                    else if (args[i] == "-a" || args[i] == "--arguments") // Executable arguments flag
+                    else if (args[i] == ArgumentFlags.ExecutableArgsFlagShort || args[i] == ArgumentFlags.ExecutableArgsFlagLong) 
                     {
                         if (i + 1 < args.Length)
                         {
@@ -62,12 +62,12 @@ namespace WhoYouCalling.Utilities.Arguments
                         }
                         else
                         {
-                            ConsoleOutput.Print("No arguments specified after -a/--arguments flag", PrintType.Warning);
+                            ConsoleOutput.Print($"No arguments specified after {ArgumentFlags.ExecutableArgsFlagShort}/{ArgumentFlags.ExecutableArgsFlagLong} flag", PrintType.Warning);
                             argumentData.InvalidArgumentValueProvided = true;
                             return argumentData;
                         }
                     }
-                    else if (args[i] == "-u" || args[i] == "--user") // username flag
+                    else if (args[i] == ArgumentFlags.UserNameFlagShort || args[i] == ArgumentFlags.UserNameFlagLong) 
                     {
                         if (i + 1 < args.Length)
                         {
@@ -76,12 +76,12 @@ namespace WhoYouCalling.Utilities.Arguments
                         }
                         else
                         {
-                            ConsoleOutput.Print("No arguments specified after -u/--user flag", PrintType.Warning);
+                            ConsoleOutput.Print($"No arguments specified after {ArgumentFlags.UserNameFlagShort}/{ArgumentFlags.UserNameFlagLong} flag", PrintType.Warning);
                             argumentData.InvalidArgumentValueProvided = true;
                             return argumentData;
                         }
                     }
-                    else if (args[i] == "-p" || args[i] == "--password") // user password flag
+                    else if (args[i] == ArgumentFlags.UserPasswordFlagShort || args[i] == ArgumentFlags.UserPasswordFlagLong)
                     {
                         if (i + 1 < args.Length)
                         {
@@ -90,49 +90,49 @@ namespace WhoYouCalling.Utilities.Arguments
                         }
                         else
                         {
-                            ConsoleOutput.Print("No arguments specified after -pw/--password flag", PrintType.Warning);
+                            ConsoleOutput.Print($"No arguments specified after {ArgumentFlags.UserPasswordFlagShort}/{ArgumentFlags.UserPasswordFlagLong} flag", PrintType.Warning);
                             argumentData.InvalidArgumentValueProvided = true;
                             return argumentData;
                         }
                     }
-                    else if (args[i] == "-I" || args[i] == "--illuminate") // Monitor everything
+                    else if (args[i] == ArgumentFlags.MonitorEverythingFlagShort || args[i] == ArgumentFlags.MonitorEverythingFlagLong) 
                     {
                         argumentData.MonitorEverythingFlagSet = true;
                     }
-                    else if (args[i] == "-R" || args[i] == "--privileged") // Run executable with high privileges
+                    else if (args[i] == ArgumentFlags.ExecutePrivilegedFlagShort || args[i] == ArgumentFlags.ExecutePrivilegedFlagLong)
                     {
                         argumentData.RunExecutableWithHighPrivilege = true;
                     }
-                    else if (args[i] == "-c" || args[i] == "--nochildprocs") // Track the network activity by child processes
+                    else if (args[i] == ArgumentFlags.NoChildProcessesFlagShort || args[i] == ArgumentFlags.NoChildProcessesFlagLong) 
                     {
                         argumentData.TrackChildProcesses = false;
                     }
-                    else if (args[i] == "-S" || args[i] == "--strictfilter")
+                    else if (args[i] == ArgumentFlags.StrictFilterFlagShort || args[i] == ArgumentFlags.StrictFilterFlagLong)
                     {
                         argumentData.StrictCommunicationEnabled = true;
                     }
-                    else if (args[i] == "-B" || args[i] == "--outputbpf")
+                    else if (args[i] == ArgumentFlags.OutputBPFFlagShort || args[i] == ArgumentFlags.OutputBPFFlagLong)
                     {
                         argumentData.OutputBPFFilter = true;
                     }
-                    else if (args[i] == "-D" || args[i] == "--outputdfl")
+                    else if (args[i] == ArgumentFlags.OutputDFLFlagShort || args[i] == ArgumentFlags.OutputDFLFlagLong)
                     {
                         argumentData.OutputWiresharkFilter = true;
                     }
-                    else if (args[i] == "-k" || args[i] == "--killprocesses") // Track the network activity by child processes
+                    else if (args[i] == ArgumentFlags.KillChildProcessesFlagShort || args[i] == ArgumentFlags.KillChildProcessesFlagLong) 
                     {
                         argumentData.KillProcesses = true;
                         argumentData.KillProcessesFlagSet = true;
                     }
-                    else if (args[i] == "-s" || args[i] == "--savefullpcap") //Save the full pcap
+                    else if (args[i] == ArgumentFlags.SaveFullPcapFlagShort || args[i] == ArgumentFlags.SaveFullPcapFlagLong)
                     {
                         argumentData.SaveFullPcap = true;
                     }
-                    else if (args[i] == "-j" || args[i] == "--json") //Save the full pcap
+                    else if (args[i] == ArgumentFlags.OutputJSONFlagShort || args[i] == ArgumentFlags.OutputJSONFlagLong) 
                     {
                         argumentData.DumpResultsToJson = true;
                     }
-                    else if (args[i] == "-o" || args[i] == "--output") //Save the full pcap
+                    else if (args[i] == ArgumentFlags.OutputFolderFlagShort || args[i] == ArgumentFlags.OutputFolderFlagLong) 
                     {
                         if (i + 1 < args.Length)
                         {
@@ -159,18 +159,18 @@ namespace WhoYouCalling.Utilities.Arguments
                         }
                         else
                         {
-                            ConsoleOutput.Print("No arguments specified after -o/--output flag", PrintType.Warning);
+                            ConsoleOutput.Print($"No arguments specified after {ArgumentFlags.OutputFolderFlagShort}/{ArgumentFlags.OutputFolderFlagLong} flag", PrintType.Warning);
                             argumentData.InvalidArgumentValueProvided = true;
                             return argumentData;
                         }
 
                     }
-                    else if (args[i] == "-n" || args[i] == "--nopcap") // Don't collect pcap
+                    else if (args[i] == ArgumentFlags.NoPcapFlagShort || args[i] == ArgumentFlags.NoPcapFlagLong) 
                     {
                         argumentData.NoPacketCapture = true;
                         argumentData.NoPCAPFlagSet = true;
                     }
-                    else if (args[i] == "-P" || args[i] == "--PID") // Running process id
+                    else if (args[i] == ArgumentFlags.ProcessIDFlagShort || args[i] == ArgumentFlags.ProcessIDFlagLong) 
                     {
                         if (i + 1 < args.Length)
                         {
@@ -188,12 +188,12 @@ namespace WhoYouCalling.Utilities.Arguments
                         }
                         else
                         {
-                            ConsoleOutput.Print("No arguments specified after -P/--PID flag", PrintType.Warning);
+                            ConsoleOutput.Print($"No arguments specified after {ArgumentFlags.ProcessIDFlagShort}/{ArgumentFlags.ProcessIDFlagLong} flag", PrintType.Warning);
                             argumentData.InvalidArgumentValueProvided = true;
                             return argumentData;
                         }
                     }
-                    else if (args[i] == "-t" || args[i] == "--timer") // Executable run timer
+                    else if (args[i] == ArgumentFlags.TimerFlagShort || args[i] == ArgumentFlags.TimerFlagLong)
                     {
                         if (i + 1 < args.Length)
                         {
@@ -211,12 +211,12 @@ namespace WhoYouCalling.Utilities.Arguments
                         }
                         else
                         {
-                            ConsoleOutput.Print("No arguments specified after -t/--timer flag", PrintType.Warning);
+                            ConsoleOutput.Print($"No arguments specified after {ArgumentFlags.TimerFlagShort}/{ArgumentFlags.TimerFlagLong} flag", PrintType.Warning);
                             argumentData.InvalidArgumentValueProvided = true;
                             return argumentData;
                         }
                     }
-                    else if (args[i] == "-i" || args[i] == "--interface") // Network interface device flag
+                    else if (args[i] == ArgumentFlags.InterfaceFlagShort || args[i] == ArgumentFlags.InterfaceFlagLong) 
                     {
                         if (!NetworkCaptureManagement.NpcapDriverExists())
                         {
@@ -240,12 +240,12 @@ namespace WhoYouCalling.Utilities.Arguments
                         }
                         else
                         {
-                            ConsoleOutput.Print("No arguments specified after -i/--interface flag", PrintType.Warning);
+                            ConsoleOutput.Print($"No arguments specified after {ArgumentFlags.InterfaceFlagShort}/{ArgumentFlags.InterfaceFlagLong} flag", PrintType.Warning);
                             argumentData.InvalidArgumentValueProvided = true;
                             return argumentData;
                         }
                     }
-                    else if (args[i] == "-g" || args[i] == "--getinterfaces") //Print available interfaces
+                    else if (args[i] == ArgumentFlags.GetInterfacesFlagShort || args[i] == ArgumentFlags.GetInterfacesFlagLong)
                     {
                         if (NetworkCaptureManagement.NpcapDriverExists())
                         {
@@ -257,11 +257,11 @@ namespace WhoYouCalling.Utilities.Arguments
                         }
                         Environment.Exit(1);
                     }
-                    else if (args[i] == "-d" || args[i] == "--debug") //Save the full pcap
+                    else if (args[i] == ArgumentFlags.DebugFlagShort || args[i] == ArgumentFlags.DebugFlagLong) 
                     {
                         argumentData.Debug = true;
                     }
-                    else if (args[i] == "-h" || args[i] == "--help") //Output help instructions
+                    else if (args[i] == ArgumentFlags.HelpFlagShort || args[i] == ArgumentFlags.HelpFlagLong) 
                     {
                         ConsoleOutput.PrintHelp();
                         Environment.Exit(1);
@@ -281,27 +281,27 @@ namespace WhoYouCalling.Utilities.Arguments
         {
             if ((argumentData.ExecutableFlagSet && argumentData.PIDFlagSet) && !argumentData.MonitorEverythingFlagSet) 
             {
-                ConsoleOutput.Print("Only one of -e (--execute) and -P (--PID) can be supplied, not both", PrintType.Error);
+                ConsoleOutput.Print($"Only one of {ArgumentFlags.ExecutableFlagShort} ({ArgumentFlags.ExecutableFlagLong}) and {ArgumentFlags.ProcessIDFlagShort} ({ArgumentFlags.ProcessIDFlagLong}) can be supplied, not both", PrintType.Error);
                 return false;
             }
             if ((!argumentData.ExecutableFlagSet && !argumentData.PIDFlagSet) && !argumentData.MonitorEverythingFlagSet)
             {
-                ConsoleOutput.Print("You need to either supply -e (--execute) or -P (--PID) or -I (--illuminate)", PrintType.Error);
+                ConsoleOutput.Print($"You need to either supply {ArgumentFlags.ExecutableFlagShort} ({ArgumentFlags.ExecutableFlagLong}) or {ArgumentFlags.ProcessIDFlagShort} ({ArgumentFlags.ProcessIDFlagLong}) or {ArgumentFlags.MonitorEverythingFlagShort} ({ArgumentFlags.MonitorEverythingFlagLong})", PrintType.Error);
                 return false;
             }
             else if (argumentData.ExecutableArgsFlagSet && !argumentData.ExecutableFlagSet)
             {
-                ConsoleOutput.Print("You need to specify an executable when providing with arguments with -a", PrintType.Error);
+                ConsoleOutput.Print($"You need to use {ArgumentFlags.ExecutableFlagShort}/{ArgumentFlags.ExecutableFlagLong} and specify an executable when providing with arguments with {ArgumentFlags.ExecutableArgsFlagShort}/{ArgumentFlags.ExecutableArgsFlagLong}", PrintType.Error);
                 return false;
             }
             else if (argumentData.KillProcessesFlagSet && argumentData.PIDFlagSet)
             {
-                ConsoleOutput.Print("You can only specify -k for killing process that's been started, and not via listening to a running process", PrintType.Error);
+                ConsoleOutput.Print($"You can only specify {ArgumentFlags.KillChildProcessesFlagShort}/{ArgumentFlags.KillChildProcessesFlagLong} for killing process that's been started, and not via listening to a running process", PrintType.Error);
                 return false;
             }
             else if (argumentData.NetworkInterfaceDeviceFlagSet == argumentData.NoPCAPFlagSet)
             {
-                ConsoleOutput.Print("You need to specify a network device interface or specify -n/--nopcap to skip packet capture. Run again with -g to view available network devices", PrintType.Error);
+                ConsoleOutput.Print($"You need to specify a network device interface or specify {ArgumentFlags.NoPcapFlagShort}/{ArgumentFlags.NoPcapFlagLong} to skip packet capture. Run again with {ArgumentFlags.GetInterfacesFlagShort}/{ArgumentFlags.GetInterfacesFlagLong} to view available network devices", PrintType.Error);
                 return false;
             }
             else if (argumentData.UserNameFlagSet != argumentData.UserPasswordFlagSet)

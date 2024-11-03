@@ -5,11 +5,12 @@ using WhoYouCalling.Utilities;
 using WhoYouCalling.Win32;
 using System.Security;
 
+
 namespace WhoYouCalling.Process
 { 
     internal static class ProcessManager
     {
-
+  
         public static bool IsProcessRunning(int pid)
         {
             System.Diagnostics.Process[] processList = System.Diagnostics.Process.GetProcesses();
@@ -27,6 +28,9 @@ namespace WhoYouCalling.Process
 
         public static string GetProcessFileName(int pid)
         {
+
+            string processExecutableName = "";
+
             try
             {
                 System.Diagnostics.Process process = System.Diagnostics.Process.GetProcessById(pid);
@@ -40,14 +44,14 @@ namespace WhoYouCalling.Process
             }
             catch (Exception ex)
             {
-                ConsoleOutput.Print($"Error when retrieving executable filename from PID: {ex.Message}", PrintType.Debug);
+                System.Diagnostics.Process process = System.Diagnostics.Process.GetProcessById(pid);
+                processExecutableName = process.ProcessName;
+                ConsoleOutput.Print($"Error when retrieving executable filename from PID: {ex.Message}. Using its Process name instead - {processExecutableName}", PrintType.Debug);
             }
-            string defaultExecName = "NA";
-            ConsoleOutput.Print($"Unable to retrieve executable filename from PID. Setting default name \"{defaultExecName}\"", PrintType.Debug);
-            return defaultExecName;
 
+            return processExecutableName;
         }
-
+      
         public static void KillProcess(int pid)
         {
             try

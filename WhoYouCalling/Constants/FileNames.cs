@@ -24,5 +24,8 @@ namespace WhoYouCalling.Constants
         public const string ProcessFolderIPv4LocalhostEndpoints = "Localhost Endpoints.txt";
         public const string ProcessFolderIPv6LocalhostEndpoints = "Localhost Endpoints IPv6.txt";
         public const string ProcessFolderDNSWiresharkFolderName = "Domain Wireshark filters";
+
+        //// Process retrieval
+        public const string ExecutableDefaultNameAtError = "NA";
     }
 }

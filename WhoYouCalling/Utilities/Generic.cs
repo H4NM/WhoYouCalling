@@ -15,10 +15,10 @@ namespace WhoYouCalling.Utilities
             return milliseconds;
         }
 
-        public static string GetRunInstanceFolderName(string executableName)
+        public static string GetRunInstanceFolderName(string runInstanceName)
         {
             string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
-            string folderName = $"{executableName}-{timestamp}";
+            string folderName = $"{runInstanceName}-{timestamp}";
             return folderName;
         }
 

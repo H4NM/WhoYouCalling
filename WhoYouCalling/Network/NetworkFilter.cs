@@ -1,6 +1,4 @@
-﻿using WhoYouCalling.Network;
-using WhoYouCalling.Utilities;
-
+﻿
 namespace WhoYouCalling.Network
 {
     internal class NetworkFilter

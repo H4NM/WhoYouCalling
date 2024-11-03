@@ -18,15 +18,16 @@ However, there are some downsides:
 </details>
 
 ## Features: 
-- Can start and monitor an executable.
-- Can monitor an already running process.
+- Can monitor every running process.
+- Can monitor a specific process.
+- Can start an executable and monitor it's process.
 - Can monitor additional related processes based on executable names.
 - Executables can be run as other users and in elevated and unelevated states. 
 - Creates a full packet capture .pcap file per process.
-- Records TCPIP activities made by a processes, netflow style.
+- Records TCPIP activities made by a processes, IPv4 and IPv6.
 - Records DNS requests and responses made and retrieved by applications.
-- Creates Wireshark filter for domains queried via DNS with the DNS responses
-- Can specify pcap filtering to only record TCPIP activity being sent from the process. This is applied to the recorded .pcap.
+- Creates Wireshark filter for domains queried via DNS with the DNS responses.
+- Can specify pcap filtering to only record TCPIP activity being sent from the process.
 - Can be automated with a timer.
 - By default all monitoring is applied to all spawned child processes.
 - Can kill spawned process and its childprocesses on stop. 
@@ -49,19 +50,21 @@ WhoYouCalling.exe --getinterfaces
  8) Realtek USB GbE Family Controller
         IPv4: 192.168.1.10
         IPv6: fd12:3456:789a:1::2
- 9) Adapter for loopback traffic capture
-        IPv6: ::1
-        IPv4: 127.0.0.1
+```
+
+**Capture every network and process activity from everything**:
+```
+WhoYouCalling.exe --illuminate --interface 8
 ```
 
 **Execute a binary with arguments. Output the results to a folder on the user desktop**:
 ```
-WhoYouCalling.exe -e C:\Users\H4NM\Desktop\TestApplication.exe -a "--pass=ETph0n3H0m3" -i 4 -o C:\Users\H4NM\Desktop
+WhoYouCalling.exe --execute C:\Users\H4NM\Desktop\TestApplication.exe --arguments "--pass=ETph0n3H0m3" --interface 4 --output C:\Users\H4NM\Desktop
 ```
 
 **Listen to process with PID 1337 and output the results to json. Skip packet capture**:
 ```
-WhoYouCalling.exe --pid 1337 --nopcap --json --output C:\Users\H4NM\AppData\Local\Temp
+WhoYouCalling.exe --PID 24037 --nopcap --json --output C:\Users\H4NM\AppData\Local\Temp
 ```
 
 **Run sus.exe for 60 seconds with FPC on the 8th interface. When the timer expires, kill tracked processes - including child processes**:
@@ -69,9 +72,9 @@ WhoYouCalling.exe --pid 1337 --nopcap --json --output C:\Users\H4NM\AppData\Loca
 WhoYouCalling.exe -e C:\Users\H4NM\Desktop\sus.exe -t 60 -k -i 8 -o C:\Users\H4NM\Desktop
 ```
 
-**Execute firefox.exe and also monitor for other processes with the same executable name** (*This is especially needed if the main processes calls an already running process like `explorer.exe` to start a child process.*)
+**Execute firefox.exe and also monitor for other processes with the same executable name** (*This is especially needed if the main processes calls an already running process like `explorer.exe` to start a child process, if only the PID or executable is provided at start.*)
 ```
-WhoYouCalling.exe --executable "C:\Program Files\Mozilla Firefox\firefox.exe" --nopcap --execnames "firefox.exe"
+WhoYouCalling.exe -e "C:\Program Files\Mozilla Firefox\firefox.exe" --nopcap --execnames "firefox.exe,svchost.exe,cmd.exe"
 ```
 
 ### Complementary Tools
@@ -137,4 +140,3 @@ bin\Release\net8.0\win-x64\WhoYouCalling.exe [arguments]...
 
 ### Nice to have
 - Network graph visualizing the process tree and summarized network traffic by each process
-- Functionality to not specify an executable nor pid, to monitor all running processes and their network activity on a host. Could be useful during incidents
