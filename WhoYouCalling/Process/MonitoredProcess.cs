@@ -5,15 +5,14 @@ namespace WhoYouCalling.Process
 {
     public class MonitoredProcess
     {
-        public string ImageName { get; set; } = "";
+        public int PID { get; set; } = 0;
+        public string ProcessName { get; set; } = "";
         public string CommandLine { get; set; } = "";
-        public List<int> ChildProcess { get; set; } = new();
+        public bool? IsolatedProcess { get; set; } = null;
+        public DateTime ProcessStartTime { get; set; } = new();
+        public List<(int, string)> ChildProcesses { get; set; } = new();
+        public HashSet<ConnectionRecord> TCPIPTelemetry { get; set; } = new();
         public HashSet<DNSQuery> DNSQueries { get; set; } = new();
-        public HashSet<NetworkEndpoint> IPv4TCPEndpoint { get; set; } = new();
-        public HashSet<NetworkEndpoint> IPv6TCPEndpoint { get; set; } = new();
-        public HashSet<NetworkEndpoint> IPv4UDPEndpoint { get; set; } = new();
-        public HashSet<NetworkEndpoint> IPv6UDPEndpoint { get; set; } = new();
-        public HashSet<NetworkEndpoint> IPv4LocalhostEndpoint { get; set; } = new();
-        public HashSet<NetworkEndpoint> IPv6LocalhostEndpoint { get; set; } = new();
+        public HashSet<DNSResponse> DNSResponses { get; set; } = new();
     }
 }

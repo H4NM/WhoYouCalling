@@ -40,7 +40,6 @@ namespace WhoYouCalling.Utilities.Arguments
         public bool OutputBPFFilter { get; set; }
         public bool OutputWiresharkFilter { get; set; }
         public bool Debug { get; set; } // Gets a default value since it's set to a public variable in Program
-        public bool TrackChildProcesses { get; set; } // Gets a default value since it's set to a public variable in Program
 
         public ArgumentData(bool invalidArgumentValueProvided = false,
                             bool executableFlagSet = false,
@@ -57,7 +56,6 @@ namespace WhoYouCalling.Utilities.Arguments
                             bool monitorEverythingFlagSet = false,
                             bool debug = false,
                             bool runExecutableWithHighPrivilege = false,
-                            bool trackChildProcesses = true,
                             string outputDirectory = "",
                             string userName = "",
                             string password = "")
@@ -73,7 +71,6 @@ namespace WhoYouCalling.Utilities.Arguments
             this.UserNameFlagSet = userNameFlagSet;
             this.UserPasswordFlagSet = userPasswordFlagSet;
             this.InvalidArgumentValueProvided = invalidArgumentValueProvided;
-            this.TrackChildProcesses = trackChildProcesses;
             this.RunExecutableWithHighPrivilege = runExecutableWithHighPrivilege;
             this.OutputDirectory = outputDirectory;
             this.UserName = userName;

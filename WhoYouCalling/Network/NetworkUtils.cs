@@ -1,4 +1,5 @@
 ﻿
+using System.Collections.Generic;
 using System.Net;
 using System.Text.RegularExpressions;
 using WhoYouCalling.Network.DNS;
@@ -8,6 +9,65 @@ namespace WhoYouCalling.Network
 {
     internal class NetworkUtils
     {
+
+        public static Dictionary<ConnectionRecordType, List<string>> GetPresentableConnectionRecordsFormat(Dictionary<ConnectionRecordType, HashSet<string>> networkDetails)
+        {
+            Dictionary<ConnectionRecordType, List<string>> sortedNetworkDetailsAsList = new();
+            foreach (KeyValuePair<ConnectionRecordType, HashSet<string>> entry in networkDetails)
+            {
+                List<string> sortedList = Generic.ConvertAndSortHashSetToList(entry.Value);
+                sortedNetworkDetailsAsList[entry.Key] = sortedList;
+            }
+            return sortedNetworkDetailsAsList;
+        }
+
+            
+    public static Dictionary<ConnectionRecordType, HashSet<string>> FilterConnectionRecords(HashSet<ConnectionRecord> tcpIPTelemetry)
+        {
+            Dictionary<ConnectionRecordType, HashSet<string>> filteredConnectionRecords = new Dictionary<ConnectionRecordType, HashSet<string>> {
+                                                    {ConnectionRecordType.IPv4TCP, new HashSet<string>()},
+                                                    {ConnectionRecordType.IPv6TCP, new HashSet<string>()},
+                                                    {ConnectionRecordType.IPv4UDP, new HashSet<string>()},
+                                                    {ConnectionRecordType.IPv6UDP, new HashSet<string>()},
+                                                    {ConnectionRecordType.IPv4Localhost, new HashSet<string>()},
+                                                    {ConnectionRecordType.IPv6Localhost, new HashSet<string>()}};
+
+            foreach (ConnectionRecord connectionRecord in tcpIPTelemetry)
+            {
+                string endpoint = $"{connectionRecord.DestinationIP}:{connectionRecord.DestinationPort}";
+                if (connectionRecord.IPversion == Network.IPVersion.IPv4)
+                {
+                    if (connectionRecord.DestinationIP == "127.0.0.1")
+                    {
+                        filteredConnectionRecords[ConnectionRecordType.IPv4Localhost].Add(endpoint);
+                    }
+                    else if (connectionRecord.TransportProtocol == Network.TransportProtocol.TCP)
+                    {
+                        filteredConnectionRecords[ConnectionRecordType.IPv4TCP].Add(endpoint);
+                    }
+                    else if (connectionRecord.TransportProtocol == Network.TransportProtocol.UDP)
+                    {
+                        filteredConnectionRecords[ConnectionRecordType.IPv4UDP].Add(endpoint);
+                    }
+                }
+                else if (connectionRecord.IPversion == Network.IPVersion.IPv6)
+                {
+                    if (connectionRecord.DestinationIP == "::1")
+                    {
+                        filteredConnectionRecords[ConnectionRecordType.IPv6Localhost].Add(endpoint);
+                    }
+                    else if (connectionRecord.TransportProtocol == Network.TransportProtocol.TCP)
+                    {
+                        filteredConnectionRecords[ConnectionRecordType.IPv6TCP].Add(endpoint);
+                    }
+                    else if (connectionRecord.TransportProtocol == Network.TransportProtocol.UDP)
+                    {
+                        filteredConnectionRecords[ConnectionRecordType.IPv6UDP].Add(endpoint);
+                    }
+                }
+            }
+            return filteredConnectionRecords;
+        }
 
         public static string GetActualIP(string ipAdress)
         {
@@ -24,43 +84,41 @@ namespace WhoYouCalling.Network
             return actualIPAdress;
         }
 
-        public static HashSet<ConnectionRecord> GetNetworkAdressesFromDNSResponse(HashSet<DNSResponse>? dnsResponses)
+        public static HashSet<ConnectionRecord> GetNetworkAdressesFromDNSResponse(DNSResponse dnsResponses)
         {
             HashSet<ConnectionRecord> domainIPAdresses = new();
-            foreach (DNSResponse response in dnsResponses)
+
+            foreach (string ipAdress in dnsResponses.QueryResult.IPs)
             {
-                foreach (string ipAdress in response.QueryResult.IPs)
+                IPAddress address = IPAddress.Parse(ipAdress);
+                IPVersion ipVersion;
+                string actualIPAdress = "";
+                if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
                 {
-                    IPAddress address = IPAddress.Parse(ipAdress);
-                    IPVersion ipVersion;
-                    string actualIPAdress = "";
-                    if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+                    if (address.IsIPv4MappedToIPv6)
                     {
-                        if (address.IsIPv4MappedToIPv6)
-                        {
-                            actualIPAdress = address.MapToIPv4().ToString();
-                            ipVersion = IPVersion.IPv4;
-                        }
-                        else
-                        {
-                            actualIPAdress = ipAdress;
-                            ipVersion = IPVersion.IPv6;
-                        }
+                        actualIPAdress = address.MapToIPv4().ToString();
+                        ipVersion = IPVersion.IPv4;
                     }
                     else
                     {
-                        ipVersion = IPVersion.IPv4;
                         actualIPAdress = ipAdress;
+                        ipVersion = IPVersion.IPv6;
                     }
-
-                    ConnectionRecord connectionRecord = new ConnectionRecord
-                    {
-                        IPversion = ipVersion,
-                        DestinationIP = actualIPAdress
-                    };
-
-                    domainIPAdresses.Add(connectionRecord);
                 }
+                else
+                {
+                    ipVersion = IPVersion.IPv4;
+                    actualIPAdress = ipAdress;
+                }
+
+                ConnectionRecord connectionRecord = new ConnectionRecord
+                {
+                    IPversion = ipVersion,
+                    DestinationIP = actualIPAdress
+                };
+
+                domainIPAdresses.Add(connectionRecord);
             }
             return domainIPAdresses;
         }
@@ -101,16 +159,7 @@ namespace WhoYouCalling.Network
             }
             return responseResult;
         }
-        public static List<string> ConvertDestinationEndpoints(HashSet<NetworkEndpoint> providedHashSet)
-        {
-            List<string> convertedToList = new List<string>();
-            foreach (NetworkEndpoint dstEndpoint in providedHashSet)
-            {
-                convertedToList.Add($"{dstEndpoint.IP}:{dstEndpoint.Port}");
-            }
-            convertedToList.Sort();
-            return convertedToList;
-        }
+   
 
         private static IPAddress CleanIPAdress(string ip)
         {

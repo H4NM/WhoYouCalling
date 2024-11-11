@@ -40,9 +40,6 @@ namespace WhoYouCalling.Utilities.Arguments
         public const string KillChildProcessesFlagShort = "-k";
         public const string KillChildProcessesFlagLong = "--killprocesses";
 
-        public const string NoChildProcessesFlagShort = "-c";
-        public const string NoChildProcessesFlagLong = "--nochildprocs";
-
         public const string NoPcapFlagShort = "-n";
         public const string NoPcapFlagLong = "--nopcap";
 
@@ -93,7 +90,6 @@ Options:
   {TimerFlagShort}, {TimerFlagLong}         : The number of seconds the execute binary will run for. Is a double variable so can take floating-point values.
   {KillChildProcessesFlagShort}, {KillChildProcessesFlagLong} : Used in conjunction with the timer in which the main process is killed. 
                         If full tracking flag is set, childprocesses are also killed.
-  {NoChildProcessesFlagShort}, {NoChildProcessesFlagLong}  : Only monitors and tracks the main PID that's executed or running.
   {NoPcapFlagShort}, {NoPcapFlagLong}        : Skips collecting packets from interface.
   {StrictFilterFlagShort}, {StrictFilterFlagLong}  : Only generates a BPF filter based of recorded traffic that was sent by processes. 
                         This excludes received traffic in the .pcap files.

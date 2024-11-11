@@ -7,7 +7,7 @@ namespace WhoYouCalling.Utilities.Arguments
     {
         public ArgumentData ParseArguments(string[] args)
         {
-            ArgumentData argumentData = new ArgumentData(trackChildProcesses: true); 
+            ArgumentData argumentData = new ArgumentData(); 
 
             // Check if no args are provided
             if (args.Length > 0)
@@ -102,10 +102,6 @@ namespace WhoYouCalling.Utilities.Arguments
                     else if (args[i] == ArgumentFlags.ExecutePrivilegedFlagShort || args[i] == ArgumentFlags.ExecutePrivilegedFlagLong)
                     {
                         argumentData.RunExecutableWithHighPrivilege = true;
-                    }
-                    else if (args[i] == ArgumentFlags.NoChildProcessesFlagShort || args[i] == ArgumentFlags.NoChildProcessesFlagLong) 
-                    {
-                        argumentData.TrackChildProcesses = false;
                     }
                     else if (args[i] == ArgumentFlags.StrictFilterFlagShort || args[i] == ArgumentFlags.StrictFilterFlagLong)
                     {

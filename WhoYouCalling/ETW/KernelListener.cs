@@ -1,8 +1,10 @@
 ﻿using Microsoft.Diagnostics.Tracing.Parsers;
 using Microsoft.Diagnostics.Tracing.Parsers.Kernel;
 using Microsoft.Diagnostics.Tracing.Session;
+using Microsoft.Diagnostics.Tracing.StackSources;
 using WhoYouCalling.Network;
 using WhoYouCalling.Process;
+using WhoYouCalling.Utilities;
 
 namespace WhoYouCalling.ETW
 {
@@ -23,14 +25,14 @@ namespace WhoYouCalling.ETW
                 );
 
                 // TCP/IP
-                _session.Source.Kernel.TcpIpSend += Ipv4TcpStart; // TcpIpConnect may be used. However, "send" is used to ensure capturing failed TCP handshakes
-                _session.Source.Kernel.TcpIpSendIPV6 += Ipv6TcpStart;
-                _session.Source.Kernel.UdpIpSend += Ipv4UdpIpStart;
-                _session.Source.Kernel.UdpIpSendIPV6 += Ipv6UdpIpStart;
+                _session.Source.Kernel.TcpIpSend += IPv4TCPSend; // TcpIpConnect may be used. However, "send" is used to ensure capturing failed TCP handshakes
+                _session.Source.Kernel.TcpIpSendIPV6 += IPv6TCPSend;
+                _session.Source.Kernel.UdpIpSend += IPv4UDPSend;
+                _session.Source.Kernel.UdpIpSendIPV6 += IPv6UDPSend;
 
                 // Process
-                _session.Source.Kernel.ProcessStart += processStarted;
-                _session.Source.Kernel.ProcessStop += processStopped;
+                _session.Source.Kernel.ProcessStart += ProcessStart;
+                _session.Source.Kernel.ProcessStop += ProcessStop;
 
                 // Start Kernel ETW session
                 _session.Source.Process();
@@ -39,7 +41,7 @@ namespace WhoYouCalling.ETW
 
         private void ProcessNetworkPacket(dynamic data, IPVersion ipVersion, TransportProtocol transportProto)
         {
-            ConnectionRecord ipv4TCPConnRecord = new ConnectionRecord
+            ConnectionRecord connectionRecord = new ConnectionRecord
             {
                 IPversion = ipVersion,
                 TransportProtocol = transportProto,
@@ -49,147 +51,193 @@ namespace WhoYouCalling.ETW
                 DestinationPort = data.dport
             };
 
-
-            string executable = Program.GetTrackedPIDImageName(data.ProcessID);
-            
-
             Program.CatalogETWActivity(eventType: EventType.Network,
-                                    executable: executable,
-                                    execPID: data.ProcessID,
-                                    connectionRecord: ipv4TCPConnRecord);
+                                       processName: data.ProcessName,
+                                       processID: data.ProcessID,
+                                       connectionRecord: connectionRecord);
         }
 
-        private void Ipv4TcpStart(TcpIpSendTraceData data)
+        private void IPv4TCPSend(TcpIpSendTraceData data)
         {
-            if (Program.IsTrackedPID(data.ProcessID))
+            if (Program.IsMonitoredProcess(data.ProcessID))
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.TCP);
             }
             else if ((Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID)) || Program.MonitorEverything())
             {
-                string executable = ProcessManager.GetProcessFileName(data.ProcessID);
-                Program.InstantiateProcessVariables(pid: data.ProcessID, executable: executable);
+                Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName);
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.TCP);
             }
         }
 
-        private void Ipv6TcpStart(TcpIpV6SendTraceData data)
+        private void IPv6TCPSend(TcpIpV6SendTraceData data)
         {
-            if (Program.IsTrackedPID(data.ProcessID))
+            if (Program.IsMonitoredProcess(data.ProcessID))
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.TCP);
             }
             else if ((Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID)) || Program.MonitorEverything())
             {
-                string executable = ProcessManager.GetProcessFileName(data.ProcessID);
-                Program.InstantiateProcessVariables(pid: data.ProcessID, executable: executable);
+                Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName);
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.TCP);
             }
         }
 
-        private void Ipv4UdpIpStart(UdpIpTraceData data)
+        private void IPv4UDPSend(UdpIpTraceData data)
         {
-            if (Program.IsTrackedPID(data.ProcessID))
+            if (Program.IsMonitoredProcess(data.ProcessID))
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.UDP);
             }
             else if ((Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID)) || Program.MonitorEverything())
             {
-                string executable = ProcessManager.GetProcessFileName(data.ProcessID);
-                Program.InstantiateProcessVariables(pid: data.ProcessID, executable: executable);
+                Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName);
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.UDP);
             }
         }
 
-        private void Ipv6UdpIpStart(UpdIpV6TraceData data)
+        private void IPv6UDPSend(UpdIpV6TraceData data)
         {
-            if (Program.IsTrackedPID(data.ProcessID))
+            if (Program.IsMonitoredProcess(data.ProcessID))
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.UDP);
             }
             else if ((Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID)) || Program.MonitorEverything())
             {
-                string executable = ProcessManager.GetProcessFileName(data.ProcessID);
-                Program.InstantiateProcessVariables(pid: data.ProcessID, executable: executable);
+                Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName);
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.UDP);
             }
         }
 
-        private void processStarted(ProcessTraceData data)
+        private void ProcessStart(ProcessTraceData data)
         {
 
-            if (Program.IsTrackedPID(data.ParentID)) //If current process is child process of already started process
+            if (Program.IsMonitoredProcess(data.ParentID)) //If current process is child process of already started process
             {
-                string parentExectuable = Program.GetTrackedPIDImageName(data.ParentID);
-                Program.CatalogETWActivity(eventType: EventType.Childprocess,
-                                            executable: parentExectuable,
-                                            execAction: "started",
-                                            execObject: data.ImageFileName,
-                                            execObjectCommandLine: data.CommandLine,
-                                            execPID: data.ProcessID,
-                                            parentExecPID: data.ParentID);
-                if (Program.TrackChildProcesses())
+                string parentProcessName;
+                MonitoredProcess monitoredParentProcess;
+                if (Program.MonitoredProcessCanBeRetrievedWithPID(data.ParentID))
                 {
-                    Program.AddChildPID(data.ProcessID);
-                    Program.InstantiateProcessVariables(pid: data.ProcessID, executable: data.ImageFileName, commandLine: data.CommandLine);
-                }
-            }
-            else if (Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ParentID))
-            {
-                string parentExectuable = "";
-                if (Program.IsTrackedPID(data.ParentID))
-                {
-                    parentExectuable = Program.GetTrackedPIDImageName(data.ParentID);
+                    monitoredParentProcess = Program.GetMonitoredProcessWithPID(data.ParentID);
+                    parentProcessName = monitoredParentProcess.ProcessName;
                 }
                 else
                 {
-                    parentExectuable = ProcessManager.GetProcessFileName(data.ParentID);
-                    Program.InstantiateProcessVariables(pid: data.ParentID, executable: parentExectuable, commandLine: "");
+                    parentProcessName = ProcessManager.GetPIDProcessName(data.ParentID);
+                    string uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: data.ParentID, processName: parentProcessName);
+                    if (Program.UniqueProcessIDIsMonitored(uniqueProcessIdentifier))
+                    {
+                        monitoredParentProcess = Program.GetMonitoredProcessWithUniqueProcessID(uniqueProcessIdentifier);
+                    }
+                    else
+                    {
+                        monitoredParentProcess = new(); // Redundant and is only used to catch when adding the child process. Otherwise this will be caught by gc
+                    }
+                }
+
+                Program.AddChildPID(data.ProcessID); // Used for killing child processes
+                Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName, commandLine: data.CommandLine);
+                monitoredParentProcess.ChildProcesses.Add((data.ProcessID, data.ProcessName)); // Used for documenting child processes
+
+                Program.CatalogETWActivity(eventType: EventType.Childprocess,
+                                            parentProcessName: parentProcessName,
+                                            parentProcessID: data.ParentID,
+                                            processAction: "started",
+                                            processName: data.ProcessName,
+                                            processID: data.ProcessID,
+                                            processCommandLine: data.CommandLine);
+            }
+            else if (Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ParentID))
+            {
+                string parentProcessName = "";
+                if (Program.IsMonitoredProcess(data.ParentID))
+                {
+                    MonitoredProcess monitoredParentProcess;
+                    if (Program.MonitoredProcessCanBeRetrievedWithPID(data.ParentID))
+                    {
+                        monitoredParentProcess = Program.GetMonitoredProcessWithPID(data.ParentID);
+                        parentProcessName = monitoredParentProcess.ProcessName;
+                    }
+                    else
+                    {
+                        parentProcessName = ProcessManager.GetPIDProcessName(data.ParentID);
+                        string uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: data.ParentID, processName: parentProcessName);
+                        if (Program.UniqueProcessIDIsMonitored(uniqueProcessIdentifier))
+                        {
+                            monitoredParentProcess = Program.GetMonitoredProcessWithUniqueProcessID(uniqueProcessIdentifier);
+                        }
+                        else
+                        {
+                            monitoredParentProcess = new(); // will be caught by gc
+                        }
+                    }
+                }
+                else
+                {
+                    parentProcessName = ProcessManager.GetPIDProcessName(data.ParentID);
+                    Program.AddProcessToMonitor(pid: data.ParentID, processName: parentProcessName, commandLine: "");
                 }
 
                 Program.CatalogETWActivity(eventType: EventType.Childprocess,
-                                            executable: parentExectuable,
-                                            execAction: "started",
-                                            execObject: data.ImageFileName,
-                                            execObjectCommandLine: data.CommandLine,
-                                            execPID: data.ProcessID,
-                                            parentExecPID: data.ParentID);
+                                            parentProcessName: parentProcessName,
+                                            parentProcessID: data.ParentID,
+                                            processAction: "started",
+                                            processName: data.ProcessName,
+                                            processID: data.ProcessID,
+                                            processCommandLine: data.CommandLine);
             }
             else if(Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID))
             {
-                Program.InstantiateProcessVariables(pid: data.ProcessID, executable: data.ImageFileName, commandLine: data.CommandLine);
-                Program.CatalogETWActivity(eventType: EventType.Process,
-                            executable: data.ImageFileName,
-                            execAction: "started by name",
-                            execPID: data.ProcessID,
-                            parentExecPID: data.ParentID);
-            }else if (Program.MonitorEverything())
+                string parentProcessName = ProcessManager.GetProcessFileName(data.ParentID);
+                Program.AddProcessToMonitor(pid: data.ProcessID, commandLine: data.CommandLine);
+                Program.CatalogETWActivity(eventType: EventType.Childprocess,
+                                            parentProcessName: parentProcessName,
+                                            parentProcessID: data.ParentID,
+                                            processAction: "started",
+                                            processName: data.ProcessName,
+                                            processID: data.ProcessID,
+                                            processCommandLine: data.CommandLine);
+            }
+            else if (Program.MonitorEverything())
             {
                 
-                string parentExectuable = ProcessManager.GetProcessFileName(data.ParentID);
-                Program.InstantiateProcessVariables(pid: data.ParentID, executable: parentExectuable, commandLine: "");
-                if (!Program.IsTrackedPID(data.ProcessID))
+                string parentProcessName = ProcessManager.GetProcessFileName(data.ParentID);
+                Program.AddProcessToMonitor(pid: data.ParentID, processName: parentProcessName);
+
+                if (!Program.IsMonitoredProcess(data.ProcessID))
                 {
-                    Program.InstantiateProcessVariables(pid: data.ProcessID, executable: data.ImageFileName, commandLine: data.CommandLine);
+                    Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName, commandLine: data.CommandLine);
                 }
                 Program.CatalogETWActivity(eventType: EventType.Childprocess,
-                                            executable: parentExectuable,
-                                            execAction: "started",
-                                            execObject: data.ImageFileName,
-                                            execObjectCommandLine: data.CommandLine,
-                                            execPID: data.ProcessID,
-                                            parentExecPID: data.ParentID);
+                                           parentProcessName: parentProcessName,
+                                           parentProcessID: data.ParentID,
+                                           processAction: "started",
+                                           processName: data.ProcessName,
+                                           processID: data.ProcessID,
+                                           processCommandLine: data.CommandLine);
             }
         }
 
-        private void processStopped(ProcessTraceData data)
+        private void ProcessStop(ProcessTraceData data)
         {
-            if (Program.IsTrackedPID(data.ProcessID)) // Main or child process stopped
+            if (Program.IsMonitoredProcess(data.ProcessID)) // Main or child process stopped
             {
+                string processName = "";
+                if (string.IsNullOrEmpty(data.ProcessName))
+                {
+                    if (Program.MonitoredProcessCanBeRetrievedWithPID(data.ProcessID))
+                    {
+                        processName = Program.GetMonitoredProcessWithPID(data.ProcessID).ProcessName;
+                    }
+                    else
+                    {
+                        processName = ProcessManager.GetPIDProcessName(data.ProcessID);
+                    }
+                }
                 Program.CatalogETWActivity(eventType: EventType.Process,
-                                        executable: data.ImageFileName,
-                                        execAction: "stopped",
-                                        execPID: data.ProcessID);
+                                           processName: processName,
+                                           processID: data.ProcessID,
+                                           processAction: "stopped");
 
                 if (Program.IsTrackedChildPID(data.ProcessID)) // A redundant check to ensure that the PID is only removed after calling CatalogETWActivity to ensure any possible
                 {                                              // Lookups are not affected 

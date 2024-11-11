@@ -26,7 +26,7 @@ namespace WhoYouCalling.ETW
 
         }
 
-        private void ProcessDnsQuery(dynamic data, string executable)
+        private void ProcessDnsQuery(dynamic data, string processName)
         {
             string retrievedQuery = data.PayloadByName("QueryName").ToString().Trim();
             string dnsDomainQueried = string.IsNullOrWhiteSpace(retrievedQuery) ? "N/A" : retrievedQuery;
@@ -46,12 +46,12 @@ namespace WhoYouCalling.ETW
             };
 
             Program.CatalogETWActivity(eventType: EventType.DNSQuery,
-                  executable: executable,
-                  execPID: data.ProcessID,
+                  processName: processName,
+                  processID: data.ProcessID,
                   dnsQuery: dnsQuery);
         }
 
-        private void ProcessDnsResponse(dynamic data, string executable)
+        private void ProcessDnsResponse(dynamic data, string processName)
         {
             string retrievedQuery = data.PayloadByName("QueryName").ToString().Trim();
             string dnsQuery = string.IsNullOrWhiteSpace(retrievedQuery) ? "N/A" : retrievedQuery;
@@ -63,12 +63,12 @@ namespace WhoYouCalling.ETW
             if (!int.TryParse(data.PayloadByName("QueryStatus").ToString(), out queryStatusCode))
             {
                 ConsoleOutput.Print($"Attempted to parse retrieved DNS Query status. Failed to parse it", PrintType.Debug);
-                queryStatusCode = 999999; // Non-existing DNS status value. Is later looked up
+                queryStatusCode = Constants.Miscellaneous.NotApplicableStatusNumber; // Non-existing DNS status value. Is later looked up
             }
             if (!int.TryParse(data.PayloadByName("QueryType").ToString(), out queryTypeCode))
             {
                 ConsoleOutput.Print($"Attempted to parse retrieved DNS Query type. Failed to parse it", PrintType.Debug);
-                queryTypeCode = 999999; // Non-existing DNS type value. Is later looked up
+                queryTypeCode = Constants.Miscellaneous.NotApplicableStatusNumber; // Non-existing DNS type value. Is later looked up
             }
 
             string dnsRecordTypeCodeName = DnsCodeLookup.GetDnsTypeName(queryTypeCode); // Retrieve the DNS type code name
@@ -85,8 +85,8 @@ namespace WhoYouCalling.ETW
             };
 
             Program.CatalogETWActivity(eventType: EventType.DNSResponse,
-                    executable: executable,
-                    execPID: data.ProcessID,
+                    processName: processName,
+                    processID: data.ProcessID,
                     dnsResponse: dnsResponseQuery);
         }
 
@@ -96,32 +96,64 @@ namespace WhoYouCalling.ETW
             {
                 case "EventID(3006)":
                     {
-                        if (Program.IsTrackedPID(data.ProcessID))
+                        if (Program.IsMonitoredProcess(data.ProcessID))
                         {
-                            string executable = Program.GetTrackedPIDImageName(data.ProcessID);
-                            ProcessDnsQuery(data, executable);
+                            string processName;
+                            if (Program.MonitoredProcessCanBeRetrievedWithPID(data.ProcessID))
+                            {
+                                processName = Program.GetMonitoredProcessWithPID(data.ProcessID).ProcessName;
+                            }
+                            else
+                            {
+                                processName = ProcessManager.GetPIDProcessName(data.ProcessID);
+                            }
+                            ProcessDnsQuery(data, processName);
                         }
                         else if ((Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID)) || Program.MonitorEverything())
                         {
-                            string executable = ProcessManager.GetProcessFileName(data.ProcessID);
-                            Program.InstantiateProcessVariables(pid: data.ProcessID, executable: executable);
-                            ProcessDnsQuery(data, executable);
+                            Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName);
+                            string processName;
+                            if (Program.MonitoredProcessCanBeRetrievedWithPID(data.ProcessID))
+                            {
+                                processName = Program.GetMonitoredProcessWithPID(data.ProcessID).ProcessName;
+                            }
+                            else
+                            {
+                                processName = ProcessManager.GetPIDProcessName(data.ProcessID);
+                            }
+                            ProcessDnsQuery(data, processName);
                         }
                         break;
                     }
                 case "EventID(3008)":
                     {
-
-                        if (Program.IsTrackedPID(data.ProcessID))
+                        if (Program.IsMonitoredProcess(data.ProcessID))
                         {
-                            string executable = Program.GetTrackedPIDImageName(data.ProcessID);
-                            ProcessDnsResponse(data, executable);
+                            string processName;
+                            if (Program.MonitoredProcessCanBeRetrievedWithPID(data.ProcessID))
+                            {
+                                processName = Program.GetMonitoredProcessWithPID(data.ProcessID).ProcessName;
+                            }
+                            else
+                            {
+                                processName = ProcessManager.GetPIDProcessName(data.ProcessID);
+                            }
+                            ProcessDnsResponse(data, processName);
                         }
                         else if ((Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID)) || Program.MonitorEverything())
                         {
-                            string executable = ProcessManager.GetProcessFileName(data.ProcessID);
-                            Program.InstantiateProcessVariables(pid: data.ProcessID, executable: executable);
-                            ProcessDnsResponse(data, executable);
+
+                            Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName);
+                            string processName;
+                            if (Program.MonitoredProcessCanBeRetrievedWithPID(data.ProcessID))
+                            {
+                                processName = Program.GetMonitoredProcessWithPID(data.ProcessID).ProcessName;
+                            }
+                            else
+                            {
+                                processName = ProcessManager.GetPIDProcessName(data.ProcessID);
+                            }
+                            ProcessDnsResponse(data, processName);
                         }
                         break;
                 }

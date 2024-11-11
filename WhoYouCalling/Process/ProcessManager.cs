@@ -10,7 +10,24 @@ namespace WhoYouCalling.Process
 { 
     internal static class ProcessManager
     {
-  
+        public static string GetUniqueProcessIdentifier(int pid, string processName)
+        {
+            return $"{processName}{pid}";
+        }
+
+        public static string GetPIDProcessName(int pid)
+        {
+            try
+            {
+                System.Diagnostics.Process process = System.Diagnostics.Process.GetProcessById(pid);
+                return process.ProcessName;
+            }
+            catch
+            {
+                return Constants.Miscellaneous.ProcessDefaultNameAtError;
+            }
+        }
+
         public static bool IsProcessRunning(int pid)
         {
             System.Diagnostics.Process[] processList = System.Diagnostics.Process.GetProcesses();
@@ -25,11 +42,11 @@ namespace WhoYouCalling.Process
             ConsoleOutput.Print($"Unable to find process with pid {pid}", PrintType.Debug);
             return false;
         }
-
+ 
         public static string GetProcessFileName(int pid)
         {
 
-            string processExecutableName = "";
+            string processName = "";
 
             try
             {
@@ -44,12 +61,11 @@ namespace WhoYouCalling.Process
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Process process = System.Diagnostics.Process.GetProcessById(pid);
-                processExecutableName = process.ProcessName;
-                ConsoleOutput.Print($"Error when retrieving executable filename from PID: {ex.Message}. Using its Process name instead - {processExecutableName}", PrintType.Debug);
+                processName = GetPIDProcessName(pid);
+                ConsoleOutput.Print($"Error when retrieving executable filename from PID: {ex.Message}. Using its Process name instead - {processName}", PrintType.Debug);
             }
 
-            return processExecutableName;
+            return processName;
         }
       
         public static void KillProcess(int pid)

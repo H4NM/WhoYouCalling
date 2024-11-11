@@ -17,6 +17,7 @@ namespace WhoYouCalling.Constants
         public const string ProcessFolderBPFFilterFileName = "BPF-filter.txt";
         public const string ProcessFolderDFLFilterFileName = "Wireshark filter.txt";
         public const string ProcessFolderDNSQueriesFileName = "DNS queries.txt";
+        public const string ProcessFolderDNSQueryResponsesFileName = "DNS query responses.txt";
         public const string ProcessFolderIPv4TCPEndpoints = "IPv4 TCP Endpoints.txt";
         public const string ProcessFolderIPv6TCPEndpoints = "IPv6 TCP Endpoints.txt";
         public const string ProcessFolderIPv4UDPEndpoints = "IPv4 UDP Endpoints.txt";
@@ -24,8 +25,5 @@ namespace WhoYouCalling.Constants
         public const string ProcessFolderIPv4LocalhostEndpoints = "Localhost Endpoints.txt";
         public const string ProcessFolderIPv6LocalhostEndpoints = "Localhost Endpoints IPv6.txt";
         public const string ProcessFolderDNSWiresharkFolderName = "Domain Wireshark filters";
-
-        //// Process retrieval
-        public const string ExecutableDefaultNameAtError = "NA";
     }
 }

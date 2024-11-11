@@ -52,6 +52,6 @@ namespace WhoYouCalling.Network.DNS
         TA = 32768,          // DNSSEC Trust Authorities
         DLV = 32769,         // DNSSEC Lookaside Validation
 
-        NA = 999999          // Custom Non-existent DNS Type Value
+        NA = Constants.Miscellaneous.NotApplicableStatusNumber          
     }
 }

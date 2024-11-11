@@ -4,6 +4,13 @@ namespace WhoYouCalling.Utilities
 {
     public class Generic
     {
+        public static List<string> ConvertAndSortHashSetToList(HashSet<string> unsortedStringHashSet)
+        {
+            List<string> sortedList = unsortedStringHashSet.ToList();
+            sortedList.Sort();
+            return sortedList;
+        }
+
         public static string NormalizePath(string path)
         {
             return path.Replace(@"\\", @"\"); 
@@ -31,7 +38,6 @@ namespace WhoYouCalling.Utilities
         {
             Type type = obj.GetType();
 
-            // Get all properties of the object
             PropertyInfo[] properties = type.GetProperties();
             foreach (var property in properties)
             {
@@ -47,7 +53,6 @@ namespace WhoYouCalling.Utilities
                 }
             }
 
-            // Optionally, get all fields as well (for non-auto properties or public fields)
             FieldInfo[] fields = type.GetFields();
             foreach (var field in fields)
             {
