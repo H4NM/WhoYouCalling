@@ -3,6 +3,23 @@ namespace WhoYouCalling.Utilities
 {
     internal static class FileAndFolders
     {
+        public static string GetProcessFolderNameIncremented(string directoryPath, string processFolderName)
+        {
+            var directories = Directory.GetDirectories(directoryPath, processFolderName + "*");
+            return $"{processFolderName} - {directories.Length}";
+        }
+        public static bool FolderExists(string directoryPath)
+        {
+            if (Directory.Exists(directoryPath))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         public static void CreateFolder(string folder)
         {
             Directory.CreateDirectory(folder);

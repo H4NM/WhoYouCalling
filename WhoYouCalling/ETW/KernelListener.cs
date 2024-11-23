@@ -1,10 +1,8 @@
 ﻿using Microsoft.Diagnostics.Tracing.Parsers;
 using Microsoft.Diagnostics.Tracing.Parsers.Kernel;
 using Microsoft.Diagnostics.Tracing.Session;
-using Microsoft.Diagnostics.Tracing.StackSources;
 using WhoYouCalling.Network;
 using WhoYouCalling.Process;
-using WhoYouCalling.Utilities;
 
 namespace WhoYouCalling.ETW
 {
@@ -123,7 +121,11 @@ namespace WhoYouCalling.ETW
                 }
                 else
                 {
-                    parentProcessName = ProcessManager.GetPIDProcessName(data.ParentID);
+                    string initialProcessName = ProcessManager.GetPIDProcessName(data.ParentID);
+                    parentProcessName = initialProcessName == Constants.Miscellaneous.ProcessDefaultNameAtError
+                        ? Program.GetBackupProcessName(data.ParentID)
+                        : initialProcessName;
+
                     string uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: data.ParentID, processName: parentProcessName);
                     if (Program.UniqueProcessIDIsMonitored(uniqueProcessIdentifier))
                     {
@@ -137,7 +139,13 @@ namespace WhoYouCalling.ETW
 
                 Program.AddChildPID(data.ProcessID); // Used for killing child processes
                 Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName, commandLine: data.CommandLine);
-                monitoredParentProcess.ChildProcesses.Add((data.ProcessID, data.ProcessName)); // Used for documenting child processes
+                
+                monitoredParentProcess.ChildProcesses.Add(new ChildProcessInfo
+                {
+                    ProcessID = data.ProcessID,
+                    ProcessName = data.ProcessName,
+                    ETWRegisteredStartTime = DateTime.Now
+                });
 
                 Program.CatalogETWActivity(eventType: EventType.Childprocess,
                                             parentProcessName: parentProcessName,
@@ -160,7 +168,11 @@ namespace WhoYouCalling.ETW
                     }
                     else
                     {
-                        parentProcessName = ProcessManager.GetPIDProcessName(data.ParentID);
+                        string initialProcessName = ProcessManager.GetPIDProcessName(data.ParentID);
+                        parentProcessName = initialProcessName == Constants.Miscellaneous.ProcessDefaultNameAtError
+                            ? Program.GetBackupProcessName(data.ProcessID)
+                            : initialProcessName;
+
                         string uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: data.ParentID, processName: parentProcessName);
                         if (Program.UniqueProcessIDIsMonitored(uniqueProcessIdentifier))
                         {
@@ -223,16 +235,16 @@ namespace WhoYouCalling.ETW
             if (Program.IsMonitoredProcess(data.ProcessID)) // Main or child process stopped
             {
                 string processName = "";
-                if (string.IsNullOrEmpty(data.ProcessName))
+         
+                if (Program.MonitoredProcessCanBeRetrievedWithPID(data.ProcessID))
                 {
-                    if (Program.MonitoredProcessCanBeRetrievedWithPID(data.ProcessID))
-                    {
-                        processName = Program.GetMonitoredProcessWithPID(data.ProcessID).ProcessName;
-                    }
-                    else
-                    {
-                        processName = ProcessManager.GetPIDProcessName(data.ProcessID);
-                    }
+                    processName = Program.GetMonitoredProcessWithPID(data.ProcessID).ProcessName;
+                }
+                else
+                {
+                    processName = Program.GetBackupProcessName(data.ProcessID);
+                    Program.DeleteOldBackupProcessName(data.ProcessID);
+                    Program.DeleteProcessIDIndex(data.ProcessID);
                 }
                 Program.CatalogETWActivity(eventType: EventType.Process,
                                            processName: processName,

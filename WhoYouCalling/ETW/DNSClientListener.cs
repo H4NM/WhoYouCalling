@@ -4,6 +4,7 @@ using WhoYouCalling.Network.DNS;
 using WhoYouCalling.Utilities;
 using WhoYouCalling.Network;
 using WhoYouCalling.Process;
+using System.Security.Cryptography;
 
 namespace WhoYouCalling.ETW
 {
@@ -98,29 +99,20 @@ namespace WhoYouCalling.ETW
                     {
                         if (Program.IsMonitoredProcess(data.ProcessID))
                         {
-                            string processName;
-                            if (Program.MonitoredProcessCanBeRetrievedWithPID(data.ProcessID))
-                            {
-                                processName = Program.GetMonitoredProcessWithPID(data.ProcessID).ProcessName;
-                            }
-                            else
-                            {
-                                processName = ProcessManager.GetPIDProcessName(data.ProcessID);
-                            }
+                            string processName = Program.GetMonitoredProcessName(pid: data.ProcessID, processName: data.ProcessName);
                             ProcessDnsQuery(data, processName);
                         }
                         else if ((Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID)) || Program.MonitorEverything())
                         {
-                            Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName);
-                            string processName;
-                            if (Program.MonitoredProcessCanBeRetrievedWithPID(data.ProcessID))
+                            string processName = Program.GetNewProcessName(pid: data.ProcessID, processName: data.ProcessName);
+
+                            Program.AddProcessToMonitor(pid: data.ProcessID, processName: processName);
+
+                            if (string.IsNullOrEmpty(processName) || processName == Constants.Miscellaneous.ProcessDefaultNameAtError)
                             {
-                                processName = Program.GetMonitoredProcessWithPID(data.ProcessID).ProcessName;
+                                processName = Program.GetBackupProcessName(data.ProcessID);
                             }
-                            else
-                            {
-                                processName = ProcessManager.GetPIDProcessName(data.ProcessID);
-                            }
+
                             ProcessDnsQuery(data, processName);
                         }
                         break;
@@ -129,30 +121,21 @@ namespace WhoYouCalling.ETW
                     {
                         if (Program.IsMonitoredProcess(data.ProcessID))
                         {
-                            string processName;
-                            if (Program.MonitoredProcessCanBeRetrievedWithPID(data.ProcessID))
-                            {
-                                processName = Program.GetMonitoredProcessWithPID(data.ProcessID).ProcessName;
-                            }
-                            else
-                            {
-                                processName = ProcessManager.GetPIDProcessName(data.ProcessID);
-                            }
+                            string processName = Program.GetMonitoredProcessName(pid: data.ProcessID, processName: data.ProcessName);
                             ProcessDnsResponse(data, processName);
                         }
                         else if ((Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID)) || Program.MonitorEverything())
                         {
 
-                            Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName);
-                            string processName;
-                            if (Program.MonitoredProcessCanBeRetrievedWithPID(data.ProcessID))
+                            string processName = Program.GetNewProcessName(pid: data.ProcessID, processName: data.ProcessName);
+
+                            Program.AddProcessToMonitor(pid: data.ProcessID, processName: processName);
+
+                            if (string.IsNullOrEmpty(processName) || processName == Constants.Miscellaneous.ProcessDefaultNameAtError)
                             {
-                                processName = Program.GetMonitoredProcessWithPID(data.ProcessID).ProcessName;
+                                processName = Program.GetBackupProcessName(data.ProcessID);
                             }
-                            else
-                            {
-                                processName = ProcessManager.GetPIDProcessName(data.ProcessID);
-                            }
+
                             ProcessDnsResponse(data, processName);
                         }
                         break;

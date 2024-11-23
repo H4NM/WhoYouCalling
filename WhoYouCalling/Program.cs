@@ -13,7 +13,9 @@ using WhoYouCalling.Network.FPC;
 using WhoYouCalling.Network.DNS;
 using WhoYouCalling.ETW;
 using WhoYouCalling.Utilities.Arguments;
-using System.Net.Sockets;
+using System.Text.Json.Serialization;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+
 
 
 /*
@@ -35,8 +37,11 @@ namespace WhoYouCalling
         private static List<MonitoredProcess> s_monitoredProcesses = new();
         private static Dictionary<string, int> s_uniqueMonitoredProcessIdentifiers = new();
         private static Dictionary<int, List<int>> s_monitoredProcessIdentifiers = new();
-        private static int s_uniqueDomainNamesQueried = new();
+        private static Dictionary<int, string> s_monitoredProcessBackupProcessName = new();
 
+        private static int s_uniqueDomainNamesQueried = new();
+        private static int s_processDataOutputCounter = 0;
+        private static int s_processesWithRecordedNetworkActivity = 0;
 
         private static int s_trackedMainPid = 0;
         private static List<int> s_trackedChildProcessIds = new();
@@ -182,11 +187,14 @@ namespace WhoYouCalling
 
                     if (MonitoredProcessCanBeRetrievedWithPID(s_trackedMainPid))
                     {
-                        s_mainExecutableProcessName = Program.GetMonitoredProcessWithPID(s_trackedMainPid).ProcessName;
+                        s_mainExecutableProcessName = GetMonitoredProcessWithPID(s_trackedMainPid).ProcessName;
                     }
                     else
                     {
-                        s_mainExecutableProcessName = ProcessManager.GetPIDProcessName(s_trackedMainPid);
+                        string initialProcessName = ProcessManager.GetPIDProcessName(s_trackedMainPid);
+                        s_mainExecutableProcessName = initialProcessName == Constants.Miscellaneous.ProcessDefaultNameAtError
+                            ? GetBackupProcessName(s_trackedMainPid)
+                            : initialProcessName;
                     }
 
                     CatalogETWActivity(eventType: EventType.Process, processName: s_mainExecutableProcessName, processAction: "started", processID: s_trackedMainPid);
@@ -254,20 +262,17 @@ namespace WhoYouCalling
             StopETWSession(s_etwKernelListener);
             StopETWSession(s_etwDnsClientListener);
 
-            Dictionary<string, string> computedBPFFilterByPID = new();
-            Dictionary<string, string> computedDFLFilterByPID = new();
-
 
             ConsoleOutput.Print($"Producing filters", PrintType.Debug);
-            computedBPFFilterByPID = GetProcessNetworkFilter(s_monitoredProcesses, s_argumentData.StrictCommunicationEnabled, FilterType.BPF);
-            computedDFLFilterByPID = GetProcessNetworkFilter(s_monitoredProcesses, s_argumentData.StrictCommunicationEnabled, FilterType.DFL);
+            string computedCombinedBPFFilter = GetCombinedProcessNetworkFilter(s_monitoredProcesses, s_argumentData.StrictCommunicationEnabled, FilterType.BPF);
+            string computedCombinedDFLFilter = GetCombinedProcessNetworkFilter(s_monitoredProcesses, s_argumentData.StrictCommunicationEnabled, FilterType.DFL);
 
             if (s_argumentData.OutputBPFFilter) // If BPF Filter is to be written to text file.
             {
-                if (computedBPFFilterByPID.TryGetValue(Constants.Miscellaneous.CombinedFilterProcessID, out string? text))
+                if (string.IsNullOrEmpty(computedCombinedBPFFilter))
                 {
                     string processBPFFilterTextFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderBPFFilterFileName}";
-                    FileAndFolders.CreateTextFileString(processBPFFilterTextFile, text); // Create textfile containing used BPF filter
+                    FileAndFolders.CreateTextFileString(processBPFFilterTextFile, computedCombinedBPFFilter);
                 }
             }
 
@@ -275,38 +280,67 @@ namespace WhoYouCalling
             {
                 ConsoleOutput.Print($"Stopping packet capture saved to \"{s_fullPcapFile}\"", PrintType.Debug);
                 s_livePacketCapture.StopCapture();
+                s_processesWithRecordedNetworkActivity = ProcessManager.GetNumberOfProcessesWithNetworkTraffic(s_monitoredProcesses);
 
-                if (computedBPFFilterByPID.TryGetValue(Constants.Miscellaneous.CombinedFilterProcessID, out string? bpfFilter)) // 0 represents the combined BPF filter for all applications
+                if (!string.IsNullOrEmpty(computedCombinedBPFFilter))
                 {
                     string filteredPcapFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderAllProcessesFilteredPcapFileName}";
 
-                    ConsoleOutput.Print($"Filtering saved pcap \"{s_fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{bpfFilter}\"", PrintType.Debug);
+                    ConsoleOutput.Print($"Filtering saved pcap \"{s_fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedCombinedBPFFilter}\"", PrintType.Debug);
                     FilePacketCapture filePacketCapture = new();
-                    filePacketCapture.FilterCaptureFile(bpfFilter, s_fullPcapFile, filteredPcapFile);
-                    
+                    try
+                    {
+                        filePacketCapture.FilterCaptureFile(computedCombinedBPFFilter, s_fullPcapFile, filteredPcapFile);
+                    }
+                    catch (Exception ex)
+                    {
+                        ConsoleOutput.Print($"Unable to filter the saved pcap with the combined BPF-filter of all processes: {ex.Message}", PrintType.Warning);
+                    }
+
+
                 }
             }
+            
 
-            if (s_argumentData.OutputWiresharkFilter && computedDFLFilterByPID.TryGetValue(Constants.Miscellaneous.CombinedFilterProcessID, out string? combinedProcessWiresharkFilter))
+            if (s_argumentData.OutputWiresharkFilter && !string.IsNullOrEmpty(computedCombinedDFLFilter))
             {
                 string processDFLFilterTextFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderDFLFilterFileName}";
-                FileAndFolders.CreateTextFileString(processDFLFilterTextFile, combinedProcessWiresharkFilter); // Create textfile containing used BPF filter
+                FileAndFolders.CreateTextFileString(processDFLFilterTextFile, computedCombinedDFLFilter); // Create textfile containing used BPF filter
             }
+
 
             foreach (MonitoredProcess monitoredProcess in s_monitoredProcesses)
             {
+
                 int pid = monitoredProcess.PID;
                 string processName = monitoredProcess.ProcessName;
                 string uniqueProcessID = ProcessManager.GetUniqueProcessIdentifier(pid: pid, processName: processName);
+                string processBPFFilter = "";
+                string processDFLFilter = "";
+                string executabelNameAndPID = $"{processName}-{pid}";
+                string processFolderInRootFolder = @$"{s_rootFolderName}\{executabelNameAndPID}";
 
-                if (ProcessHasNoRecordedNetworkActivity(monitoredProcess)) // Check if the processes has any network activities recorded. If not, go to next process
+                if (ProcessManager.ProcessHasNoRecordedNetworkActivity(monitoredProcess)) // Check if the processes has any network activities recorded. If not, go to next process
                 {
                     ConsoleOutput.Print($"Not outputting results for PID {pid}. No network activities recorded", PrintType.Debug);
                     continue;
                 }
 
-                string executabelNameAndPID = $"{processName}-{pid}";
-                string processFolderInRootFolder = @$"{s_rootFolderName}\{executabelNameAndPID}";
+                if (!s_argumentData.NoPacketCapture)
+                {
+                    s_processDataOutputCounter++;
+                    ConsoleOutput.PrintMonitoredProcessOutputCounter(s_processDataOutputCounter, s_processesWithRecordedNetworkActivity, executabelNameAndPID);
+                    processBPFFilter = GetProcessNetworkFilter(monitoredProcess.TCPIPTelemetry, s_argumentData.StrictCommunicationEnabled, FilterType.BPF);
+                }
+
+
+
+
+                if (FileAndFolders.FolderExists(processFolderInRootFolder))
+                {
+                    string processFolderNameIncremented = FileAndFolders.GetProcessFolderNameIncremented(s_rootFolderName, executabelNameAndPID);
+                    processFolderInRootFolder = @$"{s_rootFolderName}\{processFolderNameIncremented}";
+                }
 
                 ConsoleOutput.Print($"Creating folder {processFolderInRootFolder}", PrintType.Debug);
                 FileAndFolders.CreateFolder(processFolderInRootFolder);
@@ -325,35 +359,37 @@ namespace WhoYouCalling
                 OutputProcessNetworkDetails(monitoredProcess.TCPIPTelemetry, processFolder: processFolderInRootFolder);
 
                 // Wireshark DFL Filter
-                if (s_argumentData.OutputWiresharkFilter && computedDFLFilterByPID.TryGetValue(uniqueProcessID, out string? processWiresharkFilter))
+                if (s_argumentData.OutputWiresharkFilter)
                 {
-                    string processDFLFilterTextFile = @$"{processFolderInRootFolder}\{Constants.FileNames.ProcessFolderDFLFilterFileName}";
-                    FileAndFolders.CreateTextFileString(processDFLFilterTextFile, processWiresharkFilter);
+
+                    processDFLFilter = GetProcessNetworkFilter(monitoredProcess.TCPIPTelemetry, s_argumentData.StrictCommunicationEnabled, FilterType.BPF);
+                    if (!string.IsNullOrEmpty(processDFLFilter))
+                    {
+                        string processDFLFilterTextFile = @$"{processFolderInRootFolder}\{Constants.FileNames.ProcessFolderDFLFilterFileName}";
+                        FileAndFolders.CreateTextFileString(processDFLFilterTextFile, processDFLFilter);
+                    }
                 }
 
                 // BPF Filter
                 if (s_argumentData.OutputBPFFilter) 
                 {
-                    if (computedBPFFilterByPID.TryGetValue(uniqueProcessID, out string? processBPFFilterForOutput)) 
+                    if (!string.IsNullOrEmpty(processBPFFilter)) 
                     {
                         string processBPFFilterTextFile = @$"{processFolderInRootFolder}\{Constants.FileNames.ProcessFolderBPFFilterFileName}";
-                        FileAndFolders.CreateTextFileString(processBPFFilterTextFile, processBPFFilterForOutput); 
+                        FileAndFolders.CreateTextFileString(processBPFFilterTextFile, processBPFFilter); 
                     }
                 }
 
                 // Packet Capture 
-                if (!s_argumentData.NoPacketCapture && computedBPFFilterByPID.TryGetValue(uniqueProcessID, out string? processBPFFilterForFiltering))
+                if (!s_argumentData.NoPacketCapture && !string.IsNullOrEmpty(processBPFFilter))
                 {
+
                     string filteredPcapFile = @$"{processFolderInRootFolder}\{Constants.FileNames.ProcessFolderPcapFileName}";
 
                     ConsoleOutput.Print($"Filtering saved pcap \"{s_fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter.", PrintType.Debug);
 
-                    var filteringStartTime = DateTime.Now;
                     FilePacketCapture filePacketCapture = new();
-                    filePacketCapture.FilterCaptureFile(processBPFFilterForFiltering, s_fullPcapFile, filteredPcapFile);
-                    string filterDuration = Generic.GetPresentableDuration(filteringStartTime, DateTime.Now);
-
-                    ConsoleOutput.Print($"Filtered pcap for {executabelNameAndPID} in {filterDuration}", PrintType.Info);
+                    filePacketCapture.FilterCaptureFile(processBPFFilter, s_fullPcapFile, filteredPcapFile);
                 }
                 else
                 {
@@ -380,7 +416,10 @@ namespace WhoYouCalling
 
             if (s_argumentData.DumpResultsToJson)
             {
-                var options = new JsonSerializerOptions { WriteIndented = true };
+                var options = new JsonSerializerOptions { 
+                                                          Converters = { new JsonStringEnumConverter() }, 
+                                                          WriteIndented = true 
+                                                        };
 
                 ConsoleOutput.Print($"Creating json results file for process results \"{s_jsonResultsFile}\"", PrintType.Debug);
                 string jsonProcessString = JsonSerializer.Serialize(s_monitoredProcesses, options);
@@ -393,20 +432,6 @@ namespace WhoYouCalling
             var endTime = DateTime.Now;
             string monitorDuration = Generic.GetPresentableDuration(s_startTime, endTime);
             ConsoleOutput.Print($"Finished! Monitor duration: {monitorDuration}. Results are in the folder {s_rootFolderName}", PrintType.InfoTime);
-        }
-
-        private static bool ProcessHasNoRecordedNetworkActivity(MonitoredProcess monitoredProcess)
-        {
-            if (monitoredProcess.DNSQueries.Count() == 0 &&
-                monitoredProcess.DNSResponses.Count() == 0 &&
-                monitoredProcess.TCPIPTelemetry.Count() == 0)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
         }
 
         private static void SetCancelKeyEvent()
@@ -558,6 +583,7 @@ namespace WhoYouCalling
             foreach (DNSQuery dnsQuery in dnsQueries)
             {
                 string presentableQuery = $"{dnsQuery.RecordTypeText}({dnsQuery.RecordTypeCode}) for {dnsQuery.DomainQueried}";
+                presentableDNSQueryFormat.Add(presentableQuery);
             }
             presentableDNSQueryFormat.Sort();
             return presentableDNSQueryFormat;
@@ -576,22 +602,22 @@ namespace WhoYouCalling
                     string actualIP = NetworkUtils.GetActualIP(ip);
                     ipsForDomain.Add(actualIP);
                 }
-                string presentableQuery = $"{dnsResponse.DomainQueried}   {string.Join(", ", ipsForDomain)}";
+                string presentableQueryResponse = $"{dnsResponse.DomainQueried}   {string.Join(", ", ipsForDomain)}";
+                presentableDNSQueryResponseFormat.Add(presentableQueryResponse);
 
             }
             presentableDNSQueryResponseFormat.Sort();
             return presentableDNSQueryResponseFormat;
         }
 
-        private static Dictionary<string, string> GetProcessNetworkFilter(List<MonitoredProcess> monitoredProcesses, bool strictComsEnabled, FilterType filter, bool filterPorts = true)
+        private static string GetCombinedProcessNetworkFilter(List<MonitoredProcess> monitoredProcesses, bool strictComsEnabled, FilterType filter, bool filterPorts = true)
         {
-            Dictionary<string, string> filterPerProcess = new();
+            List<string> allProcessesFilter = new();
+            string combinedProcessFilter = "";
 
-            foreach (MonitoredProcess monitoredProcess in monitoredProcesses) //For each Process 
+            foreach (MonitoredProcess monitoredProcess in monitoredProcesses)
             {
-                string uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: monitoredProcess.PID, processName: monitoredProcess.ProcessName);
-                
-                if (monitoredProcess.TCPIPTelemetry.Count() == 0) // Check if the executable has any recorded network activity
+                if (monitoredProcess.TCPIPTelemetry.Count() == 0)
                 {
                     ConsoleOutput.Print($"Not calculating {filter} filter for {monitoredProcess.ProcessName}({monitoredProcess.PID}). No recored network activity", PrintType.Debug);
                     continue;
@@ -600,59 +626,30 @@ namespace WhoYouCalling
                 string executableFilter = NetworkFilter.GetCombinedNetworkFilter(connectionRecords: monitoredProcess.TCPIPTelemetry,
                                                                                  filter: filter,
                                                                                  strictComsEnabled: strictComsEnabled);
-                filterPerProcess[uniqueProcessIdentifier] = executableFilter; // Add filter for executable
-            }
-
-
-            if (filterPerProcess.Count > 1)
-            {
-                List<string> tempFilterList = new();
-                foreach (KeyValuePair<string, string> processFilter in filterPerProcess)
+                if (!allProcessesFilter.Contains(executableFilter))
                 {
-                    tempFilterList.Add($"({processFilter.Value})");
+                    allProcessesFilter.Add(executableFilter);
                 }
-                filterPerProcess[Constants.Miscellaneous.CombinedFilterProcessID] = NetworkFilter.JoinFilterList(filter, tempFilterList);
             }
-            return filterPerProcess;
+
+            if (allProcessesFilter.Count > 0)
+            {
+                combinedProcessFilter = NetworkFilter.JoinFilterList(filter, allProcessesFilter);
+            }
+            return combinedProcessFilter;
         }
 
-        private static void TemporaryOutputFilteringForTCPIPMayRenameMe()
+        private static string GetProcessNetworkFilter(HashSet<ConnectionRecord> tcpIPTelemetry, bool strictComsEnabled, FilterType filter, bool filterPorts = true)
         {
-            /*
-            if (connectionRecord.IPversion == Network.IPVersion.IPv4)
-            {
-
-                if (connectionRecord.DestinationIP == "127.0.0.1")
-                {
-                    s_collectiveProcessInfo[execPID].IPv4LocalhostEndpoint.Add(dstEndpoint);
-                }
-                else if (connectionRecord.TransportProtocol == Network.TransportProtocol.TCP)
-                {
-                    s_collectiveProcessInfo[execPID].IPv4TCPEndpoint.Add(dstEndpoint);
-                }
-                else if (connectionRecord.TransportProtocol == Network.TransportProtocol.UDP)
-                {
-                    s_collectiveProcessInfo[execPID].IPv4UDPEndpoint.Add(dstEndpoint);
-                }
-            }
-            else if (connectionRecord.IPversion == Network.IPVersion.IPv6)
-            {
-
-                if (connectionRecord.DestinationIP == "::1")
-                {
-                    s_collectiveProcessInfo[execPID].IPv6LocalhostEndpoint.Add(dstEndpoint);
-                }
-                else if (connectionRecord.TransportProtocol == Network.TransportProtocol.TCP)
-                {
-                    s_collectiveProcessInfo[execPID].IPv6TCPEndpoint.Add(dstEndpoint);
-                }
-                else if (connectionRecord.TransportProtocol == Network.TransportProtocol.UDP)
-                {
-                    s_collectiveProcessInfo[execPID].IPv6UDPEndpoint.Add(dstEndpoint);
-                }
-            }
-            */
+            return NetworkFilter.GetCombinedNetworkFilter(connectionRecords: tcpIPTelemetry,
+                                                                                 filter: filter,
+                                                                                 strictComsEnabled: strictComsEnabled);
+     
         }
+
+
+
+
 
         public static void CatalogETWActivity(string processName = "N/A",
                                              string processAction = "started",
@@ -806,7 +803,6 @@ namespace WhoYouCalling
 
         public static void AddProcessToMonitor(int pid, string processName = "", string commandLine = "")
         {
-            string dynamicProcessName = processName;
             MonitoredProcess monitoredProcess = new MonitoredProcess
             {
                 PID = pid,
@@ -830,10 +826,25 @@ namespace WhoYouCalling
             }
             catch
             {
-                ConsoleOutput.Print($"Unable to instantiate monitored process object for PID {pid} with process name \"{processName}\"", PrintType.Debug);
+                ConsoleOutput.Print($"Unable to instantiate monitored process object for PID {pid} with process name \"{monitoredProcess.ProcessName}\"", PrintType.Debug);
             }
 
-            string uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: pid, processName: processName);
+            if (string.IsNullOrEmpty(monitoredProcess.ProcessName))
+            {
+                monitoredProcess.ProcessName = Constants.Miscellaneous.ProcessDefaultNameAtError;
+            }
+
+            string uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: pid, processName: monitoredProcess.ProcessName);
+
+            if (s_uniqueMonitoredProcessIdentifiers.ContainsKey(uniqueProcessIdentifier)) // PID and Process collision has occured. Remove OLD uniqueProcessIdentifier value
+            {
+                s_uniqueMonitoredProcessIdentifiers.Remove(uniqueProcessIdentifier);
+            }
+
+            if (!s_monitoredProcessBackupProcessName.ContainsKey(pid))
+            {
+                s_monitoredProcessBackupProcessName.Add(pid, monitoredProcess.ProcessName);
+            }
 
             s_monitoredProcesses.Add(monitoredProcess);
             int monitoredProcessesIndexPosition = s_monitoredProcesses.Count() - 1;
@@ -903,6 +914,23 @@ namespace WhoYouCalling
             s_trackedChildProcessIds.Add(pid);
         }
 
+        public static bool MonitoredProcessCanBeRetrievedWithUniqueStringIdentifier(int pid, string processName)
+        {
+            if (!string.IsNullOrEmpty(processName))
+            {
+                string uniqueIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: pid, processName: processName);
+                if (s_uniqueMonitoredProcessIdentifiers.ContainsKey(uniqueIdentifier))
+                {
+                    return true;
+                }
+                return false;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         public static bool MonitoredProcessCanBeRetrievedWithPID(int pid)
         {
             if (s_monitoredProcessIdentifiers[pid].Count() == 1)
@@ -938,6 +966,54 @@ namespace WhoYouCalling
             int index = s_uniqueMonitoredProcessIdentifiers[uniqueProcessID];
             return s_monitoredProcesses[index];
         }
+
+        public static string GetNewProcessName(int pid, string processName)
+        {
+
+            if (string.IsNullOrEmpty(processName))
+            {
+                processName = ProcessManager.GetPIDProcessName(pid);
+            }
+
+            return processName;
+
+        }
+
+        public static string GetMonitoredProcessName(int pid, string processName)
+        {
+            if (string.IsNullOrEmpty(processName))
+            {
+                if (Program.MonitoredProcessCanBeRetrievedWithPID(pid))
+                {
+                    processName = Program.GetMonitoredProcessWithPID(pid).ProcessName;
+                }
+                else
+                {
+                    string initialProcessName = ProcessManager.GetPIDProcessName(pid);
+                    processName = initialProcessName == Constants.Miscellaneous.ProcessDefaultNameAtError
+                        ? Program.GetBackupProcessName(pid)
+                        : initialProcessName;
+                }
+            }
+
+            return processName;
+        }
+
+        public static string GetBackupProcessName(int pid)
+        {
+            return s_monitoredProcessBackupProcessName[pid]; 
+        }
+
+        public static void DeleteOldBackupProcessName(int pid)
+        {
+            s_monitoredProcessBackupProcessName.Remove(pid);
+        }
+        public static void DeleteProcessIDIndex(int pid)
+        {
+            s_monitoredProcessIdentifiers[pid].RemoveAt(0);
+        }
+
+
         public static void IncrementDNSQueries()
         {
             ++s_uniqueDomainNamesQueried;

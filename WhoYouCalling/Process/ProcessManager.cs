@@ -4,12 +4,40 @@ using System.Text;
 using WhoYouCalling.Utilities;
 using WhoYouCalling.Win32;
 using System.Security;
+using System.Security.Cryptography;
 
 
 namespace WhoYouCalling.Process
 { 
     internal static class ProcessManager
     {
+
+        public static bool ProcessHasNoRecordedNetworkActivity(MonitoredProcess monitoredProcess)
+        {
+            if (monitoredProcess.DNSQueries.Count() == 0 &&
+                monitoredProcess.DNSResponses.Count() == 0 &&
+                monitoredProcess.TCPIPTelemetry.Count() == 0)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        public static int GetNumberOfProcessesWithNetworkTraffic(List<MonitoredProcess> monitoredProcesses)
+        {
+            int counter = 0;
+            foreach (MonitoredProcess monitoredProcess in monitoredProcesses)
+            {
+                if (!ProcessHasNoRecordedNetworkActivity(monitoredProcess)) // Check if the processes has any network activities recorded. If not, go to next process
+                {
+                    counter++;
+                }
+            }
+            return counter;
+        }
+
         public static string GetUniqueProcessIdentifier(int pid, string processName)
         {
             return $"{processName}{pid}";
