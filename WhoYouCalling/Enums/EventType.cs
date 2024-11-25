@@ -3,8 +3,10 @@ namespace WhoYouCalling.ETW
 {
     public enum EventType
     {
-        Process,
-        Childprocess,
+        ProcessStart,
+        ProcessStop,
+        ProcessMonitor,
+        StartedChildProcess,
         Network,
         DNSQuery,
         DNSResponse

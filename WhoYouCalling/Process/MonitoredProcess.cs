@@ -10,6 +10,7 @@ namespace WhoYouCalling.Process
         public string CommandLine { get; set; } = "";
         public bool? IsolatedProcess { get; set; } = null;
         public DateTime ProcessStartTime { get; set; } = new();
+        public DateTime ProcessStopTime { get; set; } = new();
         public List<ChildProcessInfo> ChildProcesses { get; set; } = new();
         public HashSet<ConnectionRecord> TCPIPTelemetry { get; set; } = new();
         public HashSet<DNSQuery> DNSQueries { get; set; } = new();

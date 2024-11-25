@@ -25,10 +25,8 @@ namespace WhoYouCalling.Utilities
                     {
                         return;
                     }
-                    prefix = "\r[~]";
-                    int clearLength = Console.WindowWidth; 
-                    string output = $"{prefix} {message}".PadRight(clearLength);
-                    Console.Write($"\r{output}");
+                    prefix = "[~]";
+                    Console.Write($"\r{prefix} {message}");
                     return;
                 case PrintType.NetworkInterface:
                     prefix = "";
@@ -68,7 +66,7 @@ namespace WhoYouCalling.Utilities
             Print($"Processes: {processCount}. ETW Events: {etwActivities}. DNS Queries: {dnsActivities}. Network Packets: {packetCount}", PrintType.RunningMetrics);
         }
 
-        public static void PrintMonitoredProcessOutputCounter(int activeCounter, int totalCounter, string processAndPID)
+        public static void PrintMonitoredProcessOutputCounter(int activeCounter, int totalCounter)
         {
             string msg = $"Filtering processess {activeCounter}/{totalCounter}";
             Print(msg, PrintType.RunningMetrics); 

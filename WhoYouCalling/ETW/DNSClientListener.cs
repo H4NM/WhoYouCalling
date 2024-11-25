@@ -97,7 +97,7 @@ namespace WhoYouCalling.ETW
             {
                 case "EventID(3006)":
                     {
-                        if (Program.IsMonitoredProcess(data.ProcessID))
+                        if (Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName))
                         {
                             string processName = Program.GetMonitoredProcessName(pid: data.ProcessID, processName: data.ProcessName);
                             ProcessDnsQuery(data, processName);
@@ -119,7 +119,7 @@ namespace WhoYouCalling.ETW
                     }
                 case "EventID(3008)":
                     {
-                        if (Program.IsMonitoredProcess(data.ProcessID))
+                        if (Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName))
                         {
                             string processName = Program.GetMonitoredProcessName(pid: data.ProcessID, processName: data.ProcessName);
                             ProcessDnsResponse(data, processName);

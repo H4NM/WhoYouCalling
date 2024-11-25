@@ -57,7 +57,7 @@ namespace WhoYouCalling.ETW
 
         private void IPv4TCPSend(TcpIpSendTraceData data)
         {
-            if (Program.IsMonitoredProcess(data.ProcessID))
+            if (Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName))
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.TCP);
             }
@@ -70,7 +70,7 @@ namespace WhoYouCalling.ETW
 
         private void IPv6TCPSend(TcpIpV6SendTraceData data)
         {
-            if (Program.IsMonitoredProcess(data.ProcessID))
+            if (Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName))
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.TCP);
             }
@@ -83,7 +83,7 @@ namespace WhoYouCalling.ETW
 
         private void IPv4UDPSend(UdpIpTraceData data)
         {
-            if (Program.IsMonitoredProcess(data.ProcessID))
+            if (Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName))
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.UDP);
             }
@@ -96,7 +96,7 @@ namespace WhoYouCalling.ETW
 
         private void IPv6UDPSend(UpdIpV6TraceData data)
         {
-            if (Program.IsMonitoredProcess(data.ProcessID))
+            if (Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName))
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.UDP);
             }
@@ -109,8 +109,7 @@ namespace WhoYouCalling.ETW
 
         private void ProcessStart(ProcessTraceData data)
         {
-
-            if (Program.IsMonitoredProcess(data.ParentID)) //If current process is child process of already started process
+            if (Program.IsMonitoredProcess(pid: data.ParentID)) //If current process is child process of already started process
             {
                 string parentProcessName;
                 MonitoredProcess monitoredParentProcess;
@@ -147,10 +146,9 @@ namespace WhoYouCalling.ETW
                     ETWRegisteredStartTime = DateTime.Now
                 });
 
-                Program.CatalogETWActivity(eventType: EventType.Childprocess,
+                Program.CatalogETWActivity(eventType: EventType.StartedChildProcess,
                                             parentProcessName: parentProcessName,
                                             parentProcessID: data.ParentID,
-                                            processAction: "started",
                                             processName: data.ProcessName,
                                             processID: data.ProcessID,
                                             processCommandLine: data.CommandLine);
@@ -190,10 +188,9 @@ namespace WhoYouCalling.ETW
                     Program.AddProcessToMonitor(pid: data.ParentID, processName: parentProcessName, commandLine: "");
                 }
 
-                Program.CatalogETWActivity(eventType: EventType.Childprocess,
+                Program.CatalogETWActivity(eventType: EventType.StartedChildProcess,
                                             parentProcessName: parentProcessName,
                                             parentProcessID: data.ParentID,
-                                            processAction: "started",
                                             processName: data.ProcessName,
                                             processID: data.ProcessID,
                                             processCommandLine: data.CommandLine);
@@ -202,10 +199,9 @@ namespace WhoYouCalling.ETW
             {
                 string parentProcessName = ProcessManager.GetProcessFileName(data.ParentID);
                 Program.AddProcessToMonitor(pid: data.ProcessID, commandLine: data.CommandLine);
-                Program.CatalogETWActivity(eventType: EventType.Childprocess,
+                Program.CatalogETWActivity(eventType: EventType.StartedChildProcess,
                                             parentProcessName: parentProcessName,
                                             parentProcessID: data.ParentID,
-                                            processAction: "started",
                                             processName: data.ProcessName,
                                             processID: data.ProcessID,
                                             processCommandLine: data.CommandLine);
@@ -220,10 +216,9 @@ namespace WhoYouCalling.ETW
                 {
                     Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName, commandLine: data.CommandLine);
                 }
-                Program.CatalogETWActivity(eventType: EventType.Childprocess,
+                Program.CatalogETWActivity(eventType: EventType.StartedChildProcess,
                                            parentProcessName: parentProcessName,
                                            parentProcessID: data.ParentID,
-                                           processAction: "started",
                                            processName: data.ProcessName,
                                            processID: data.ProcessID,
                                            processCommandLine: data.CommandLine);
@@ -246,10 +241,9 @@ namespace WhoYouCalling.ETW
                     Program.DeleteOldBackupProcessName(data.ProcessID);
                     Program.DeleteProcessIDIndex(data.ProcessID);
                 }
-                Program.CatalogETWActivity(eventType: EventType.Process,
+                Program.CatalogETWActivity(eventType: EventType.ProcessStop,
                                            processName: processName,
-                                           processID: data.ProcessID,
-                                           processAction: "stopped");
+                                           processID: data.ProcessID);
 
                 if (Program.IsTrackedChildPID(data.ProcessID)) // A redundant check to ensure that the PID is only removed after calling CatalogETWActivity to ensure any possible
                 {                                              // Lookups are not affected 
