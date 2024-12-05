@@ -22,8 +22,8 @@ namespace WhoYouCalling.Utilities.Arguments
         public const string ProcessIDFlagShort = "-P";
         public const string ProcessIDFlagLong = "--PID";
 
-        public const string MultipleExecutableNamesFlagShort = "-x";
-        public const string MultipleExecutableNamesFlagLong = "--execnames";
+        public const string MultipleNamePatternFlagShort = "-N";
+        public const string MultipleNamePatternFlagLong = "--names";
 
         public const string MonitorEverythingFlagShort = "-I";
         public const string MonitorEverythingFlagLong = "--illuminate";
@@ -80,10 +80,11 @@ Options:
   {UserNameFlagShort}, {UserNameFlagLong}          : The user that the process should run as.
   {UserPasswordFlagShort}, {UserPasswordFlagLong}      : The password for the specified user that the process should run as.
   {ProcessIDFlagShort}, {ProcessIDFlagLong}           : The running process id to track rather than executing the binary.
-  {MultipleExecutableNamesFlagShort}, {MultipleExecutableNamesFlagLong}     : A comma separated list of executable file names to also monitor for.
+  {MultipleNamePatternFlagShort}, {MultipleNamePatternFlagLong}         : A comma separated list of names file names to also monitor for.
                         A useful scenario is when C:\Program Files\Mozilla Firefox\firefox.exe is launched.
                         The PPID of the main firefox instance belongs to explorer.exe, which is 
                         an already running process, meaning that following a PPID/PID trail misses the process.
+                        the provided names match as a part of the process name or executable file name. Is case insensitive.
   {MonitorEverythingFlagShort}, {MonitorEverythingFlagLong}    : Captures everything from everything.
   {InterfaceFlagShort}, {InterfaceFlagLong}     : The network interface number. Retrievable with the {GetInterfacesFlagShort}/{GetInterfacesFlagLong} flag.
   {GetInterfacesFlagShort}, {GetInterfacesFlagLong} : Prints the network interface devices with corresponding number (usually 0-10).

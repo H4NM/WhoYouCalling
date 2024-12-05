@@ -61,7 +61,7 @@ namespace WhoYouCalling.ETW
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.TCP);
             }
-            else if ((Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID)) || Program.MonitorEverything())
+            else if ((Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)) || Program.MonitorEverything())
             {
                 Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName);
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.TCP);
@@ -74,7 +74,7 @@ namespace WhoYouCalling.ETW
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.TCP);
             }
-            else if ((Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID)) || Program.MonitorEverything())
+            else if ((Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)) || Program.MonitorEverything())
             {
                 Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName);
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.TCP);
@@ -87,7 +87,7 @@ namespace WhoYouCalling.ETW
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.UDP);
             }
-            else if ((Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID)) || Program.MonitorEverything())
+            else if ((Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)) || Program.MonitorEverything())
             {
                 Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName);
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.UDP);
@@ -100,7 +100,7 @@ namespace WhoYouCalling.ETW
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.UDP);
             }
-            else if ((Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID)) || Program.MonitorEverything())
+            else if ((Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)) || Program.MonitorEverything())
             {
                 Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName);
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.UDP);
@@ -153,7 +153,7 @@ namespace WhoYouCalling.ETW
                                             processID: data.ProcessID,
                                             processCommandLine: data.CommandLine);
             }
-            else if (Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ParentID))
+            else if (Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ParentID))
             {
                 string parentProcessName = "";
                 if (Program.IsMonitoredProcess(data.ParentID))
@@ -195,7 +195,7 @@ namespace WhoYouCalling.ETW
                                             processID: data.ProcessID,
                                             processCommandLine: data.CommandLine);
             }
-            else if(Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID))
+            else if(Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName))
             {
                 string parentProcessName = ProcessManager.GetProcessFileName(data.ParentID);
                 Program.AddProcessToMonitor(pid: data.ProcessID, commandLine: data.CommandLine);

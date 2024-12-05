@@ -14,7 +14,7 @@ namespace WhoYouCalling.Utilities.Arguments
         public bool NetworkInterfaceDeviceFlagSet;
         public bool NoPCAPFlagSet;
         public bool KillProcessesFlagSet;
-        public bool ExecutableNamesToMonitorFlagSet;
+        public bool ProcessesesNamesToMonitorFlagSet;
         public bool ProcessRunTimerFlagSet;
         public bool UserNameFlagSet;
         public bool UserPasswordFlagSet;
@@ -22,7 +22,7 @@ namespace WhoYouCalling.Utilities.Arguments
         public bool MonitorEverythingFlagSet;
 
         // Value holders
-        public List<string> ExecutableNamesToMonitor { get; set; }
+        public List<string> ProcessesNamesToMonitor { get; set; }
         public int TrackedProcessId { get; set; }
         public double ProcessRunTimer { get; set; }
         public int NetworkInterfaceChoice { get; set; }

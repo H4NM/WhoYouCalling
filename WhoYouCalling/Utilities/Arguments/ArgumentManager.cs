@@ -27,30 +27,30 @@ namespace WhoYouCalling.Utilities.Arguments
                             ConsoleOutput.Print($"No arguments specified after {ArgumentFlags.ExecutableFlagShort}/{ArgumentFlags.ExecutableFlagLong} flag", PrintType.Warning);
                         }
                     }
-                    else if (args[i] == ArgumentFlags.MultipleExecutableNamesFlagShort || args[i] == ArgumentFlags.MultipleExecutableNamesFlagLong) 
+                    else if (args[i] == ArgumentFlags.MultipleNamePatternFlagShort || args[i] == ArgumentFlags.MultipleNamePatternFlagLong) 
                     {
                         // Ensure there's a subsequent argument that represents the executable
                         if (i + 1 < args.Length)
                         {
-                            string execNamesProvided = args[i + 1];
-                            List<string> execNamesParsed = new List<string>();
+                            string namePatternsProvided = args[i + 1];
+                            List<string> namePatternsParsed = new List<string>();
 
-                            if (execNamesProvided.Contains(","))
+                            if (namePatternsProvided.Contains(","))
                             {
-                                ConsoleOutput.Print($"Multiple additional executable file names to monitor: {execNamesProvided}", PrintType.Warning);
-                                execNamesParsed.AddRange(execNamesProvided.Split(","));
+                                ConsoleOutput.Print($"Multiple additional executable file names to monitor: {namePatternsProvided}", PrintType.Warning);
+                                namePatternsParsed.AddRange(namePatternsProvided.Split(","));
                             }
                             else
                             {
-                                ConsoleOutput.Print($"One additional executable file name to monitor: {execNamesProvided}", PrintType.Warning);
-                                execNamesParsed.Add(execNamesProvided);
+                                ConsoleOutput.Print($"One additional executable file name to monitor: {namePatternsProvided}", PrintType.Warning);
+                                namePatternsParsed.Add(namePatternsProvided);
                             }
-                            argumentData.ExecutableNamesToMonitor = execNamesParsed;
-                            argumentData.ExecutableNamesToMonitorFlagSet = true;
+                            argumentData.ProcessesNamesToMonitor = namePatternsParsed;
+                            argumentData.ProcessesesNamesToMonitorFlagSet = true;
                         }
                         else
                         {
-                            ConsoleOutput.Print($"No arguments specified after {ArgumentFlags.MultipleExecutableNamesFlagShort}/{ArgumentFlags.MultipleExecutableNamesFlagLong} flag", PrintType.Warning);
+                            ConsoleOutput.Print($"No arguments specified after {ArgumentFlags.MultipleNamePatternFlagShort}/{ArgumentFlags.MultipleNamePatternFlagLong} flag", PrintType.Warning);
                         }
                     }
                     else if (args[i] == ArgumentFlags.ExecutableArgsFlagShort || args[i] == ArgumentFlags.ExecutableArgsFlagLong) 

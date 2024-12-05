@@ -1,4 +1,5 @@
-﻿using WhoYouCalling.Network;
+﻿using System.Security.Cryptography;
+using WhoYouCalling.Network;
 using WhoYouCalling.Network.DNS;
 
 namespace WhoYouCalling.Process
@@ -8,6 +9,8 @@ namespace WhoYouCalling.Process
         public int PID { get; set; } = 0;
         public string ProcessName { get; set; } = "";
         public string CommandLine { get; set; } = "";
+        public string ExecutableFileName { get; set; } = "";
+
         public bool? IsolatedProcess { get; set; } = null;
         public DateTime ProcessStartTime { get; set; } = new();
         public DateTime ProcessStopTime { get; set; } = new();

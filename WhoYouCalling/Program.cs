@@ -14,8 +14,8 @@ using WhoYouCalling.Network.DNS;
 using WhoYouCalling.ETW;
 using WhoYouCalling.Utilities.Arguments;
 using System.Text.Json.Serialization;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using System.Collections.Generic;
+using Microsoft.Diagnostics.Tracing.StackSources;
+using System.Security.Cryptography;
 
 
 
@@ -287,11 +287,19 @@ namespace WhoYouCalling
                 {
                     string filteredPcapFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderAllProcessesFilteredPcapFileName}";
 
-                    ConsoleOutput.Print($"Filtering saved pcap \"{s_fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter \"{computedCombinedBPFFilter}\"", PrintType.Debug);
+                    ConsoleOutput.Print($"Filtering saved pcap \"{s_fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter with length of {computedCombinedBPFFilter.Length}", PrintType.Debug);
                     FilePacketCapture filePacketCapture = new();
+
                     try
                     {
-                        filePacketCapture.FilterCaptureFile(computedCombinedBPFFilter, s_fullPcapFile, filteredPcapFile);
+                        if (NetworkCaptureManagement.IsValidFilter(s_argumentData.NetworkInterfaceChoice, computedCombinedBPFFilter))
+                        {
+                            filePacketCapture.FilterCaptureFile(computedCombinedBPFFilter, s_fullPcapFile, filteredPcapFile);
+                        }
+                        else
+                        {
+                            ConsoleOutput.Print($"The combined BPF filter for all processes is invalid. Skipping the filter operation.", PrintType.Warning);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -390,7 +398,21 @@ namespace WhoYouCalling
                     ConsoleOutput.Print($"Filtering saved pcap \"{s_fullPcapFile}\" to \"{filteredPcapFile}\" using BPF filter.", PrintType.Debug);
 
                     FilePacketCapture filePacketCapture = new();
-                    filePacketCapture.FilterCaptureFile(processBPFFilter, s_fullPcapFile, filteredPcapFile);
+                    try
+                    {
+                        if (NetworkCaptureManagement.IsValidFilter(s_argumentData.NetworkInterfaceChoice, processBPFFilter))
+                        {
+                            filePacketCapture.FilterCaptureFile(processBPFFilter, s_fullPcapFile, filteredPcapFile);
+                        }
+                        else
+                        {
+                            ConsoleOutput.Print($"The BPF filter for the process {processName}[{pid}] is invalid. Skipping the filter operation.", PrintType.Warning);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        ConsoleOutput.Print($"Unable to filter a pcap for the process {processName}[{pid}]. Error: {ex.Message}", PrintType.Warning);
+                    }
                 }
                 else
                 {
@@ -619,7 +641,7 @@ namespace WhoYouCalling
 
         private static string GetCombinedProcessNetworkFilter(List<MonitoredProcess> monitoredProcesses, bool strictComsEnabled, FilterType filter, bool filterPorts = true)
         {
-            List<string> allProcessesFilter = new();
+            HashSet<string> allProcessesFilter = new();
             string combinedProcessFilter = "";
 
             foreach (MonitoredProcess monitoredProcess in monitoredProcesses)
@@ -852,6 +874,7 @@ namespace WhoYouCalling
                 s_monitoredProcessBackupProcessName.Add(pid, monitoredProcess.ProcessName);
             }
 
+            monitoredProcess.ExecutableFileName = ProcessManager.GetProcessFileName(pid);
             s_monitoredProcesses.Add(monitoredProcess);
             int monitoredProcessesIndexPosition = s_monitoredProcesses.Count() - 1;
             s_uniqueMonitoredProcessIdentifiers.Add(uniqueProcessIdentifier, monitoredProcessesIndexPosition);
@@ -865,23 +888,39 @@ namespace WhoYouCalling
             }
         }
 
-        public static bool TrackExecutablesByName()
+        public static bool TrackProcessesByName()
         {
-            return s_argumentData.ExecutableNamesToMonitorFlagSet;
+            return s_argumentData.ProcessesesNamesToMonitorFlagSet;
         }
 
-       public static bool IsTrackedExecutableName(int pid)
+       public static bool IsTrackedProcessByName(int pid, string processName = "")
         {
-            string processFileName = ProcessManager.GetProcessFileName(pid);
+            /*
+             * This function first checks if a processName has been provided
+             * it checks for all provided patterns if any of them matches or is included in the provided process name  
+             * with case insensitivity. Then an attempt is made to retrieve the actual file name and checks if the pattern is in there
+             */
+            if (!string.IsNullOrEmpty(processName))
+            {
+                foreach (string processNamePattern in s_argumentData.ProcessesNamesToMonitor)
+                {
+                    if (processName.IndexOf(processNamePattern, StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        return true;
+                    }
+                }
+            }
 
-            if (s_argumentData.ExecutableNamesToMonitor.Contains(processFileName))
+            string processFileName = ProcessManager.GetProcessFileName(pid);
+            foreach (string processNamePattern in s_argumentData.ProcessesNamesToMonitor)
             {
-                return true;
+                if (processFileName.IndexOf(processNamePattern, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return true;
+                }
             }
-            else
-            {
-                return false;
-            }
+
+            return false;
         }
 
         public static bool MonitorEverything()

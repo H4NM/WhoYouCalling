@@ -22,6 +22,19 @@ namespace WhoYouCalling.Network.FPC
             }
         }
 
+        public static bool IsValidFilter(int deviceNumber, string filter)
+        {
+            try
+            {
+                var bpfProgram = BpfProgram.TryCreate(LibPcapLiveDeviceList.Instance[deviceNumber].Handle, filter, 0, 0);
+                return true;
+            }
+            catch 
+            {
+                return false;
+            }
+        }
+
         public static bool IsIPv4MappedToIPv6Address(string ip)
         {
             IPAddress address = IPAddress.Parse(ip);

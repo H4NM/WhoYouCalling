@@ -102,7 +102,7 @@ namespace WhoYouCalling.ETW
                             string processName = Program.GetMonitoredProcessName(pid: data.ProcessID, processName: data.ProcessName);
                             ProcessDnsQuery(data, processName);
                         }
-                        else if ((Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID)) || Program.MonitorEverything())
+                        else if ((Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)) || Program.MonitorEverything())
                         {
                             string processName = Program.GetNewProcessName(pid: data.ProcessID, processName: data.ProcessName);
 
@@ -124,7 +124,7 @@ namespace WhoYouCalling.ETW
                             string processName = Program.GetMonitoredProcessName(pid: data.ProcessID, processName: data.ProcessName);
                             ProcessDnsResponse(data, processName);
                         }
-                        else if ((Program.TrackExecutablesByName() && Program.IsTrackedExecutableName(data.ProcessID)) || Program.MonitorEverything())
+                        else if ((Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)) || Program.MonitorEverything())
                         {
 
                             string processName = Program.GetNewProcessName(pid: data.ProcessID, processName: data.ProcessName);

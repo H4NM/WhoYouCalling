@@ -6,7 +6,10 @@ Caps/
 TestApplication*
 args.txt
 requirements.txt
-autobadge.py
+*.py
+*.spec
+*.sh
+build/
 releases/
 createReleaseFiles.sh
 
