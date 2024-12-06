@@ -14,9 +14,6 @@ using WhoYouCalling.Network.DNS;
 using WhoYouCalling.ETW;
 using WhoYouCalling.Utilities.Arguments;
 using System.Text.Json.Serialization;
-using Microsoft.Diagnostics.Tracing.StackSources;
-using System.Security.Cryptography;
-
 
 
 /*
@@ -64,7 +61,7 @@ namespace WhoYouCalling
         private static string s_jsonResultsFile = "";
         private static string s_jsonDNSFile = "";
 
-        private static DateTime s_startTime = DateTime.Now;
+        private static DateTime s_startTime;
 
         // Arguments
         public static WYCMainMode RunningMode;
@@ -109,7 +106,6 @@ namespace WhoYouCalling
                 s_rootFolderName = Generic.NormalizePath(Generic.GetRunInstanceFolderName(s_mainExecutableFileName));
             }
 
-
             if (s_argumentData.OutputDirectoryFlagSet)
             {
                 s_argumentData.OutputDirectory = Generic.NormalizePath(s_argumentData.OutputDirectory);
@@ -124,6 +120,7 @@ namespace WhoYouCalling
             s_jsonDNSFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderJSONDNSResponseFileName}";
 
             ConsoleOutput.Print($"Starting monitoring...", PrintType.Info);
+            s_startTime = DateTime.Now;
             if (!s_argumentData.NoPacketCapture) {
                 // Retrieve network interface devices
                 var devices = NetworkCaptureManagement.GetNetworkInterfaces(); 
@@ -198,7 +195,7 @@ namespace WhoYouCalling
                             : initialProcessName;
                     }
 
-                    CatalogETWActivity(eventType: EventType.ProcessStart, processName: s_mainExecutableProcessName, processID: s_trackedMainPid);
+                    CatalogETWActivity(eventType: EventType.ProcessStart, processName: s_mainExecutableProcessName, processID: s_trackedMainPid, processCommandLine: s_argumentData.ExecutableArguments);
                 }
                 catch (Exception ex)
                 {
@@ -228,14 +225,14 @@ namespace WhoYouCalling
                 ConsoleOutput.Print($"Starting timer set to {s_argumentData.ProcessRunTimer} seconds", PrintType.Debug);
                 timer.Start();
             }
-
-
-
+            CancellationTokenSource printMetricsCancelToken = new CancellationTokenSource();
+            Thread printMonitoringMetrics = new Thread(() => ConsoleOutput.PrintMetrics(printMetricsCancelToken.Token));
+            printMonitoringMetrics.Start();
             while (true) // Continue monitoring and output statistics
             {
-                ConsoleOutput.PrintMetrics();
                 if (s_shutDownMonitoring) // If shutdown has been signaled
                 {
+                    printMetricsCancelToken.Cancel();
                     Console.WriteLine(""); // Needed to adjust a linebreak since the runningStats print above uses Console.Write
                     if (s_timerExpired)
                     {
@@ -283,6 +280,7 @@ namespace WhoYouCalling
                 s_livePacketCapture.StopCapture();
                 s_processesWithRecordedNetworkActivity = ProcessManager.GetNumberOfProcessesWithNetworkTraffic(s_monitoredProcesses);
 
+
                 if (!string.IsNullOrEmpty(computedCombinedBPFFilter))
                 {
                     string filteredPcapFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderAllProcessesFilteredPcapFileName}";
@@ -292,6 +290,7 @@ namespace WhoYouCalling
 
                     try
                     {
+                        ConsoleOutput.Print($"Validating BPF filter", PrintType.Info);
                         if (NetworkCaptureManagement.IsValidFilter(s_argumentData.NetworkInterfaceChoice, computedCombinedBPFFilter))
                         {
                             filePacketCapture.FilterCaptureFile(computedCombinedBPFFilter, s_fullPcapFile, filteredPcapFile);
@@ -317,7 +316,7 @@ namespace WhoYouCalling
                 FileAndFolders.CreateTextFileString(processDFLFilterTextFile, computedCombinedDFLFilter); // Create textfile containing used BPF filter
             }
 
-
+            ConsoleOutput.Print($"Creating files from process results", PrintType.Info);
             foreach (MonitoredProcess monitoredProcess in s_monitoredProcesses)
             {
 
@@ -593,16 +592,6 @@ namespace WhoYouCalling
             }
         }
 
-        private static HashSet<string> GetUniqueDomainNameFromDNSQueryResponses(HashSet<DNSResponse> dnsResponses)
-        {
-            HashSet<string> uniqueDomainNames = new();
-            foreach (DNSResponse dnsResponse in dnsResponses) 
-            {
-                uniqueDomainNames.Add(dnsResponse.DomainQueried);
-            }
-            return uniqueDomainNames;
-        }
-        
         private static List<string> ParseDNSQueries(HashSet<DNSQuery> dnsQueries)
         {
             List<string> presentableDNSQueryFormat = new();
@@ -706,6 +695,10 @@ namespace WhoYouCalling
                 case EventType.ProcessStart:
                     {
                         historyMsg = $"{timestamp} - {processName}[{processID}] started";
+                        if (!string.IsNullOrEmpty(processCommandLine))
+                        {
+                            historyMsg += $" with the arguments: {processCommandLine}";
+                        }
                         break;
                     }
                 case EventType.ProcessMonitor:
@@ -974,23 +967,6 @@ namespace WhoYouCalling
         public static void AddChildPID(int pid)
         {
             s_trackedChildProcessIds.Add(pid);
-        }
-
-        public static bool MonitoredProcessCanBeRetrievedWithUniqueStringIdentifier(int pid, string processName)
-        {
-            if (!string.IsNullOrEmpty(processName))
-            {
-                string uniqueIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: pid, processName: processName);
-                if (s_uniqueMonitoredProcessIdentifiers.ContainsKey(uniqueIdentifier))
-                {
-                    return true;
-                }
-                return false;
-            }
-            else
-            {
-                return false;
-            }
         }
 
         public static bool MonitoredProcessCanBeRetrievedWithPID(int pid)

@@ -5,5 +5,6 @@ namespace WhoYouCalling.Constants
     {
         public const Int32 PacketCaptureTimeoutMilliseconds = 1000;
         public const Int32 ETWSubscriptionTimingTime = 3000;
+        public const Int32 ProcessMonitoringPrintPause = 150;
     }
 }

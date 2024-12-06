@@ -4,7 +4,6 @@ using System.Text;
 using WhoYouCalling.Utilities;
 using WhoYouCalling.Win32;
 using System.Security;
-using System.Security.Cryptography;
 
 
 namespace WhoYouCalling.Process
