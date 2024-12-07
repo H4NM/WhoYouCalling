@@ -211,11 +211,8 @@ namespace WhoYouCalling.ETW
                 
                 string parentProcessName = ProcessManager.GetProcessFileName(data.ParentID);
                 Program.AddProcessToMonitor(pid: data.ParentID, processName: parentProcessName);
+                Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName, commandLine: data.CommandLine);
 
-                if (!Program.IsMonitoredProcess(data.ProcessID))
-                {
-                    Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName, commandLine: data.CommandLine);
-                }
                 Program.CatalogETWActivity(eventType: EventType.StartedChildProcess,
                                            parentProcessName: parentProcessName,
                                            parentProcessID: data.ParentID,

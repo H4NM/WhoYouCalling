@@ -3,8 +3,6 @@ using Microsoft.Diagnostics.Tracing.Session;
 using WhoYouCalling.Network.DNS;
 using WhoYouCalling.Utilities;
 using WhoYouCalling.Network;
-using WhoYouCalling.Process;
-using System.Security.Cryptography;
 
 namespace WhoYouCalling.ETW
 {
@@ -31,6 +29,7 @@ namespace WhoYouCalling.ETW
         {
             string retrievedQuery = data.PayloadByName("QueryName").ToString().Trim();
             string dnsDomainQueried = string.IsNullOrWhiteSpace(retrievedQuery) ? "N/A" : retrievedQuery;
+
             int queryTypeCode = 0;
             if (!int.TryParse(data.PayloadByName("QueryType").ToString(), out queryTypeCode))
             {
@@ -97,6 +96,7 @@ namespace WhoYouCalling.ETW
             {
                 case "EventID(3006)":
                     {
+                        
                         if (Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName))
                         {
                             string processName = Program.GetMonitoredProcessName(pid: data.ProcessID, processName: data.ProcessName);
@@ -119,6 +119,7 @@ namespace WhoYouCalling.ETW
                     }
                 case "EventID(3008)":
                     {
+
                         if (Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName))
                         {
                             string processName = Program.GetMonitoredProcessName(pid: data.ProcessID, processName: data.ProcessName);

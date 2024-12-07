@@ -15,7 +15,6 @@ using WhoYouCalling.ETW;
 using WhoYouCalling.Utilities.Arguments;
 using System.Text.Json.Serialization;
 
-
 /*
                                                                    ? 
                                                                    | 
@@ -207,9 +206,9 @@ namespace WhoYouCalling
             {
                 s_trackedMainPid = s_argumentData.TrackedProcessId;
                 AddProcessToMonitor(pid: s_trackedMainPid, commandLine: s_mainExecutableCommandLine);
+                s_mainExecutableProcessName = System.Diagnostics.Process.GetProcessById(s_trackedMainPid).ProcessName;
                 ConsoleOutput.Print($"Listening to PID {s_trackedMainPid}({s_mainExecutableProcessName})", PrintType.Info);
                 CatalogETWActivity(eventType: EventType.ProcessMonitor, processName: s_mainExecutableProcessName, processID: s_trackedMainPid);
-
             }
             else
             {
@@ -681,7 +680,7 @@ namespace WhoYouCalling
             string historyMsg = "";
           
             string uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: processID, processName: processName);
-            MonitoredProcess monitoredProcess = Program.GetMonitoredProcessWithUniqueProcessID(uniqueProcessIdentifier);
+            MonitoredProcess monitoredProcess = GetMonitoredProcessWithUniqueProcessID(uniqueProcessIdentifier);
 
             switch (eventType)
             {
@@ -857,6 +856,7 @@ namespace WhoYouCalling
 
             string uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: pid, processName: monitoredProcess.ProcessName);
 
+
             if (s_uniqueMonitoredProcessIdentifiers.ContainsKey(uniqueProcessIdentifier)) // PID and Process collision has occured. Remove OLD uniqueProcessIdentifier value
             {
                 s_uniqueMonitoredProcessIdentifiers.Remove(uniqueProcessIdentifier);
@@ -866,11 +866,11 @@ namespace WhoYouCalling
             {
                 s_monitoredProcessBackupProcessName.Add(pid, monitoredProcess.ProcessName);
             }
-
             monitoredProcess.ExecutableFileName = ProcessManager.GetProcessFileName(pid);
             s_monitoredProcesses.Add(monitoredProcess);
             int monitoredProcessesIndexPosition = s_monitoredProcesses.Count() - 1;
             s_uniqueMonitoredProcessIdentifiers.Add(uniqueProcessIdentifier, monitoredProcessesIndexPosition);
+
             if (s_monitoredProcessIdentifiers.ContainsKey(pid))
             {
                 s_monitoredProcessIdentifiers[pid].Add(monitoredProcessesIndexPosition);
