@@ -280,7 +280,7 @@ namespace WhoYouCalling
                 s_processesWithRecordedNetworkActivity = ProcessManager.GetNumberOfProcessesWithNetworkTraffic(s_monitoredProcesses);
 
 
-                if (!string.IsNullOrEmpty(computedCombinedBPFFilter))
+                if (!string.IsNullOrEmpty(computedCombinedBPFFilter) && !MonitorEverything())
                 {
                     string filteredPcapFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderAllProcessesFilteredPcapFileName}";
 
@@ -303,8 +303,10 @@ namespace WhoYouCalling
                     {
                         ConsoleOutput.Print($"Unable to filter the saved pcap with the combined BPF-filter of all processes: {ex.Message}", PrintType.Warning);
                     }
-
-
+                }
+                else
+                {
+                    ConsoleOutput.Print($"Not generating a combined process filter filtered pcap file", PrintType.Debug);
                 }
             }
             
