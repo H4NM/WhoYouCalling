@@ -88,7 +88,8 @@ Options:
   {MonitorEverythingFlagShort}, {MonitorEverythingFlagLong}    : Captures everything from everything.
   {InterfaceFlagShort}, {InterfaceFlagLong}     : The network interface number. Retrievable with the {GetInterfacesFlagShort}/{GetInterfacesFlagLong} flag.
   {GetInterfacesFlagShort}, {GetInterfacesFlagLong} : Prints the network interface devices with corresponding number (usually 0-10).
-  {TimerFlagShort}, {TimerFlagLong}         : The number of seconds the execute binary will run for. Is a double variable so can take floating-point values.
+  {TimerFlagShort}, {TimerFlagLong}         : The number of seconds to monitor. Is a double variable so can take floating-point values.
+                                              The monitoring duration may be longer when executing a binary which is due to ETW subscription timing.
   {KillChildProcessesFlagShort}, {KillChildProcessesFlagLong} : Used in conjunction with the timer in which the main process is killed. 
                         If full tracking flag is set, childprocesses are also killed.
   {NoPcapFlagShort}, {NoPcapFlagLong}        : Skips collecting packets from interface.

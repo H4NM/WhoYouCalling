@@ -72,9 +72,9 @@ WhoYouCalling.exe --PID 24037 --nopcap --json --output C:\Users\H4NM\AppData\Loc
 WhoYouCalling.exe -e C:\Users\H4NM\Desktop\sus.exe -t 60 -k -i 8 -o C:\Users\H4NM\Desktop
 ```
 
-**Execute firefox.exe and also monitor for other processes with the same executable name** (*This is especially needed if the main processes calls an already running process like `explorer.exe` to start a child process, if only the PID or executable is provided at start.*)
+**Execute firefox.exe and monitor for other processes with an including name pattern** (*This is especially needed if the main processes calls an already running process like `explorer.exe` to start a child process, if only the PID or executable is provided at start.*)
 ```
-WhoYouCalling.exe -e "C:\Program Files\Mozilla Firefox\firefox.exe" --nopcap --execnames "firefox.exe,svchost.exe,cmd.exe"
+WhoYouCalling.exe -e "C:\Program Files\Mozilla Firefox\firefox.exe" --nopcap --names "firefox.exe,svchost,cmd"
 ```
 
 ### Complementary Tools
@@ -137,6 +137,7 @@ bin\Release\net8.0\win-x64\WhoYouCalling.exe [arguments]...
 
 ### To Do:
 - Refactor. Lots and lots to refactor and make more tidy :) 
+- Add a summary text report
 
 ### Nice to have
 - Network graph visualizing the process tree and summarized network traffic by each process

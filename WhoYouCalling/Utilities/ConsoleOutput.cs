@@ -4,7 +4,7 @@ namespace WhoYouCalling.Utilities
 {
     internal static class ConsoleOutput
     {
-        public static void Print(string message, PrintType type = PrintType.Info)
+        public static void Print(string message, PrintType type = PrintType.Info, string spinner = "")
         {
             string prefix;
             switch (type)
@@ -25,7 +25,14 @@ namespace WhoYouCalling.Utilities
                     {
                         return;
                     }
-                    prefix = "[~]";
+                    if (!string.IsNullOrEmpty(spinner))
+                    {
+                        prefix = $"[{spinner}]";
+                    }
+                    else
+                    {
+                        prefix = "[~]";
+                    }
                     Console.Write($"\r{prefix} {message}");
                     return;
                 case PrintType.NetworkInterface:
@@ -57,13 +64,21 @@ namespace WhoYouCalling.Utilities
             Console.WriteLine($"{prefix} {message}");
         }
 
-        public static void PrintMetrics()
+        public static void PrintMetrics(CancellationToken token)
         {
-            int packetCount = Program.GetLivePacketCount();
-            int etwActivities = Program.GetETWActivityCount();
-            int dnsActivities = Program.GetDNSActivityCount();
-            int processCount = Program.GetProcessesCount();
-            Print($"Processes: {processCount}. ETW Events: {etwActivities}. DNS Queries: {dnsActivities}. Network Packets: {packetCount}", PrintType.RunningMetrics);
+            int spinnerIndex = 0;
+            while (!token.IsCancellationRequested) 
+            { 
+                int packetCount = Program.GetLivePacketCount();
+                int etwActivities = Program.GetETWActivityCount();
+                int dnsActivities = Program.GetDNSActivityCount();
+                int processCount = Program.GetProcessesCount();
+                Print($"Processes: {processCount}. ETW Events: {etwActivities}. DNS Queries: {dnsActivities}. Network Packets: {packetCount}", 
+                      PrintType.RunningMetrics, 
+                      spinner: Constants.Miscellaneous.SpinnerChars[spinnerIndex]);
+                spinnerIndex = (spinnerIndex + 1) % Constants.Miscellaneous.SpinnerChars.Count;
+                Thread.Sleep(Constants.Timeouts.ProcessMonitoringPrintPause);
+            }
         }
 
         public static void PrintMonitoredProcessOutputCounter(int activeCounter, int totalCounter)
