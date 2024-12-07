@@ -682,7 +682,16 @@ namespace WhoYouCalling
             string historyMsg = "";
           
             string uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: processID, processName: processName);
-            MonitoredProcess monitoredProcess = GetMonitoredProcessWithUniqueProcessID(uniqueProcessIdentifier);
+            MonitoredProcess monitoredProcess;
+            if (UniqueProcessIDIsMonitored(uniqueProcessIdentifier))
+            {
+                monitoredProcess = GetMonitoredProcessWithUniqueProcessID(uniqueProcessIdentifier);
+            }
+            else
+            {
+                ConsoleOutput.Print($"Unable to catalog {eventType} activity for {processName}({processID})", PrintType.Warning);
+                return;
+            }
 
             switch (eventType)
             {
