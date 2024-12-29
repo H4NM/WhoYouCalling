@@ -3,6 +3,7 @@ using Microsoft.Diagnostics.Tracing.Parsers.Kernel;
 using Microsoft.Diagnostics.Tracing.Session;
 using WhoYouCalling.Network;
 using WhoYouCalling.Process;
+using WhoYouCalling.Utilities;
 
 namespace WhoYouCalling.ETW
 {
@@ -153,6 +154,20 @@ namespace WhoYouCalling.ETW
                                             processID: data.ProcessID,
                                             processCommandLine: data.CommandLine);
             }
+            else if (Program.MonitorEverything())
+            {
+
+                string parentProcessName = ProcessManager.GetProcessFileName(data.ParentID);
+                Program.AddProcessToMonitor(pid: data.ParentID, processName: parentProcessName);
+                Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName, commandLine: data.CommandLine);
+
+                Program.CatalogETWActivity(eventType: EventType.StartedChildProcess,
+                                           parentProcessName: parentProcessName,
+                                           parentProcessID: data.ParentID,
+                                           processName: data.ProcessName,
+                                           processID: data.ProcessID,
+                                           processCommandLine: data.CommandLine);
+            }
             else if (Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ParentID))
             {
                 string parentProcessName = "";
@@ -187,7 +202,6 @@ namespace WhoYouCalling.ETW
                     parentProcessName = ProcessManager.GetPIDProcessName(data.ParentID);
                     Program.AddProcessToMonitor(pid: data.ParentID, processName: parentProcessName, commandLine: "");
                 }
-
                 Program.CatalogETWActivity(eventType: EventType.StartedChildProcess,
                                             parentProcessName: parentProcessName,
                                             parentProcessID: data.ParentID,
@@ -205,20 +219,6 @@ namespace WhoYouCalling.ETW
                                             processName: data.ProcessName,
                                             processID: data.ProcessID,
                                             processCommandLine: data.CommandLine);
-            }
-            else if (Program.MonitorEverything())
-            {
-                
-                string parentProcessName = ProcessManager.GetProcessFileName(data.ParentID);
-                Program.AddProcessToMonitor(pid: data.ParentID, processName: parentProcessName);
-                Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName, commandLine: data.CommandLine);
-
-                Program.CatalogETWActivity(eventType: EventType.StartedChildProcess,
-                                           parentProcessName: parentProcessName,
-                                           parentProcessID: data.ParentID,
-                                           processName: data.ProcessName,
-                                           processID: data.ProcessID,
-                                           processCommandLine: data.CommandLine);
             }
         }
 

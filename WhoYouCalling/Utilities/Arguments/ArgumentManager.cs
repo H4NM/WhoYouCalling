@@ -124,10 +124,6 @@ namespace WhoYouCalling.Utilities.Arguments
                     {
                         argumentData.SaveFullPcap = true;
                     }
-                    else if (args[i] == ArgumentFlags.OutputJSONFlagShort || args[i] == ArgumentFlags.OutputJSONFlagLong) 
-                    {
-                        argumentData.DumpResultsToJson = true;
-                    }
                     else if (args[i] == ArgumentFlags.OutputFolderFlagShort || args[i] == ArgumentFlags.OutputFolderFlagLong) 
                     {
                         if (i + 1 < args.Length)

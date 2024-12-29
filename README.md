@@ -4,8 +4,8 @@
 ![Groppy version](imgs/target_framework.svg)
 ![Groppy version](imgs/dependencies.svg)
 
-Monitors network activity made by a process through the use of [Windows Event Tracing (ETW)](https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/event-tracing-for-windows--etw-) and Full Packet Capture (FPC). Filters a generated .pcap file with BPF based on the detected network activity made by the process. 
-This application makes process network monitoring hella' easy.
+Monitors a process network activity using [Windows Event Tracing (ETW)](https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/event-tracing-for-windows--etw-) and Full Packet Capture (FPC). A packet capture file (.pcap) is generated and filtered based on the recorded TCPIP activity, allowing for a pcap file per process.  
+WhoYouCalling makes process network monitoring hella' easy.
 
 <details>
   <summary>"Why not just use ProcMon+Wireshark??"🤔🤔</summary>
@@ -18,22 +18,21 @@ However, there are some downsides:
 </details>
 
 ## Features: 
-- Can monitor every running process.
-- Can monitor a specific process.
-- Can start an executable and monitor it's process.
-- Can monitor additional related processes based on executable names.
-- Executables can be run as other users and in elevated and unelevated states. 
-- Creates a full packet capture .pcap file per process.
-- Records TCPIP activities made by a processes, IPv4 and IPv6.
-- Records DNS requests and responses made and retrieved by applications.
-- Creates Wireshark filter for domains queried via DNS with the DNS responses.
-- Can specify pcap filtering to only record TCPIP activity being sent from the process.
-- Can be automated with a timer.
-- By default all monitoring is applied to all spawned child processes.
-- Can kill spawned process and its childprocesses on stop. 
-- Process and DNS results can be exported to JSON.
-- Can generate a Wireshark DFL filter per process.
-- Can generate a BPF filter per process.
+- Start or monitor an already running process.
+- Monitor every running process simultaneously.
+- Create a full packet capture (.pcap) file per process.
+- Monitor processes based on process name.
+- Run executables as other users and in elevated and unelevated state. 
+- Record TCPIP activities, IPv4 and IPv6.
+- Record DNS requests and responses.
+- Create Wireshark filter based on DNS responses for domains.
+- Specify pcap filtering to only record TCPIP activity being sent from the process.
+- Timer for automated monitoring.
+- Monitoring is applied to all spawned child processes by default.
+- Spawned process and its childprocesses can be killed on stop. 
+- JSON output of results.
+- Generate a Wireshark DFL filter per process.
+- Generate a BPF filter per process.
 
 ## Usage:
 (*Must be run as administrator - for packet capture and listening to ETW*) 
@@ -42,7 +41,7 @@ However, there are some downsides:
 
 **Get a list of available interfaces to monitor**:
 ```
-WhoYouCalling.exe --getinterfaces
+wyc.exe --getinterfaces
 [*] Available interfaces:
  0) WAN Miniport (Network Monitor)
  1) WAN Miniport (IPv6)
@@ -54,27 +53,27 @@ WhoYouCalling.exe --getinterfaces
 
 **Capture every network and process activity from everything**:
 ```
-WhoYouCalling.exe --illuminate --interface 8
+wyc.exe --illuminate --interface 8
 ```
 
 **Execute a binary with arguments. Output the results to a folder on the user desktop**:
 ```
-WhoYouCalling.exe --execute C:\Users\H4NM\Desktop\TestApplication.exe --arguments "--pass=ETph0n3H0m3" --interface 4 --output C:\Users\H4NM\Desktop
+wyc.exe --execute C:\Users\H4NM\Desktop\TestApplication.exe --arguments "--pass=ETph0n3H0m3" --interface 4 --output C:\Users\H4NM\Desktop
 ```
 
-**Listen to process with PID 1337 and output the results to json. Skip packet capture**:
+**Listen to process with PID 24037 and skip packet capture**:
 ```
-WhoYouCalling.exe --PID 24037 --nopcap --json --output C:\Users\H4NM\AppData\Local\Temp
+wyc.exe --PID 24037 --nopcap --output C:\Users\H4NM\AppData\Local\Temp
 ```
 
 **Run sus.exe for 60 seconds with FPC on the 8th interface. When the timer expires, kill tracked processes - including child processes**:
 ```
-WhoYouCalling.exe -e C:\Users\H4NM\Desktop\sus.exe -t 60 -k -i 8 -o C:\Users\H4NM\Desktop
+wyc.exe -e C:\Users\H4NM\Desktop\sus.exe -t 60 -k -i 8 -o C:\Users\H4NM\Desktop
 ```
 
 **Execute firefox.exe and monitor for other processes with an including name pattern** (*This is especially needed if the main processes calls an already running process like `explorer.exe` to start a child process, if only the PID or executable is provided at start.*)
 ```
-WhoYouCalling.exe -e "C:\Program Files\Mozilla Firefox\firefox.exe" --nopcap --names "firefox.exe,svchost,cmd"
+wyc.exe -e "C:\Program Files\Mozilla Firefox\firefox.exe" --nopcap --names "firefox.exe,svchost,cmd"
 ```
 
 ### Complementary Tools
@@ -95,16 +94,15 @@ There are other tools that can compliment your quest of application network anal
 This project has been tested and works with .NET 8 with two nuget packages, and drivers for capturing network packets: 
 - FPC: 
   - [SharpCap](https://github.com/dotpcap/sharppcap)
-  - [npcap](https://npcap.com/#download)
+  - [npcap](https://npcap.com/#download) (*Optional - if full packet capture is not needed.*)
 - ETW: [Microsoft.Diagnostics.Tracing.TraceEvent](https://www.nuget.org/packages/Microsoft.Diagnostics.Tracing.TraceEvent/)
 
-*npcap is optional when running WhoYouCalling if packet capture is not needed*
 
 ### Installing/Compiling instructions
 Follow these steps for compiling from source:
 1. Make sure [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/install/windows) is installed
 
-2. Download and install [npcap](https://npcap.com/#download). It enables packet capture in Windows. It's not needed if the flag for not capturing packets is provided.
+2. (**Optional**) - Download and install [npcap](https://npcap.com/#download). It enables packet capture in Windows. It's not needed if the flag for not capturing packets is provided.
 
 3. Download this repo
 ```
@@ -128,9 +126,8 @@ dotnet publish -c Release -r win-(x64 or x86) --self-contained true
 
 7. Run
 ```
-bin\Release\net8.0\win-x64\WhoYouCalling.exe [arguments]...
+bin\Release\net8.0\win-x64\wyc.exe [arguments]...
 ```
-
 
 
 # 🐛 Bugs or Requests? ✨ Create an issue! 🚀
@@ -141,3 +138,5 @@ bin\Release\net8.0\win-x64\WhoYouCalling.exe [arguments]...
 
 ### Nice to have
 - Network graph visualizing the process tree and summarized network traffic by each process
+- IP and domain name lookup option to get reputation
+- Process network redirect to proxy for TLS inspection

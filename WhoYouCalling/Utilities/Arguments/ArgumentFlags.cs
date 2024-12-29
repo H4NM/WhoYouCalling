@@ -52,9 +52,6 @@ namespace WhoYouCalling.Utilities.Arguments
         public const string OutputFolderFlagShort = "-o";
         public const string OutputFolderFlagLong = "--output";
 
-        public const string OutputJSONFlagShort = "-j";
-        public const string OutputJSONFlagLong = "--json";
-
         public const string OutputBPFFlagShort = "-B";
         public const string OutputBPFFlagLong = "--outputbpf";
 
@@ -85,18 +82,19 @@ Options:
                         The PPID of the main firefox instance belongs to explorer.exe, which is 
                         an already running process, meaning that following a PPID/PID trail misses the process.
                         the provided names match as a part of the process name or executable file name. Is case insensitive.
-  {MonitorEverythingFlagShort}, {MonitorEverythingFlagLong}    : Captures everything from everything.
+  {MonitorEverythingFlagShort}, {MonitorEverythingFlagLong}    : Captures everything from everything. 
+                        Good for incident response or just checking what the heck your computer is doing. 
+                        Can be used with pcap capture (Experimental).
   {InterfaceFlagShort}, {InterfaceFlagLong}     : The network interface number. Retrievable with the {GetInterfacesFlagShort}/{GetInterfacesFlagLong} flag.
   {GetInterfacesFlagShort}, {GetInterfacesFlagLong} : Prints the network interface devices with corresponding number (usually 0-10).
   {TimerFlagShort}, {TimerFlagLong}         : The number of seconds to monitor. Is a double variable so can take floating-point values.
-                                              The monitoring duration may be longer when executing a binary which is due to ETW subscription timing.
+                        The monitoring duration may be longer when executing a binary which is due to ETW subscription timing.
   {KillChildProcessesFlagShort}, {KillChildProcessesFlagLong} : Used in conjunction with the timer in which the main process is killed. 
                         If full tracking flag is set, childprocesses are also killed.
   {NoPcapFlagShort}, {NoPcapFlagLong}        : Skips collecting packets from interface.
   {StrictFilterFlagShort}, {StrictFilterFlagLong}  : Only generates a BPF filter based of recorded traffic that was sent by processes. 
                         This excludes received traffic in the .pcap files.
   {SaveFullPcapFlagShort}, {SaveFullPcapFlagLong}  : Does not delete the full pcap thats not filtered.
-  {OutputJSONFlagShort}, {OutputJSONFlagLong}          : If the process information should be dumped to json file.
   {OutputFolderFlagShort}, {OutputFolderFlagLong}        : Output directory, full path.
   {OutputBPFFlagShort}, {OutputBPFFlagLong}     : Write the applied BPF-filter to text file.
   {OutputDFLFlagShort}, {OutputDFLFlagLong}     : Write the equivalent Wireshark Display Filter to text file. 

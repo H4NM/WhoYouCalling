@@ -4,6 +4,8 @@ using System.Text;
 using WhoYouCalling.Utilities;
 using WhoYouCalling.Win32;
 using System.Security;
+using Microsoft.Diagnostics.Tracing.StackSources;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace WhoYouCalling.Process
@@ -51,7 +53,24 @@ namespace WhoYouCalling.Process
             }
             catch
             {
-                return Constants.Miscellaneous.ProcessDefaultNameAtError;
+                if (Program.IsMonitoredProcess(pid: pid))
+                {
+                    string processName = "";
+                    if (Program.MonitoredProcessCanBeRetrievedWithPID(pid))
+                    {
+                        processName = Program.GetMonitoredProcessWithPID(pid).ProcessName;
+                    }
+                    else
+                    {
+                        processName = Program.GetBackupProcessName(pid);
+                    }
+                    return processName;
+                }
+                else
+                {
+                    ConsoleOutput.Print($"Setting default process name for PID {pid}", PrintType.Debug);
+                    return Constants.Miscellaneous.ProcessDefaultNameAtError;
+                }
             }
         }
 

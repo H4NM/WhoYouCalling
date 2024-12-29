@@ -1,4 +1,8 @@
 ﻿
+using System.Text.Json.Serialization;
+using System.Text.Json;
+using WhoYouCalling.Process;
+
 namespace WhoYouCalling.Utilities
 {
     internal static class FileAndFolders
@@ -32,6 +36,20 @@ namespace WhoYouCalling.Utilities
         {
             File.WriteAllText(filePath, text);
         }
+
+        public static void CreateJSONFileFromResults(string filePath, List<MonitoredProcess> monitoredProcesses)
+        {
+            var options = new JsonSerializerOptions
+            {
+                Converters = { new JsonStringEnumConverter() },
+                WriteIndented = true
+            };
+
+            ConsoleOutput.Print($"Creating json results file for process results \"{filePath}\"", PrintType.Debug);
+            string jsonProcessString = JsonSerializer.Serialize(monitoredProcesses, options);
+            File.WriteAllText(filePath, jsonProcessString);
+        }
+
         public static void DeleteFile(string file)
         {
             if (File.Exists(file))

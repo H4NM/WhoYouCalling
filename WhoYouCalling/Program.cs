@@ -58,7 +58,6 @@ namespace WhoYouCalling
         private static string s_fullPcapFile = "";
         private static string s_etwHistoryFile = "";
         private static string s_jsonResultsFile = "";
-        private static string s_jsonDNSFile = "";
 
         private static DateTime s_startTime;
 
@@ -116,7 +115,6 @@ namespace WhoYouCalling
             s_fullPcapFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderEntirePcapFileName}";
             s_etwHistoryFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderETWHistoryFileName}";
             s_jsonResultsFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderJSONProcessDetailsFileName}";
-            s_jsonDNSFile = @$"{s_rootFolderName}\{Constants.FileNames.RootFolderJSONDNSResponseFileName}";
 
             ConsoleOutput.Print($"Starting monitoring...", PrintType.Info);
             s_startTime = DateTime.Now;
@@ -437,21 +435,9 @@ namespace WhoYouCalling
                 ConsoleOutput.Print("Not creating ETW history file since no activity was recorded", PrintType.Warning);
             }
 
-            if (s_argumentData.DumpResultsToJson)
-            {
-                var options = new JsonSerializerOptions { 
-                                                          Converters = { new JsonStringEnumConverter() }, 
-                                                          WriteIndented = true 
-                                                        };
 
-                ConsoleOutput.Print($"Creating json results file for process results \"{s_jsonResultsFile}\"", PrintType.Debug);
-                string jsonProcessString = JsonSerializer.Serialize(s_monitoredProcesses, options);
-                File.WriteAllText(s_jsonResultsFile, jsonProcessString);
-            }
-            else
-            {
-                ConsoleOutput.Print($"Not creating json results file \"{s_jsonResultsFile}\"", PrintType.Debug);
-            }
+            FileAndFolders.CreateJSONFileFromResults(s_jsonResultsFile, s_monitoredProcesses);
+
             var endTime = DateTime.Now;
             string monitorDuration = Generic.GetPresentableDuration(s_startTime, endTime);
             ConsoleOutput.Print($"Finished! Monitor duration: {monitorDuration}. Results are in the folder {s_rootFolderName}", PrintType.InfoTime);
@@ -668,14 +654,14 @@ namespace WhoYouCalling
 
 
         public static void CatalogETWActivity(string processName = "N/A",
-                                             string parentProcessName = "N/A",
-                                             string processCommandLine = "",
-                                             int processID = 0,
-                                             int parentProcessID = 0,
-                                             EventType eventType = EventType.Network,
-                                             ConnectionRecord connectionRecord = new(),
-                                             DNSResponse dnsResponse = new(),
-                                             DNSQuery dnsQuery = new())
+                                              string parentProcessName = "N/A",
+                                              string processCommandLine = "",
+                                              int processID = 0,
+                                              int parentProcessID = 0,
+                                              EventType eventType = EventType.Network,
+                                              ConnectionRecord connectionRecord = new(),
+                                              DNSResponse dnsResponse = new(),
+                                              DNSQuery dnsQuery = new())
         {
 
             string timestamp = Generic.GetTimestampNow();
@@ -689,8 +675,29 @@ namespace WhoYouCalling
             }
             else
             {
-                ConsoleOutput.Print($"Unable to catalog {eventType} activity for {processName}({processID})", PrintType.Warning);
-                return;
+                if (string.IsNullOrEmpty(processName))
+                {
+                    processName = ProcessManager.GetPIDProcessName(pid: processID);
+                    if (processName == Constants.Miscellaneous.ProcessDefaultNameAtError)
+                    {
+                        processName = GetBackupProcessName(pid: processID);
+                    }
+                    uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: processID, processName: processName);
+                    if (UniqueProcessIDIsMonitored(uniqueProcessIdentifier))
+                    {
+                        monitoredProcess = GetMonitoredProcessWithUniqueProcessID(uniqueProcessIdentifier);
+                    }
+                    else
+                    {
+                        ConsoleOutput.Print($"Unable to catalog \"{eventType}\" activity for process \"{processName}\" with PID \"{processID}\"", PrintType.Warning);
+                        return;
+                    }
+                }
+                else
+                {
+                    ConsoleOutput.Print($"Unable to catalog \"{eventType}\" activity for process \"{processName}\" with PID \"{processID}\"", PrintType.Warning);
+                    return;
+                }
             }
 
             switch (eventType)
@@ -949,7 +956,7 @@ namespace WhoYouCalling
             else
             {
                 string uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: pid, processName: processName);
-                if (Program.UniqueProcessIDIsMonitored(uniqueProcessIdentifier))
+                if (UniqueProcessIDIsMonitored(uniqueProcessIdentifier))
                 {
                     return true;
                 }

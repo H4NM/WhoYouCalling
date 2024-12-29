@@ -39,13 +39,13 @@ namespace WhoYouCalling.Utilities
                     prefix = "";
                     break;
                 case PrintType.Warning:
-                    prefix = "[!]";
+                    prefix = "\n[!]";
                     break;
                 case PrintType.Error:
-                    prefix = "[?]";
+                    prefix = "\n[?]";
                     break;
                 case PrintType.Fatal:
-                    prefix = "[!!!]";
+                    prefix = "\n[!!!]";
                     break;
                 case PrintType.Debug:
                     if (Program.Debug())

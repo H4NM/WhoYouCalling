@@ -35,7 +35,6 @@ namespace WhoYouCalling.Utilities.Arguments
         public bool KillProcesses { get; set; }
         public bool SaveFullPcap { get; set; }
         public bool NoPacketCapture { get; set; }
-        public bool DumpResultsToJson { get; set; }
         public bool StrictCommunicationEnabled { get; set; }
         public bool OutputBPFFilter { get; set; }
         public bool OutputWiresharkFilter { get; set; }
