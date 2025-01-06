@@ -1,8 +1,6 @@
-﻿using PacketDotNet;
-using WhoYouCalling.Network;
+﻿using WhoYouCalling.Network;
 using WhoYouCalling.Network.DNS;
 using WhoYouCalling.Process;
-using WhoYouCalling.Utilities;
 
 namespace WhoYouCalling.Summary
 {
@@ -56,10 +54,10 @@ namespace WhoYouCalling.Summary
             MostCommonConnections = GetFiveMostCommonConnections(destinationPortsAndProtocol, maxNumberOfPorts: 5);
             NumberOfUniqueDomainsQueried = uniqueDomains.Count;
         }
-
         private static string GetFullWYCCommandLine()
         {
-            return Environment.CommandLine;
+            string[] commandLineArgs = Environment.GetCommandLineArgs();
+            return $"wyc.exe {string.Join(" ", commandLineArgs, 1, commandLineArgs.Length - 1)}"; 
         }
         private static string GetTLDText(HashSet<string> uniqueDomains)
         {
