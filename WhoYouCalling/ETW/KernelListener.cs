@@ -1,6 +1,7 @@
 ﻿using Microsoft.Diagnostics.Tracing.Parsers;
 using Microsoft.Diagnostics.Tracing.Parsers.Kernel;
 using Microsoft.Diagnostics.Tracing.Session;
+using Microsoft.Diagnostics.Tracing.StackSources;
 using WhoYouCalling.Network;
 using WhoYouCalling.Process;
 using WhoYouCalling.Utilities;
@@ -50,8 +51,14 @@ namespace WhoYouCalling.ETW
                 DestinationPort = data.dport
             };
 
+            string processName = data.ProcessName;
+            if (string.IsNullOrEmpty(data.ProcessName))
+            {
+                processName = ProcessManager.GetPIDProcessName(data.ProcessID);
+            }
+
             Program.CatalogETWActivity(eventType: EventType.Network,
-                                       processName: data.ProcessName,
+                                       processName: processName,
                                        processID: data.ProcessID,
                                        connectionRecord: connectionRecord);
         }
@@ -122,7 +129,7 @@ namespace WhoYouCalling.ETW
                 else
                 {
                     string initialProcessName = ProcessManager.GetPIDProcessName(data.ParentID);
-                    parentProcessName = initialProcessName == Constants.Miscellaneous.ProcessDefaultNameAtError
+                    parentProcessName = initialProcessName == Constants.Miscellaneous.UnmappedProcessDefaultName
                         ? Program.GetBackupProcessName(data.ParentID)
                         : initialProcessName;
 
@@ -136,10 +143,13 @@ namespace WhoYouCalling.ETW
                         monitoredParentProcess = new(); // Redundant and is only used to catch when adding the child process. Otherwise this will be caught by gc
                     }
                 }
-
                 Program.AddChildPID(data.ProcessID); // Used for killing child processes
-                Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName, commandLine: data.CommandLine);
-                
+                if (!Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName)) // This is to deal with race conditions as the DNS ETW registers before process starts sometimes, where it is added before the actua
+                {
+                    Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName, commandLine: data.CommandLine);
+                }
+
+
                 monitoredParentProcess.ChildProcesses.Add(new ChildProcessInfo
                 {
                     ProcessID = data.ProcessID,
@@ -156,11 +166,12 @@ namespace WhoYouCalling.ETW
             }
             else if (Program.MonitorEverything())
             {
-
-                string parentProcessName = ProcessManager.GetProcessFileName(data.ParentID);
+                string parentProcessName = ProcessManager.GetPIDProcessName(data.ParentID);
                 Program.AddProcessToMonitor(pid: data.ParentID, processName: parentProcessName);
-                Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName, commandLine: data.CommandLine);
-
+                if (!Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName)) // This is to deal with race conditions as the DNS ETW registers before process starts sometimes, where it is added before the actua
+                {
+                    Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName, commandLine: data.CommandLine);
+                }
                 Program.CatalogETWActivity(eventType: EventType.StartedChildProcess,
                                            parentProcessName: parentProcessName,
                                            parentProcessID: data.ParentID,
@@ -168,51 +179,13 @@ namespace WhoYouCalling.ETW
                                            processID: data.ProcessID,
                                            processCommandLine: data.CommandLine);
             }
-            else if (Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ParentID))
+            else if (Program.TrackProcessesByName() && (Program.IsTrackedProcessByName(pid: data.ParentID) || Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)))
             {
-                string parentProcessName = "";
-                if (Program.IsMonitoredProcess(data.ParentID))
+                string parentProcessName = ProcessManager.GetPIDProcessName(data.ParentID);
+                if (!Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName)) // This is to deal with race conditions as the DNS ETW registers before process starts sometimes, where it is added before the actua
                 {
-                    MonitoredProcess monitoredParentProcess;
-                    if (Program.MonitoredProcessCanBeRetrievedWithPID(data.ParentID))
-                    {
-                        monitoredParentProcess = Program.GetMonitoredProcessWithPID(data.ParentID);
-                        parentProcessName = monitoredParentProcess.ProcessName;
-                    }
-                    else
-                    {
-                        string initialProcessName = ProcessManager.GetPIDProcessName(data.ParentID);
-                        parentProcessName = initialProcessName == Constants.Miscellaneous.ProcessDefaultNameAtError
-                            ? Program.GetBackupProcessName(data.ProcessID)
-                            : initialProcessName;
-
-                        string uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: data.ParentID, processName: parentProcessName);
-                        if (Program.UniqueProcessIDIsMonitored(uniqueProcessIdentifier))
-                        {
-                            monitoredParentProcess = Program.GetMonitoredProcessWithUniqueProcessID(uniqueProcessIdentifier);
-                        }
-                        else
-                        {
-                            monitoredParentProcess = new(); // will be caught by gc
-                        }
-                    }
+                    Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName, commandLine: data.CommandLine);
                 }
-                else
-                {
-                    parentProcessName = ProcessManager.GetPIDProcessName(data.ParentID);
-                    Program.AddProcessToMonitor(pid: data.ParentID, processName: parentProcessName, commandLine: "");
-                }
-                Program.CatalogETWActivity(eventType: EventType.StartedChildProcess,
-                                            parentProcessName: parentProcessName,
-                                            parentProcessID: data.ParentID,
-                                            processName: data.ProcessName,
-                                            processID: data.ProcessID,
-                                            processCommandLine: data.CommandLine);
-            }
-            else if(Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName))
-            {
-                string parentProcessName = ProcessManager.GetProcessFileName(data.ParentID);
-                Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName, commandLine: data.CommandLine);
                 Program.CatalogETWActivity(eventType: EventType.StartedChildProcess,
                                             parentProcessName: parentProcessName,
                                             parentProcessID: data.ParentID,
@@ -224,10 +197,10 @@ namespace WhoYouCalling.ETW
 
         private void ProcessStop(ProcessTraceData data)
         {
-            if (Program.IsMonitoredProcess(data.ProcessID)) // Main or child process stopped
+            if (Program.IsMonitoredProcess(data.ProcessID))
             {
                 string processName = "";
-         
+
                 if (Program.MonitoredProcessCanBeRetrievedWithPID(data.ProcessID))
                 {
                     processName = Program.GetMonitoredProcessWithPID(data.ProcessID).ProcessName;
@@ -235,17 +208,16 @@ namespace WhoYouCalling.ETW
                 else
                 {
                     processName = Program.GetBackupProcessName(data.ProcessID);
-                    Program.DeleteOldBackupProcessName(data.ProcessID);
-                    Program.DeleteProcessIDIndex(data.ProcessID);
+                    Program.DeleteOldBackupProcessName(data.ProcessID); 
+                }
+                if (!Program.IsMonitoredProcess(data.ProcessID, processName: processName)) // Required in the rare race condition instances where duplicate PIDs are registered but not cleared and 
+                {
+                    return;
                 }
                 Program.CatalogETWActivity(eventType: EventType.ProcessStop,
                                            processName: processName,
                                            processID: data.ProcessID);
 
-                if (Program.IsTrackedChildPID(data.ProcessID)) // A redundant check to ensure that the PID is only removed after calling CatalogETWActivity to ensure any possible
-                {                                              // Lookups are not affected 
-                    Program.RemoveChildPID(data.ProcessID);
-                }
             }
         }
     }

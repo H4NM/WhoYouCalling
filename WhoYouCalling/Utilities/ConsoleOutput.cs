@@ -80,14 +80,31 @@ namespace WhoYouCalling.Utilities
                 Thread.Sleep(Constants.Timeouts.ProcessMonitoringPrintPause);
             }
         }
-
-        public static void PrintMonitoredProcessOutputCounter(int activeCounter, int totalCounter)
+        public static void PrintMonitoredProcessOutputCounter(CancellationToken token, int processesWithNetworkActivity)
         {
-            string msg = $"Filtering processess {activeCounter}/{totalCounter}";
-            Print(msg, PrintType.RunningMetrics); 
-            if (activeCounter == totalCounter)
+            int spinnerIndex = 0;
+            while (!token.IsCancellationRequested)
             {
-                Print($"\n", PrintType.RunningMetrics);
+                int processOutputCounter = Program.GetProcessOutputCounter();
+                Print($"Filtering {processesWithNetworkActivity} processes",
+                      PrintType.RunningMetrics,
+                      spinner: Constants.Miscellaneous.SpinnerChars[spinnerIndex]);
+                spinnerIndex = (spinnerIndex + 1) % Constants.Miscellaneous.SpinnerChars.Count;
+                Thread.Sleep(Constants.Timeouts.ProcessMonitoringPrintPause);
+            }
+        }
+
+        public static void PrintBPFFilterValidation(CancellationToken token)
+        {
+            int spinnerIndex = 0;
+            while (!token.IsCancellationRequested)
+            {
+
+                Print($"Validating BPF filter",
+                      PrintType.RunningMetrics,
+                      spinner: Constants.Miscellaneous.SpinnerChars[spinnerIndex]);
+                spinnerIndex = (spinnerIndex + 1) % Constants.Miscellaneous.SpinnerChars.Count;
+                Thread.Sleep(Constants.Timeouts.ProcessMonitoringPrintPause);
             }
         }
 

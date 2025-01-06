@@ -57,7 +57,8 @@ namespace WhoYouCalling.Utilities.Arguments
                             bool runExecutableWithHighPrivilege = false,
                             string outputDirectory = "",
                             string userName = "",
-                            string password = "")
+                            string password = "",
+                            string executableArguments = "")
         {
             this.ExecutableFlagSet = executableFlagSet;
             this.ExecutableArgsFlagSet = executableArgsFlagSet;
@@ -76,6 +77,7 @@ namespace WhoYouCalling.Utilities.Arguments
             this.UserPassword = password;
             this.MonitorEverythingFlagSet = monitorEverythingFlagSet;
             this.Debug = debug;
+            this.ExecutableArguments = executableArguments;
         }
     }
 }

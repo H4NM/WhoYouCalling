@@ -10,7 +10,7 @@ namespace WhoYouCalling.Utilities
         public static string GetProcessFolderNameIncremented(string directoryPath, string processFolderName)
         {
             var directories = Directory.GetDirectories(directoryPath, processFolderName + "*");
-            return $"{processFolderName} - {directories.Length}";
+            return $"{processFolderName} - {directories.Length + 1}";
         }
         public static bool FolderExists(string directoryPath)
         {
@@ -35,19 +35,6 @@ namespace WhoYouCalling.Utilities
         public static void CreateTextFileString(string filePath, string text)
         {
             File.WriteAllText(filePath, text);
-        }
-
-        public static void CreateJSONFileFromResults(string filePath, List<MonitoredProcess> monitoredProcesses)
-        {
-            var options = new JsonSerializerOptions
-            {
-                Converters = { new JsonStringEnumConverter() },
-                WriteIndented = true
-            };
-
-            ConsoleOutput.Print($"Creating json results file for process results \"{filePath}\"", PrintType.Debug);
-            string jsonProcessString = JsonSerializer.Serialize(monitoredProcesses, options);
-            File.WriteAllText(filePath, jsonProcessString);
         }
 
         public static void DeleteFile(string file)

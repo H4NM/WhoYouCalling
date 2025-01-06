@@ -4,8 +4,8 @@ using System.Text;
 using WhoYouCalling.Utilities;
 using WhoYouCalling.Win32;
 using System.Security;
-using Microsoft.Diagnostics.Tracing.StackSources;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using WhoYouCalling.Network;
+using WhoYouCalling.Network.DNS;
 
 
 namespace WhoYouCalling.Process
@@ -69,7 +69,7 @@ namespace WhoYouCalling.Process
                 else
                 {
                     ConsoleOutput.Print($"Setting default process name for PID {pid}", PrintType.Debug);
-                    return Constants.Miscellaneous.ProcessDefaultNameAtError;
+                    return Constants.Miscellaneous.UnmappedProcessDefaultName;
                 }
             }
         }
@@ -88,12 +88,53 @@ namespace WhoYouCalling.Process
             ConsoleOutput.Print($"Unable to find process with pid {pid}", PrintType.Debug);
             return false;
         }
- 
-        public static string GetProcessFileName(int pid)
+
+        public static void MergeMonitoredProcesses(MonitoredProcess target, MonitoredProcess source)
         {
-
-            string processName = "";
-
+            if (target.ExecutableFileName == null && source.ExecutableFileName != null)
+            {
+                target.ExecutableFileName = source.ExecutableFileName;
+            }
+            if (target.ProcessStartTime == null && source.ProcessStartTime != null)
+            {
+                target.ProcessStartTime = source.ProcessStartTime;
+            }
+            if (target.ProcessStopTime == null && source.ProcessStopTime != null)
+            {
+                target.ProcessStopTime = source.ProcessStopTime;
+            }
+            if (source.ChildProcesses.Count > 0)
+            {
+                foreach (ChildProcessInfo childProcessInfo in source.ChildProcesses)
+                {
+                    target.ChildProcesses.Add(childProcessInfo);
+                }
+            }
+            if (source.TCPIPTelemetry.Count > 0)
+            {
+                foreach (ConnectionRecord connectionRecord in source.TCPIPTelemetry)
+                {
+                    target.TCPIPTelemetry.Add(connectionRecord);
+                }
+            }
+            if (source.DNSQueries.Count > 0)
+            {
+                foreach (DNSQuery dnsQuery in source.DNSQueries)
+                {
+                    target.DNSQueries.Add(dnsQuery);
+                }
+            }
+            if (source.DNSResponses.Count > 0)
+            {
+                foreach (DNSResponse dnsResponse in source.DNSResponses)
+                {
+                    target.DNSResponses.Add(dnsResponse);
+                }
+            }
+        }
+        public static string? GetProcessFileName(int pid)
+        {
+            string processFileName = "";
             try
             {
                 System.Diagnostics.Process process = System.Diagnostics.Process.GetProcessById(pid);
@@ -102,16 +143,15 @@ namespace WhoYouCalling.Process
                 if (Win32.WinAPI.QueryFullProcessImageName(process.Handle, 0, buffer, ref size))
                 {
                     string executableFullPath = buffer.ToString();
-                    return Path.GetFileName(executableFullPath);
+                    processFileName = Path.GetFileName(executableFullPath);
                 }
             }
             catch (Exception ex)
             {
-                processName = GetPIDProcessName(pid);
-                ConsoleOutput.Print($"Error when retrieving executable filename from PID: {ex.Message}. Using its Process name instead - {processName}", PrintType.Debug);
+                processFileName = null;
+                ConsoleOutput.Print($"Error when retrieving executable filename from PID: {ex.Message}.", PrintType.Debug);
             }
-
-            return processName;
+            return processFileName;
         }
       
         public static void KillProcess(int pid)

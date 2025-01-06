@@ -102,15 +102,13 @@ namespace WhoYouCalling.ETW
                             string processName = Program.GetMonitoredProcessName(pid: data.ProcessID, processName: data.ProcessName);
                             ProcessDnsQuery(data, processName);
                         }
-                        else if ((Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)) || Program.MonitorEverything())
+                        else if (Program.MonitorEverything() || (Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)))
                         {
                             string processName = Program.GetNewProcessName(pid: data.ProcessID, processName: data.ProcessName);
 
-                            Program.AddProcessToMonitor(pid: data.ProcessID, processName: processName);
-
-                            if (string.IsNullOrEmpty(processName) || processName == Constants.Miscellaneous.ProcessDefaultNameAtError)
+                            if (!Program.IsMonitoredProcess(pid: data.ProcessID, processName: processName)) // This is to deal with race conditions as the DNS ETW registers before process starts sometimes, where it is added before the actua
                             {
-                                processName = Program.GetBackupProcessName(data.ProcessID);
+                                Program.AddProcessToMonitor(pid: data.ProcessID, processName: processName);
                             }
 
                             ProcessDnsQuery(data, processName);
@@ -125,16 +123,13 @@ namespace WhoYouCalling.ETW
                             string processName = Program.GetMonitoredProcessName(pid: data.ProcessID, processName: data.ProcessName);
                             ProcessDnsResponse(data, processName);
                         }
-                        else if ((Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)) || Program.MonitorEverything())
+                        else if (Program.MonitorEverything() || (Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)))
                         {
-
                             string processName = Program.GetNewProcessName(pid: data.ProcessID, processName: data.ProcessName);
 
-                            Program.AddProcessToMonitor(pid: data.ProcessID, processName: processName);
-
-                            if (string.IsNullOrEmpty(processName) || processName == Constants.Miscellaneous.ProcessDefaultNameAtError)
+                            if (!Program.IsMonitoredProcess(pid: data.ProcessID, processName: processName)) // This is to deal with race conditions as the DNS ETW registers before process starts sometimes, where it is added before the actua
                             {
-                                processName = Program.GetBackupProcessName(data.ProcessID);
+                                Program.AddProcessToMonitor(pid: data.ProcessID, processName: processName);
                             }
 
                             ProcessDnsResponse(data, processName);

@@ -10,6 +10,8 @@ namespace WhoYouCalling.Constants
         public const string RootFolderBPFFilterFileName = "Combined BPF-filter.txt";
         public const string RootFolderETWHistoryFileName = "Events.txt";
         public const string RootFolderJSONProcessDetailsFileName = "Result.json";
+        public const string RootFolderSummaryProcessDetailsFileName = "Summary.txt";
+
 
         //// Per Process
         public const string ProcessFolderPcapFileName = "Packet capture.pcap";

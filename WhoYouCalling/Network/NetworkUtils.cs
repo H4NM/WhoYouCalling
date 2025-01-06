@@ -1,5 +1,4 @@
 ﻿
-using System.Collections.Generic;
 using System.Net;
 using System.Text.RegularExpressions;
 using WhoYouCalling.Network.DNS;
@@ -9,7 +8,17 @@ namespace WhoYouCalling.Network
 {
     internal class NetworkUtils
     {
-
+        public static bool IsLocalhostIP(string ip)
+        {
+            if (ip == "127.0.0.1" || ip == "::1")
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
         public static Dictionary<ConnectionRecordType, List<string>> GetPresentableConnectionRecordsFormat(Dictionary<ConnectionRecordType, HashSet<string>> networkDetails)
         {
             Dictionary<ConnectionRecordType, List<string>> sortedNetworkDetailsAsList = new();
@@ -21,8 +30,20 @@ namespace WhoYouCalling.Network
             return sortedNetworkDetailsAsList;
         }
 
+        public static bool DNSResponsesContainsAdresses(HashSet<DNSResponse> dnsResponses)
+        {
+            foreach (DNSResponse dnsResponse in dnsResponses)
+            {
+                HashSet<ConnectionRecord> domainIPAdresses = GetNetworkAdressesFromDNSResponse(dnsResponse);
+                if (domainIPAdresses.Count() > 0)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
             
-    public static Dictionary<ConnectionRecordType, HashSet<string>> FilterConnectionRecords(HashSet<ConnectionRecord> tcpIPTelemetry)
+        public static Dictionary<ConnectionRecordType, HashSet<string>> FilterConnectionRecords(HashSet<ConnectionRecord> tcpIPTelemetry)
         {
             Dictionary<ConnectionRecordType, HashSet<string>> filteredConnectionRecords = new Dictionary<ConnectionRecordType, HashSet<string>> {
                                                     {ConnectionRecordType.IPv4TCP, new HashSet<string>()},

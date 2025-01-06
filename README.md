@@ -22,7 +22,7 @@ However, there are some downsides:
 - Monitor every running process simultaneously.
 - Create a full packet capture (.pcap) file per process.
 - Monitor processes based on process name.
-- Run executables as other users and in elevated and unelevated state. 
+- Run executables as other users and in elevated or unelevated state. 
 - Record TCPIP activities, IPv4 and IPv6.
 - Record DNS requests and responses.
 - Create Wireshark filter based on DNS responses for domains.
@@ -58,7 +58,7 @@ wyc.exe --illuminate --interface 8
 
 **Execute a binary with arguments. Output the results to a folder on the user desktop**:
 ```
-wyc.exe --execute C:\Users\H4NM\Desktop\TestApplication.exe --arguments "--pass=ETph0n3H0m3" --interface 4 --output C:\Users\H4NM\Desktop
+wyc.exe --executable C:\Users\H4NM\Desktop\TestApplication.exe --arguments "--pass=ETph0n3H0m3" --interface 4 --output C:\Users\H4NM\Desktop
 ```
 
 **Listen to process with PID 24037 and skip packet capture**:
@@ -84,7 +84,7 @@ There are other tools that can compliment your quest of application network anal
 - [Windows Sandbox](https://learn.microsoft.com/en-us/windows/security/application-security/application-isolation/windows-sandbox/windows-sandbox-overview): A simple and native sandbox in Windows. I strongly recommend using a sandbox or VM when when executing unknown applications. There's also the possibility of adding your own configuration for the Windows Sandbox to harden it a bit further or include WhoYouCalling with the sandbox on start. See more [here](https://learn.microsoft.com/en-us/windows/security/application-security/application-isolation/windows-sandbox/windows-sandbox-configure-using-wsb-file)
 
 ### Limitations
-- **DNS**: In ETW, `Microsoft-Windows-DNS-Client` only logs A and AAAA queries, neglecting other DNS query types such as PTR, TXT, MX, SOA etc. It does capture CNAME and it's respective adresses, which are part of the DNS response. However, with the FPC the requests are captured either way, just not portrayed as in registered DNS traffic by the application.
+- **DNS**: In ETW, `Microsoft-Windows-DNS-Client` only logs A and AAAA queries, neglecting other DNS query types such as PTR, TXT, MX, SOA etc. It does capture CNAME and it's respective adresses, which are part of the DNS response. However, with the FPC the requests are captured either way, just not portrayed as in registered DNS traffic by the application. The FPC and registered TCPIP activity helps identify processes that do not utilize **Windows DNS Client Service** (e.g. `nslookup`) since they're not logged in the DNS ETW.
 - **Execution integrity**: It's currently not possible to delegate the privilege of executing applications in an elevated state to other users, meaning that if you want to run the application elevated you need to be signed in as the user with administrator rights.   
   Since WhoYouCalling requires elevated privileges to run (*ETW + FPC*), spawned processes naturally inherits the security token making them also posess the same integrity level - and .NET api does not work too well with creating less privileged processes from an already elevated state.
   The best and most reliable approach was to duplicate the low privileged token of the desktop shell in an interactive logon (explorer.exe).
@@ -98,33 +98,41 @@ This project has been tested and works with .NET 8 with two nuget packages, and 
 - ETW: [Microsoft.Diagnostics.Tracing.TraceEvent](https://www.nuget.org/packages/Microsoft.Diagnostics.Tracing.TraceEvent/)
 
 
+- ### Installing/Compiling Instructions
+
+Follow these steps to compile and run the project from source:
+
 ### Installing/Compiling instructions
 Follow these steps for compiling from source:
-1. Make sure [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/install/windows) is installed
+1. **Install .NET 8**  
+   Ensure [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/install/windows) is installed on your system.
 
-2. (**Optional**) - Download and install [npcap](https://npcap.com/#download). It enables packet capture in Windows. It's not needed if the flag for not capturing packets is provided.
+2. **(Optional) Install Npcap**  
+   Download and install [Npcap](https://npcap.com/#download) to enable packet capture in Windows.  
+   > **Note:** Npcap is not required and you may provide the flag to disable packet capture when running the program.
 
-3. Download this repo
-```
+3. **Clone the Repository**  
+   Download the source code by cloning this repository:
+```sh
 git clone https://github.com/H4NM/WhoYouCalling.git
 ```
 
-4. Enter project
-```
+4. **Enter project**
+```sh
 cd WhoYouCalling
 ```
 
-5. Install the related packages (SharpCap and TraceEvent). 
+5. **Install the related packages (SharpCap and TraceEvent).**
 ```
 dotnet restore
 ```
 
-6. Build 
+6. **Build the project**
 ```
-dotnet publish -c Release -r win-(x64 or x86) --self-contained true
+dotnet publish -c Release -r win-x64 --self-contained true
 ```
 
-7. Run
+7. **Run it**
 ```
 bin\Release\net8.0\win-x64\wyc.exe [arguments]...
 ```
@@ -133,10 +141,9 @@ bin\Release\net8.0\win-x64\wyc.exe [arguments]...
 # 🐛 Bugs or Requests? ✨ Create an issue! 🚀
 
 ### To Do:
-- Refactor. Lots and lots to refactor and make more tidy :) 
-- Add a summary text report
-
-### Nice to have
+- Refactor. Lots and lots to refactor and make more tidy :)
 - Network graph visualizing the process tree and summarized network traffic by each process
 - IP and domain name lookup option to get reputation
+
+### Nice to have
 - Process network redirect to proxy for TLS inspection

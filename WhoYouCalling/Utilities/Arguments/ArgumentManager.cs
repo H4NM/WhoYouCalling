@@ -37,12 +37,10 @@ namespace WhoYouCalling.Utilities.Arguments
 
                             if (namePatternsProvided.Contains(","))
                             {
-                                ConsoleOutput.Print($"Multiple additional executable file names to monitor: {namePatternsProvided}", PrintType.Warning);
                                 namePatternsParsed.AddRange(namePatternsProvided.Split(","));
                             }
                             else
                             {
-                                ConsoleOutput.Print($"One additional executable file name to monitor: {namePatternsProvided}", PrintType.Warning);
                                 namePatternsParsed.Add(namePatternsProvided);
                             }
                             argumentData.ProcessesNamesToMonitor = namePatternsParsed;
