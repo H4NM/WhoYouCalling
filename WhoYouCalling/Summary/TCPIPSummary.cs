@@ -25,23 +25,17 @@ namespace WhoYouCalling.Summary
                 ipVersions.Add(connectionRecord.IPversion);
                 transportProtocols.Add(connectionRecord.TransportProtocol);
                 destinationHosts.Add(connectionRecord.DestinationIP);
-                if (!NetworkUtils.IsLocalhostIP(connectionRecord.DestinationIP))
+                string ipType = "";
+                if (NetworkUtils.IsLocalhostIP(connectionRecord.DestinationIP))
                 {
-                    string ipType = "";
-                    if (NetworkUtils.IsLocalhostIP(connectionRecord.DestinationIP))
-                    {
-                        ipType = "Localhost";
-                    }
-                    else
-                    {
-                        ipType = "External IP";
-                    }
-                    destinationPortsAndProtocol.Add($"{connectionRecord.DestinationPort} {connectionRecord.TransportProtocol} {ipType}");
+                    ipType = "Localhost";
                 }
-                if (!NetworkUtils.IsLocalhostIP(connectionRecord.DestinationIP)) 
+                else
                 {
+                    ipType = "External IP";
                     onlyLocalhostTraffic = false;
                 }
+                destinationPortsAndProtocol.Add($"{connectionRecord.DestinationPort} {connectionRecord.TransportProtocol} {ipType}");
             }
 
             IPversionsText = GetIPVersionText(ipVersions);

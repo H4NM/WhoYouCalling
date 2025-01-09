@@ -134,7 +134,7 @@ namespace WhoYouCalling.Process
         }
         public static string? GetProcessFileName(int pid)
         {
-            string processFileName = "";
+            string? processFileName = "";
             try
             {
                 System.Diagnostics.Process process = System.Diagnostics.Process.GetProcessById(pid);
@@ -194,7 +194,7 @@ namespace WhoYouCalling.Process
                     Privileges = new Win32.WinAPI.LUID_AND_ATTRIBUTES[1]
                 };
 
-                if (!Win32.WinAPI.LookupPrivilegeValue(null, "SeIncreaseQuotaPrivilege", ref tkp.Privileges[0].Luid))
+                if (!Win32.WinAPI.LookupPrivilegeValue("", "SeIncreaseQuotaPrivilege", ref tkp.Privileges[0].Luid))
                 {
                     int errorCode = Marshal.GetLastWin32Error();
                     Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to lookup privilege value for current process", errorCode);
@@ -276,7 +276,7 @@ namespace WhoYouCalling.Process
             var processInfo = new Win32.WinAPI.PROCESS_INFORMATION();
 
             string commandLine = $"{executablePath} {arguments}";
-            if (!Win32.WinAPI.CreateProcessWithTokenW(hToken, Constants.SecurityFlags.LogonFlags, null, commandLine, Constants.SecurityFlags.CreationFlags, IntPtr.Zero, tempWorkingDirectory, ref startInfo, out processInfo))
+            if (!Win32.WinAPI.CreateProcessWithTokenW(hToken, Constants.SecurityFlags.LogonFlags, "", commandLine, Constants.SecurityFlags.CreationFlags, IntPtr.Zero, tempWorkingDirectory, ref startInfo, out processInfo))
             {
                 int errorCode = Marshal.GetLastWin32Error();
                 Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to create unprivileged process with duplicated token", errorCode);
@@ -324,7 +324,9 @@ namespace WhoYouCalling.Process
                     {
                         ssPassword.AppendChar(c);
                     }
+                    #pragma warning disable CA1416 // Warning stating that the code only works on Windows. I know, thanks. 
                     proc.StartInfo.Password = ssPassword;
+                    #pragma warning restore CA1416
                 }
 
 

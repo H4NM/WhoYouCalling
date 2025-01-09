@@ -43,7 +43,7 @@ namespace WhoYouCalling
 
         private static bool s_shutDownMonitoring = false;
         private static bool s_timerExpired = false;
-        private static string s_mainExecutableFileName = "";
+        private static string? s_mainExecutableFileName = "";
         private static string s_mainExecutableProcessName = "";
 
         private static LivePacketCapture s_livePacketCapture = new();
@@ -91,7 +91,8 @@ namespace WhoYouCalling
             else
             {
                 ConsoleOutput.Print("Retrieving executable filename", PrintType.Debug);
-                s_mainExecutableFileName = GetExecutableFileNameWithPIDOrPath(s_argumentData.TrackedProcessId, s_argumentData.ExecutablePath);
+                s_mainExecutableFileName = GetMainExecutableFileNameWithPIDOrPath(s_argumentData.TrackedProcessId, s_argumentData.ExecutablePath);
+
                 s_rootFolderName = Generic.NormalizePath(Generic.GetRunInstanceFolderName(s_mainExecutableFileName));
             }
 
@@ -639,12 +640,16 @@ namespace WhoYouCalling
                     {
                         textList.Add($"\t\t- {ip}");
                     }
-                    textList.Add($"\tMost common connections:");
-                    int processPortCounter = 1;
-                    foreach (string portAndTransportProtocol in tcpipSummary.MostCommonConnections)
+
+                    if (tcpipSummary.MostCommonConnections.Count > 0)
                     {
-                        textList.Add($"\t\t{processPortCounter}. {portAndTransportProtocol}");
-                        processPortCounter++;
+                        textList.Add($"\tMost common connections:");
+                        int processPortCounter = 1;
+                        foreach (string portAndTransportProtocol in tcpipSummary.MostCommonConnections)
+                        {
+                            textList.Add($"\t\t{processPortCounter}. {portAndTransportProtocol}");
+                            processPortCounter++;
+                        }
                     }
                 }
                 textList.Add($"DNS queries: {monitoredProcess.DNSQueries.Count}");
@@ -1026,10 +1031,10 @@ namespace WhoYouCalling
             s_shutDownMonitoring = true;
         }
 
-        private static string GetExecutableFileNameWithPIDOrPath(int pid = 0, string executablePath = "")
+        private static string GetMainExecutableFileNameWithPIDOrPath(int pid = 0, string executablePath = "")
         {
-            string executableFileName = "";
-            if (pid != 0) 
+            string? executableFileName = "";
+            if (pid != 0)
             {
                 if (ProcessManager.IsProcessRunning(pid)) {
                     executableFileName = ProcessManager.GetProcessFileName(pid);
@@ -1040,9 +1045,14 @@ namespace WhoYouCalling
                     System.Environment.Exit(1);
                 }
             }
-            else 
+            else
             {
                 executableFileName = Path.GetFileName(executablePath);
+            }
+
+            if (executableFileName == null)
+            {
+                executableFileName = Constants.Miscellaneous.MainExecutableUnretrievableName;
             }
             return executableFileName;
         }
@@ -1246,7 +1256,6 @@ namespace WhoYouCalling
         public static MonitoredProcess? GetMonitoredProcessWithProcessNameAndID(int processID, string processName)
         {
             string uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: processID, processName: processName);
-            MonitoredProcess monitoredProcess;
             if (UniqueProcessIDIsMonitored(uniqueProcessIdentifier)) 
             {
                 return GetMonitoredProcessWithUniqueProcessID(uniqueProcessIdentifier);

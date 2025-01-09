@@ -59,7 +59,7 @@ namespace WhoYouCalling.Network.FPC
             string pattern = @"[^0-9a-fA-F\.:]";
             string cleanedIpAddress = Regex.Replace(ip, pattern, "").Trim();
 
-            if (IPAddress.TryParse(cleanedIpAddress, out IPAddress cleanedIPAddressObject)) // Parsing IP address
+            if (IPAddress.TryParse(cleanedIpAddress, out IPAddress? cleanedIPAddressObject)) // Parsing IP address
             {
                 return cleanedIPAddressObject;
             }

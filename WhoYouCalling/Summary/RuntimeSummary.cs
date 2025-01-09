@@ -24,19 +24,16 @@ namespace WhoYouCalling.Summary
             {
                 foreach (ConnectionRecord connectionRecord in monitoredProcess.TCPIPTelemetry)
                 {
-                    if (!NetworkUtils.IsLocalhostIP(connectionRecord.DestinationIP))
+                    string ipType = "";
+                    if (NetworkUtils.IsLocalhostIP(connectionRecord.DestinationIP))
                     {
-                        string ipType = "";
-                        if (NetworkUtils.IsLocalhostIP(connectionRecord.DestinationIP))
-                        {
-                            ipType = "Localhost";
-                        }
-                        else
-                        {
-                            ipType = "External IP";
-                        }
-                        destinationPortsAndProtocol.Add($"{connectionRecord.DestinationPort} {connectionRecord.TransportProtocol} {ipType}");
+                        ipType = "Localhost";
                     }
+                    else
+                    {
+                        ipType = "External IP";
+                    }
+                    destinationPortsAndProtocol.Add($"{connectionRecord.DestinationPort} {connectionRecord.TransportProtocol} {ipType}");
                 }
 
                 foreach (DNSQuery dnsQueries in monitoredProcess.DNSQueries)
