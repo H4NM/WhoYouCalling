@@ -97,11 +97,6 @@ This project has been tested and works with .NET 8 with two nuget packages, and 
   - [npcap](https://npcap.com/#download) (*Optional - if full packet capture is not needed.*)
 - ETW: [Microsoft.Diagnostics.Tracing.TraceEvent](https://www.nuget.org/packages/Microsoft.Diagnostics.Tracing.TraceEvent/)
 
-
-- ### Installing/Compiling Instructions
-
-Follow these steps to compile and run the project from source:
-
 ### Installing/Compiling instructions
 Follow these steps for compiling from source:
 1. **Install .NET 8**  
