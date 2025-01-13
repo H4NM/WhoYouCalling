@@ -3,12 +3,12 @@ namespace WhoYouCalling.Network.DNS
 {
     public class DNSResponseResult
     {
-        public int BundledRecordTypeCode { get; set; }
-        public string BundledRecordTypeText { get; set; }
-        public string BundledDomain { get; set; }
+        public int BundledRecordTypeCode { get; set; } 
+        public string BundledRecordTypeText { get; set; } = string.Empty;
+        public string BundledDomain { get; set; } = string.Empty;
         public List<string> IPs { get; set; }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj == null || this.GetType() != obj.GetType())
                 return false;

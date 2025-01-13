@@ -35,7 +35,7 @@ namespace WhoYouCalling.Network
             foreach (DNSResponse dnsResponse in dnsResponses)
             {
                 HashSet<ConnectionRecord> domainIPAdresses = GetNetworkAdressesFromDNSResponse(dnsResponse);
-                if (domainIPAdresses.Count() > 0)
+                if (domainIPAdresses.Count > 0)
                 {
                     return true;
                 }

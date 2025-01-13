@@ -1,9 +1,7 @@
-﻿
-namespace WhoYouCalling.Utilities.Arguments
+﻿namespace WhoYouCalling.Utilities.Arguments
 {
     public struct ArgumentData
     {
-
         // Provided meta
         public bool InvalidArgumentValueProvided;
 
@@ -22,62 +20,58 @@ namespace WhoYouCalling.Utilities.Arguments
         public bool MonitorEverythingFlagSet;
 
         // Value holders
-        public List<string> ProcessesNamesToMonitor { get; set; }
-        public int TrackedProcessId { get; set; }
-        public double ProcessRunTimer { get; set; }
-        public int NetworkInterfaceChoice { get; set; }
-        public string ExecutablePath { get; set; }
-        public string ExecutableArguments { get; set; }
-        public bool RunExecutableWithHighPrivilege { get; set; }
-        public string UserName { get; set; }
-        public string UserPassword { get; set; }
-        public string OutputDirectory { get; set; }
-        public bool KillProcesses { get; set; }
-        public bool SaveFullPcap { get; set; }
-        public bool NoPacketCapture { get; set; }
-        public bool StrictCommunicationEnabled { get; set; }
-        public bool OutputBPFFilter { get; set; }
-        public bool OutputWiresharkFilter { get; set; }
-        public bool Debug { get; set; } // Gets a default value since it's set to a public variable in Program
+        public List<string> ProcessesNamesToMonitor;
+        public int TrackedProcessId;
+        public double ProcessRunTimer;
+        public int NetworkInterfaceChoice;
+        public string ExecutablePath;
+        public string ExecutableArguments;
+        public bool RunExecutableWithHighPrivilege;
+        public string UserName;
+        public string UserPassword;
+        public string OutputDirectory;
+        public bool KillProcesses;
+        public bool SaveFullPcap;
+        public bool NoPacketCapture;
+        public bool StrictCommunicationEnabled;
+        public bool OutputBPFFilter;
+        public bool OutputWiresharkFilter;
+        public bool Debug;
 
-        public ArgumentData(bool invalidArgumentValueProvided = false,
-                            bool executableFlagSet = false,
-                            bool executableNamesToMonitorFlagSet = false,
-                            bool processRunTimerFlagSet = false,
-                            bool executableArgsFlagSet = false,
-                            bool PIDFlagSet = false,
-                            bool networkInterfaceDeviceFlagSet = false,
-                            bool noPCAPFlagSet = false,
-                            bool killProcessesFlagSet = false,
-                            bool outputDirectoryFlagSet = false,
-                            bool userNameFlagSet = false,
-                            bool userPasswordFlagSet = false,
-                            bool monitorEverythingFlagSet = false,
-                            bool debug = false,
-                            bool runExecutableWithHighPrivilege = false,
-                            string outputDirectory = "",
-                            string userName = "",
-                            string password = "",
-                            string executableArguments = "")
+        public ArgumentData()
         {
-            this.ExecutableFlagSet = executableFlagSet;
-            this.ExecutableArgsFlagSet = executableArgsFlagSet;
-            this.ProcessRunTimerFlagSet = processRunTimerFlagSet;
-            this.PIDFlagSet = PIDFlagSet;
-            this.NetworkInterfaceDeviceFlagSet = networkInterfaceDeviceFlagSet;
-            this.NoPCAPFlagSet = noPCAPFlagSet;
-            this.KillProcessesFlagSet = killProcessesFlagSet;
-            this.OutputDirectoryFlagSet = outputDirectoryFlagSet;
-            this.UserNameFlagSet = userNameFlagSet;
-            this.UserPasswordFlagSet = userPasswordFlagSet;
-            this.InvalidArgumentValueProvided = invalidArgumentValueProvided;
-            this.RunExecutableWithHighPrivilege = runExecutableWithHighPrivilege;
-            this.OutputDirectory = outputDirectory;
-            this.UserName = userName;
-            this.UserPassword = password;
-            this.MonitorEverythingFlagSet = monitorEverythingFlagSet;
-            this.Debug = debug;
-            this.ExecutableArguments = executableArguments;
+            InvalidArgumentValueProvided = false;
+
+            ExecutableFlagSet = false;
+            ExecutableArgsFlagSet = false;
+            PIDFlagSet = false;
+            NetworkInterfaceDeviceFlagSet = false;
+            NoPCAPFlagSet = false;
+            KillProcessesFlagSet = false;
+            ProcessesesNamesToMonitorFlagSet = false;
+            ProcessRunTimerFlagSet = false;
+            UserNameFlagSet = false;
+            UserPasswordFlagSet = false;
+            OutputDirectoryFlagSet = false;
+            MonitorEverythingFlagSet = false;
+
+            ProcessesNamesToMonitor = new List<string>();
+            TrackedProcessId = 0;
+            ProcessRunTimer = 0;
+            NetworkInterfaceChoice = 0;
+            ExecutablePath = string.Empty;
+            ExecutableArguments = string.Empty;
+            RunExecutableWithHighPrivilege = false;
+            UserName = string.Empty;
+            UserPassword = string.Empty;
+            OutputDirectory = string.Empty;
+            KillProcesses = false;
+            SaveFullPcap = false;
+            NoPacketCapture = false;
+            StrictCommunicationEnabled = false;
+            OutputBPFFilter = false;
+            OutputWiresharkFilter = false;
+            Debug = false;
         }
     }
 }

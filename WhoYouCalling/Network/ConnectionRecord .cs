@@ -10,7 +10,7 @@ namespace WhoYouCalling.Network
         public string DestinationIP { get; set; }
         public int DestinationPort { get; set; }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj == null || this.GetType() != obj.GetType())
                 return false;

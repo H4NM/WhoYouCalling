@@ -15,9 +15,9 @@ namespace WhoYouCalling.Process
 
         public static bool ProcessHasNoRecordedNetworkActivity(MonitoredProcess monitoredProcess)
         {
-            if (monitoredProcess.DNSQueries.Count() == 0 &&
-                monitoredProcess.DNSResponses.Count() == 0 &&
-                monitoredProcess.TCPIPTelemetry.Count() == 0)
+            if (monitoredProcess.DNSQueries.Count == 0 &&
+                monitoredProcess.DNSResponses.Count == 0 &&
+                monitoredProcess.TCPIPTelemetry.Count == 0)
             {
                 return true;
             }

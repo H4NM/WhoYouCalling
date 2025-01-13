@@ -297,12 +297,12 @@ namespace WhoYouCalling
                 else
                 {
                     executionContext = "unelevated"; 
-                    if (s_argumentData.UserNameFlagSet && s_argumentData.UserPasswordFlagSet) 
+                    if (userNameWasProvided && userPasswordWasProvided) 
                     {
                         s_trackedMainPid = ProcessManager.StartProcessAndGetId(executablePath: executablePath,
                                                    arguments: executableArguments,
-                                                   username: s_argumentData.UserName,
-                                                   password: s_argumentData.UserPassword,
+                                                   username: userName,
+                                                   password: userPassword,
                                                    runPrivileged: false);
                     }
                     else if (Win32.WinAPI.HasShellWindow())
@@ -704,7 +704,7 @@ namespace WhoYouCalling
 
         private static void OutputProcessNetworkDetails(HashSet<ConnectionRecord> tcpIPTelemetry, string processFolder = "")
         {
-            if (tcpIPTelemetry.Count() > 0)
+            if (tcpIPTelemetry.Count > 0)
             {
                 Dictionary<ConnectionRecordType, HashSet<string>> networkDetails = NetworkUtils.FilterConnectionRecords(tcpIPTelemetry);
                 Dictionary<ConnectionRecordType, List<string>> filteredNetworkDetails = NetworkUtils.GetPresentableConnectionRecordsFormat(networkDetails);
@@ -714,7 +714,7 @@ namespace WhoYouCalling
                     ConnectionRecordType connectionRecordType = entry.Key;
                     List<string> endpoints = entry.Value;
 
-                    if (endpoints.Count() > 0)
+                    if (endpoints.Count > 0)
                     {
                         ConsoleOutput.Print($"Creating file with all {connectionRecordType} network details.", PrintType.Debug);
                         switch (connectionRecordType)
@@ -765,7 +765,7 @@ namespace WhoYouCalling
         
         private static void OutputProcessDNSRQueriesDetails(HashSet<DNSQuery> dnsQueries, string outputFile = "")
         {
-            if (dnsQueries.Count() > 0)
+            if (dnsQueries.Count > 0)
             {
                 List<string> dnsDetails = ParseDNSQueries(dnsQueries); // Convert to list from hashset to be able to pass to function
                 ConsoleOutput.Print($"Creating file {outputFile} with all DNS queries for process", PrintType.Debug);
@@ -778,7 +778,7 @@ namespace WhoYouCalling
         }
         private static void OutputProcessDNSResponsesDetails(HashSet<DNSResponse> dnsResponses, string outputFile = "")
         {
-            if (dnsResponses.Count() > 0)
+            if (dnsResponses.Count > 0)
             {
                 List<string> dnsDetails = ParseDNSQueryResponses(dnsResponses); // Convert to list from hashset to be able to pass to function
                 ConsoleOutput.Print($"Creating file {outputFile} with all DNS responses", PrintType.Debug);
@@ -806,19 +806,34 @@ namespace WhoYouCalling
 
         private static void OutputDNSWiresharkFilters(bool strictComsEnabled, HashSet<DNSResponse> dnsResponses, string processFolder = "")
         {
-            if ((dnsResponses.Count() > 0) && NetworkUtils.DNSResponsesContainsAdresses(dnsResponses))
+            if ((dnsResponses.Count > 0) && NetworkUtils.DNSResponsesContainsAdresses(dnsResponses))
             {
                 string processDNSFolder = $"{processFolder}/{Constants.FileNames.ProcessFolderDNSWiresharkFolderName}";
                 FileAndFolders.CreateFolder(processDNSFolder);
-                List<string> fullFilterListOfIPs = new();
+                Dictionary<string, HashSet<ConnectionRecord>> domainsAndConnections = new();
+
+                //Aggregate all returned results for all responses to the queried domain
                 foreach (DNSResponse dnsResponse in dnsResponses)
                 {
-                    HashSet<ConnectionRecord> domainIPAdresses = NetworkUtils.GetNetworkAdressesFromDNSResponse(dnsResponse);
-                    if (domainIPAdresses.Count() > 0)
+                    HashSet<ConnectionRecord> connectionRecords = NetworkUtils.GetNetworkAdressesFromDNSResponse(dnsResponse);
+                    if (!domainsAndConnections.ContainsKey(dnsResponse.DomainQueried))
                     {
-                        string domainWiresharkFilterFileName = $"{processDNSFolder}/{dnsResponse.DomainQueried}.txt";
+                        domainsAndConnections.Add(dnsResponse.DomainQueried, connectionRecords);
+                    }
+                    else
+                    {
+                        domainsAndConnections[dnsResponse.DomainQueried].UnionWith(connectionRecords);
+                    }
+                }
+
+                //Output the results per domain
+                foreach (string domain in domainsAndConnections.Keys)
+                {
+                    if (domainsAndConnections[domain].Count > 0)
+                    {
+                        string domainWiresharkFilterFileName = $"{processDNSFolder}/{domain}.txt";
                         string domainFilter = Network.NetworkFilter.GetCombinedNetworkFilter(strictComsEnabled: strictComsEnabled,
-                                                                                               connectionRecords: domainIPAdresses,
+                                                                                               connectionRecords: domainsAndConnections[domain],
                                                                                                filterPorts: false,
                                                                                                onlyDestIP: true,
                                                                                                filter: FilterType.DFL);
@@ -872,7 +887,7 @@ namespace WhoYouCalling
 
             foreach (MonitoredProcess monitoredProcess in monitoredProcesses)
             {
-                if (monitoredProcess.TCPIPTelemetry.Count() == 0)
+                if (monitoredProcess.TCPIPTelemetry.Count == 0)
                 {
                     ConsoleOutput.Print($"Not calculating {filter} filter for {monitoredProcess.ProcessName}({monitoredProcess.PID}). No recored network activity", PrintType.Debug);
                     continue;
@@ -1025,7 +1040,7 @@ namespace WhoYouCalling
             }
         }
 
-        private static void TimerShutDownMonitoring(object source, ElapsedEventArgs e)
+        private static void TimerShutDownMonitoring(object? source, ElapsedEventArgs e)
         {
             s_timerExpired = true;
             s_shutDownMonitoring = true;
@@ -1108,7 +1123,7 @@ namespace WhoYouCalling
             }
             monitoredProcess.ExecutableFileName = ProcessManager.GetProcessFileName(pid);
             s_monitoredProcesses.Add(monitoredProcess);
-            int monitoredProcessesIndexPosition = s_monitoredProcesses.Count() - 1;
+            int monitoredProcessesIndexPosition = s_monitoredProcesses.Count - 1;
             s_uniqueMonitoredProcessIdentifiers.Add(uniqueProcessIdentifier, monitoredProcessesIndexPosition);
 
             if (s_monitoredProcessIdentifiers.ContainsKey(pid))
@@ -1226,7 +1241,7 @@ namespace WhoYouCalling
 
         public static bool MonitoredProcessCanBeRetrievedWithPID(int pid)
         {
-            if (s_monitoredProcessIdentifiers[pid].Count() == 1)
+            if (s_monitoredProcessIdentifiers[pid].Count == 1)
             {
                 return true;
             }
@@ -1341,7 +1356,7 @@ namespace WhoYouCalling
 
             // Remove the PID list. First the first int in the list, then if its empty, clear it entirely
             s_monitoredProcessIdentifiers[pid].RemoveAt(0);
-            if (s_monitoredProcessIdentifiers[pid].Count() == 0) 
+            if (s_monitoredProcessIdentifiers[pid].Count == 0) 
             {
                 s_monitoredProcessIdentifiers.Remove(pid);
             }
@@ -1364,7 +1379,7 @@ namespace WhoYouCalling
 
         public static int GetETWActivityCount()
         {
-            return s_etwActivityHistory.Count();
+            return s_etwActivityHistory.Count;
         }
 
         public static int GetLivePacketCount()
@@ -1374,7 +1389,7 @@ namespace WhoYouCalling
 
         public static int GetProcessesCount()
         {
-            return s_monitoredProcesses.Count();
+            return s_monitoredProcesses.Count;
         }
         public static bool Debug()
         {

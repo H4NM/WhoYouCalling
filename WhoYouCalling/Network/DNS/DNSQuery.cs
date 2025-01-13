@@ -7,7 +7,7 @@ namespace WhoYouCalling.Network.DNS
         public int RecordTypeCode { get; set; }
         public string RecordTypeText { get; set; }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj == null || this.GetType() != obj.GetType())
                 return false;
