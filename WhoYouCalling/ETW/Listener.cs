@@ -4,16 +4,26 @@ namespace WhoYouCalling.ETW
 {
     internal class Listener
     {
-        protected TraceEventSession _session;
+        protected TraceEventSession? _session;
         public string SourceName = "";
 
         public void StopSession()
         {
-            _session.Dispose();
+            if (_session != null) 
+            {
+                _session.Dispose();
+            }
         }
         public bool GetSessionStatus()
         {
-            return _session.IsActive;
+            if (_session != null)
+            {
+                return _session.IsActive;
+            }
+            else
+            {
+                return false;
+            }
         }
     }
 }

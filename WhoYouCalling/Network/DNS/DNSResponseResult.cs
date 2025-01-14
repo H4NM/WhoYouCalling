@@ -3,10 +3,10 @@ namespace WhoYouCalling.Network.DNS
 {
     public class DNSResponseResult
     {
-        public int BundledRecordTypeCode { get; set; } 
+        public int BundledRecordTypeCode { get; set; } = 0;
         public string BundledRecordTypeText { get; set; } = string.Empty;
         public string BundledDomain { get; set; } = string.Empty;
-        public List<string> IPs { get; set; }
+        public List<string> IPs { get; set; } = new List<string>();
 
         public override bool Equals(object? obj)
         {
@@ -18,7 +18,7 @@ namespace WhoYouCalling.Network.DNS
                    BundledRecordTypeText == other.BundledRecordTypeText &&
                    BundledDomain == other.BundledDomain &&
                    IPs.SequenceEqual(other.IPs);
-        }
+        } 
 
         public override int GetHashCode()
         {

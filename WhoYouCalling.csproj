@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Platforms>AnyCPU;x64;x86</Platforms>
-    <FileVersion>1.4</FileVersion>
+    <FileVersion>1.4.1</FileVersion>
     <ApplicationManifest>WhoYouCalling\app.manifest</ApplicationManifest>
     <AssemblyName>wyc</AssemblyName>
   </PropertyGroup>

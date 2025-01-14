@@ -6,8 +6,8 @@ namespace WhoYouCalling.Network.FPC
     internal class BasePacketCapture
     {
         protected static int s_packetCounter;
-        protected CaptureFileWriterDevice _captureFileWriterDevice;
-        protected LibPcapLiveDevice _captureDevice;
+        protected CaptureFileWriterDevice? _captureFileWriterDevice;
+        protected LibPcapLiveDevice? _captureDevice;
 
         public int GetPacketCount()
         {
@@ -21,15 +21,23 @@ namespace WhoYouCalling.Network.FPC
 
         public void StopCapture()
         {
-            _captureDevice.StopCapture();
-            _captureFileWriterDevice.Close();
+            if (_captureDevice != null) { 
+                _captureDevice.StopCapture();
+            }
+            if (_captureFileWriterDevice != null)
+            {
+                _captureFileWriterDevice.Close();
+            }
         }
 
         protected void device_OnPacketArrival(object sender, PacketCapture e)
         {
             s_packetCounter++;
             var rawPacket = e.GetPacket();
-            _captureFileWriterDevice.Write(rawPacket);
+            if (_captureFileWriterDevice != null)
+            { 
+                _captureFileWriterDevice.Write(rawPacket);
+            }
         }
     }
 }
