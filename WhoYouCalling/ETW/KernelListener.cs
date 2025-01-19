@@ -152,7 +152,7 @@ namespace WhoYouCalling.ETW
 
                 monitoredParentProcess.ChildProcesses.Add(new ChildProcessInfo
                 {
-                    ProcessID = data.ProcessID,
+                    PID = data.ProcessID,
                     ProcessName = data.ProcessName,
                     ETWRegisteredStartTime = DateTime.Now
                 });

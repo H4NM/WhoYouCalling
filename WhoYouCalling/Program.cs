@@ -1072,7 +1072,7 @@ namespace WhoYouCalling
             return executableFileName;
         }
 
-        public static void AddProcessToMonitor(int pid, string processName = "", string commandLine = "")
+        public static void AddProcessToMonitor(int pid, string processName = "", string? commandLine = null)
         {
             MonitoredProcess monitoredProcess = new MonitoredProcess
             {

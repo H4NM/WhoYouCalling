@@ -7,7 +7,7 @@ namespace WhoYouCalling.Process
     {
         public int PID { get; set; } = 0;
         public string ProcessName { get; set; } = "";
-        public string CommandLine { get; set; } = "";
+        public string? CommandLine { get; set; } = null;
         public string? ExecutableFileName { get; set; } = null;
         public bool MappedProcess { get; set; } = true;
         public bool? IsolatedProcess { get; set; } = null;
