@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhoYouCalling</title>
+  <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
+  <script src="/cytoscape.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+  <style>
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: Verdana;
+    }
+
+    #cy {
+      position: relative; 
+      width: 100%;
+      height: 100%;
+    }
+
+    #endpoint-type{
+      display: flex;
+      justify-content: center; 
+      color: red;
+      margin-bottom: -30px;
+      margin-top: -5px;
+      font-size: 30px;
+      color: #000000;
+    }
+
+    #endpoint-value{
+      display: flex;
+      justify-content: center; 
+      color: rgb(0, 0, 0);
+      margin-bottom: -2px;
+    }
+
+    #deselect-button{
+      margin-top: 5px;
+      display: flex;
+      justify-content: center; 
+      color: white;
+      background-color: #cc00cc; 
+      padding: 10px 0px;
+      width: 100%;
+      border-radius: 5px; 
+      transition: background-color 0.2s ease, transform 0.1s ease;
+      font-weight: bold;
+    }
+
+    #deselect-button:hover{
+      background-color: #cc00ccab; 
+      transform: translateY(-1px); 
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+    }    
+
+    #deselect-button:active {
+      background-color: #cc00cc62; 
+      transform: translateY(0); 
+    }
+
+    a {
+      display: flex;
+      justify-content: center; 
+      color: white;
+      background-color: #cc00cc; 
+      border: 1px solid #4b4b4b;
+      padding: 10px 0px;
+      width: 100%;
+      border-radius: 5px; 
+      text-decoration: none; 
+      transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    a:hover {
+      background-color: #cc00ccab; 
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+    }
+
+    a:active {
+      background-color: #cc00cc62; 
+      transform: translateY(0); 
+    }
+
+    #tooltip {
+      display: none;
+      position: absolute;
+      right: 0; 
+      border: 1px solid #ccc;
+      height: 100%;
+      width: 300px;
+      padding: 10px;
+      border-left: 1px solid #929292; 
+      box-shadow: 0px 4px 8px rgba(255, 110, 110, 0.1);
+      z-index: 100;
+      pointer-events: auto;
+      
+      font-size: 14px;
+      color: #000000;
+      background-color: rgb(255, 255, 255);
+      word-wrap: break-word; 
+      overflow-wrap: break-word; 
+    }
+
+    #checkbox-pane{
+      padding: 10px; 
+      border-right: 1px solid #ccc; 
+      width: 12%; 
+      overflow-y: auto;
+    }
+
+    #checkbox-pane input[type="checkbox"] {
+      display: none;
+    }
+
+    #checkbox-header{
+      display: block;
+      width: calc(100% - 13px); 
+      margin: 40px 0;
+      text-align: center;
+    }
+
+    #checkbox-title{
+      font-size: 20px;
+      color: #000000;
+    }
+
+    #checkbox-author{
+      text-align: left;
+      font-size: 9px;
+      color: #a0a0a0;
+      margin-top: -15px;
+      margin-left: 12px;
+    }
+
+    #checkbox-pane label {
+      display: block;
+      width: calc(100% - 10px); 
+      box-sizing: border-box;
+      cursor: pointer;
+      padding: 8px 12px;
+      margin: 4px 0;
+      border: 1px solid #4b4b4b;
+      border-radius: 5px;
+      font-size: 14px;
+      color: #cc00cc;
+      background-color: white;
+      transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+      text-align: left; 
+      white-space: normal;
+      word-wrap: break-word; 
+    }
+
+    #checkbox-pane input[type="checkbox"]:checked + label {
+      background-color: #cc00cc;
+      color: white;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    #checkbox-pane label:hover {
+      background-color: #cc00cc33;
+    }
+
+  </style>
+</head>
+<body>
+  <div style="display: flex; height: 100vh;">
+    <div id="checkbox-pane">
+      <div id="checkbox-header">
+        <h3 id="checkbox-title">WhoYouCalling</h3>
+        <p id="checkbox-author">By Hannes Michel</p>
+      </div>
+      <div id="checkbox-list"></div>
+    </div>
+  
+    <div id="cy"></div>
+    <div id="tooltip"></div>
+  </div>
+
+  <script>
+
+
+      /*
+        ==================================
+      |
+      |   Global 
+      |
+        ===================================
+      */ 
+      let cy;
+      
+      function hideTooltip() {
+        tooltip.style.display = 'none';
+        isTooltipVisible = false;
+      }
+
+      function deselectNode(nodeId) {
+        const checkbox = document.getElementById(`checkbox-${nodeId}`);
+        if (checkbox) {
+          checkbox.checked = false;
+          const node = cy.getElementById(nodeId); 
+          node.style('display', 'none');
+        }
+
+        cy.nodes(`[type="domain"], [type="ip"]`).forEach((targetNode) => {
+          const connectedProcesses = targetNode.connectedEdges().connectedNodes('[type="process"]');
+          const isVisible = connectedProcesses.some((processNode) => processNode.style('display') !== 'none');
+          if (!isVisible) {
+            targetNode.style('display', 'none');
+          }
+        });
+        hideTooltip();
+      }
+
+    fetch('data.json')
+      .then(response => response.json())
+      .then(data => {
+        cy = cytoscape({
+          container: document.getElementById('cy'),
+          elements: data.elements,
+          layout: { 
+            name: 'cose',
+            animate: false,
+            nodeRepulsion: 250000,
+            randomize: true
+          },
+          style: [
+            {
+              selector: 'node[type = "process"]',
+              style: {
+                'border-width': 2,              
+                'border-color': '#000000',     
+                'border-style': 'solid',
+                'background-color': '#cc00cc',  
+                'label': 'data(label)',
+                'text-valign': 'center',       
+                'text-halign': 'right',         
+                'text-margin-x': 5,            
+                'text-margin-y': 0, 
+                'width': '40',
+                'height': '40',
+              },
+            },
+            {
+              selector: 'node[type = "domain"]',
+              style: {
+                'border-width': 2,              
+                'border-color': '#000000',      
+                'border-style': 'solid',
+                'background-color': '#fcf62f', 
+                'label': 'data(label)',
+                'text-valign': 'center',        
+                'text-halign': 'right',         
+                'text-margin-x': 5,             
+                'text-margin-y': 0, 
+              },
+            },
+            {
+              selector: 'node[type = "ip"]',
+              style: {
+                'border-width': 2,             
+                'border-color': '#000000',     
+                'border-style': 'solid',
+                'background-color': '#2ffcf3', 
+                'label': 'data(label)',
+                'text-valign': 'center',       
+                'text-halign': 'right',         
+                'text-margin-x': 5,             
+                'text-margin-y': 0,
+              },
+            },
+            {
+              selector: 'edge[type = "processStart"]',
+              style: {
+                'width': 2, 
+                'curve-style': 'bezier',
+                'line-color': '#000000', 
+                'target-arrow-color': '#000000', 
+                'target-arrow-shape': 'triangle',
+                'label': '', 
+              },
+            },
+            {
+              selector: 'edge[type = "dnsQuery"]',
+              style: {
+                'width': 1, 
+                'curve-style': 'bezier', 
+                'line-color': '#9e9e9e',
+                'line-style': 'dotted', 
+                'target-arrow-color': '#9e9e9e', 
+                'target-arrow-shape': 'triangle',
+                'label': '', 
+              },
+            },
+            {
+              selector: 'edge[type = "dnsResolution"]',
+              style: {
+
+                'width': 1, 
+                'curve-style': 'bezier', 
+                'line-color': '#9e9e9e', 
+                'line-style': 'dotted', 
+                'target-arrow-color': '#9e9e9e', 
+                'target-arrow-shape': 'triangle',
+                'label': '',
+              },
+            },
+            {
+              selector: 'edge[type = "tcpipConnection"]',
+              style: {
+                'width': 1,  
+                'curve-style': 'bezier', 
+                'line-color': '#9e9e9e',
+                'line-style': 'dotted', 
+                'target-arrow-color': '#9e9e9e',
+                'target-arrow-shape': 'triangle',
+                'label': '',
+              },
+            },
+            {
+              selector: 'node.highlighted',
+              style: {
+                'border-width': 4, 
+                'width': '65',
+                'height': '65',
+                'transition-property': 'width height', 
+                'transition-duration': '0.3s', 
+                'transition-timing-function': 'ease' 
+              }
+            }
+          ],
+       
+        });
+
+        /*
+          ==================================
+        |
+        |   Checkbox management
+        |
+          ===================================
+        */ 
+        
+        const checkboxPane = document.getElementById('checkbox-list');
+
+        const selectAllCheckbox = document.createElement('input');
+        selectAllCheckbox.type = 'checkbox';
+        selectAllCheckbox.id = 'checkbox-select-all';
+        selectAllCheckbox.checked = true; 
+
+        const selectAllLabel = document.createElement('label');
+        selectAllLabel.htmlFor = 'checkbox-select-all';
+        selectAllLabel.textContent = 'Select All';
+
+        selectAllCheckbox.addEventListener('change', () => {
+          const isChecked = selectAllCheckbox.checked;
+          checkboxes.forEach(({ node, checkbox }) => {
+            checkbox.checked = isChecked;
+            toggleNodeVisibility(node, isChecked); 
+          });
+          updateTargetNodeVisibility();
+        });
+
+        const selectAllContainer = document.createElement('div');
+        selectAllContainer.appendChild(selectAllCheckbox);
+        selectAllContainer.appendChild(selectAllLabel);
+        checkboxPane.appendChild(selectAllContainer);
+
+        const processNodes = cy.nodes()
+          .filter(node => node.data('type') === 'process')
+          .sort((a, b) => a.data('label').localeCompare(b.data('label'))); // Sort by label
+
+        const checkboxes = []; 
+
+        processNodes.forEach((node) => {
+          const nodeLabel = node.data('label'); 
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.id = `checkbox-${node.id()}`;
+          checkbox.checked = true; 
+
+          checkbox.addEventListener('change', () => {
+            toggleNodeVisibility(node, checkbox.checked);
+            updateTargetNodeVisibility();
+
+            const allChecked = checkboxes.every(({ checkbox }) => checkbox.checked);
+            const noneChecked = checkboxes.every(({ checkbox }) => !checkbox.checked);
+            selectAllCheckbox.checked = allChecked; 
+            selectAllCheckbox.indeterminate = !allChecked && !noneChecked;
+          });
+
+          const label = document.createElement('label');
+          label.htmlFor = `checkbox-${node.id()}`;
+          label.textContent = nodeLabel;
+
+          const container = document.createElement('div');
+          container.appendChild(checkbox); 
+          container.appendChild(label);   
+
+          checkboxPane.appendChild(container);
+
+          checkboxes.push({ node, checkbox });
+        });
+
+        function toggleNodeVisibility(node, isVisible) {
+          node.style('display', isVisible ? 'element' : 'none');
+        }
+
+        function updateTargetNodeVisibility() {
+          cy.nodes().forEach((targetNode) => {
+            const targetType = targetNode.data('type');
+            if (targetType === 'domain' || targetType === 'ip') {
+              const connectedProcesses = targetNode.connectedEdges().filter(edge => {
+                const sourceNode = edge.source();
+                return sourceNode.data('type') === 'process' && sourceNode.style('display') !== 'none';
+              });
+
+              if (connectedProcesses.length === 0) {
+                targetNode.style('display', 'none');
+              } else {
+                targetNode.style('display', 'element'); 
+              }
+            }
+          });
+        }
+
+    /*
+      ==================================
+    |
+    |   Tooltip management
+    |
+      ===================================
+    */        
+        const tooltip = document.getElementById('tooltip');
+        let isTooltipVisible = false;
+
+        cy.on('click', 'node', function(event) {
+          cy.nodes().removeClass('highlighted'); 
+          const node = event.target;
+          const position = node.renderedPosition();
+          const tooltipText = node.data('info'); 
+          const nodeId = node.data('id');
+          const nodeType = node.data('type');
+
+          tooltip.innerHTML = tooltipText;
+          tooltip.style.display = 'block';
+          isTooltipVisible = true;
+          node.addClass('highlighted');
+        });
+
+        cy.on('click', 'edge', function(event) {
+          const edge = event.target;
+          const edgeLabel = edge.data('info'); 
+
+          edge.data('label', edgeLabel);
+
+          cy.style()
+            .selector('edge')
+            .style({
+                'label': 'data(label)', 
+                'text-opacity': 1,
+                'font-size': 10,
+                'text-valign': 'center',
+                'color': '#000',
+                'text-background-color': '#fff', 
+                'text-background-opacity': 1,
+                'text-background-shape': 'round-rectangle', 
+                'text-background-padding': '2px' 
+            })
+            .update();
+      });
+
+
+      cy.on('click', function (event) {
+        if (event.target === cy) {
+          hideTooltip(); 
+          cy.elements('.highlighted').removeClass('highlighted');
+          cy.edges().forEach(edge => {
+              edge.data('label', ''); 
+          });
+
+          cy.style()
+            .selector('edge[label]') 
+            .style({
+                'label': 'data(label)', 
+                'text-opacity': 1,
+                'font-size': 10,
+                'text-valign': 'center',
+                'color': '#000',
+            })
+            .update();
+        }
+      });
+      
+      })
+      .catch(error => console.error('Error loading data:', error));
+
+
+  </script>
+</body>
+</html>

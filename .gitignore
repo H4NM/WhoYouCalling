@@ -6,7 +6,13 @@ Caps/
 TestApplication*
 args.txt
 requirements.txt
-*.py
+autobadge.py
+TestApplication.py
+
+Result.json
+Summary.txt
+data.json
+Events.txt
 *.spec
 *.sh
 build/
