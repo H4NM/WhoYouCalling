@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import ipaddress
+from pathlib import Path
 from typing import Tuple, Optional
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from datetime import datetime
@@ -31,6 +32,9 @@ class EdgeType:
     TCPIP_CONNECTION = "tcpipConnection"
     
 class HttpHandlerWithoutLogging(SimpleHTTPRequestHandler):
+    def translate_path(self, path):
+        return str(Path(__file__).parent.resolve() / path.lstrip("/"))
+    
     def end_headers(self):
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         self.send_header("Pragma", "no-cache")
@@ -38,7 +42,7 @@ class HttpHandlerWithoutLogging(SimpleHTTPRequestHandler):
         super().end_headers()
         
     def log_message(self, format, *args): 
-        return # By doing nothing, nothing is returned
+        return 
 
 def is_bundled_ipv4(ipv6_address: str) -> Tuple[bool, Optional[str]]:
     try:
@@ -102,15 +106,54 @@ def output_visualization_data(visualization_data:dict) -> None:
     except Exception as error_msg:
         ConsoleOutputPrint(msg=f"Error when creating visualization data file: {str(error_msg)}", print_type="fatal")
         sys.exit(1)
-  
-def valid_arguments(args: list) -> bool:
-    if len(args) != 2:
-        return False
-    results_file:str = sys.argv[1] 
-    if not os.path.isfile(results_file):
-        return False
+
+def validate_structure(data, expected):
+    if not isinstance(data, dict) or not isinstance(expected, dict):
+        return isinstance(data, expected)
+    for key, value in expected.items():
+        if key not in data or not validate_structure(data[key], value):
+            return False
     return True
-    
+
+def index_file_exists() -> bool:
+    html_file = Path(__file__).parent / "index.html"
+    if html_file.exists():
+        return True
+    else:
+        return False
+
+def provided_result_file(args: list) -> bool:
+    if len(args) == 2:
+        results_file:str = sys.argv[1] 
+        if not os.path.isfile(results_file):
+            ConsoleOutputPrint(msg=f"The provided results file {results_file} is not a valid file.", print_type="error")
+            sys.exit(1)
+        else:
+            return True
+        
+    data_json_structure = {
+        "elements": {
+            "nodes": list,
+            "edges": list
+        }
+    }
+    data_file = Path(__file__).parent / "data.json"
+    if data_file.exists():
+        try:
+            with data_file.open("rt", encoding="utf-8") as f:
+                data = json.load(f)
+            if validate_structure(data, data_json_structure):
+                return False
+            else:
+                ConsoleOutputPrint(msg=f"The provided data file has an invalid JSON structure", print_type="error")
+                sys.exit(1)
+        except json.JSONDecodeError:
+            ConsoleOutputPrint(msg=f"The provided data file has an invalid JSON format", print_type="error")
+            sys.exit(1)
+    else:
+        ConsoleOutputPrint(msg=f"No results file provided nor was a data.json file found in the same directory as the script.", print_type="error")
+        sys.exit(1)
+
 def get_visualization_data(monitored_processes: list) -> dict:
     visualization_data = {
         "elements": {
@@ -288,15 +331,19 @@ def get_nodes(visualization_data: dict, monitored_processes: list) -> dict:
     return visualization_data
     
 def main():
-    if not valid_arguments(sys.argv):
-        ConsoleOutputPrint(msg=f"Supply a valid results file from WhoYouCalling as an argument", print_type="error")
+    if not index_file_exists():
+        ConsoleOutputPrint(msg=f"Unable to find index.html in the same directory as the script", print_type="error")
         sys.exit(1)
-    results_file: str = sys.argv[1]
-    ConsoleOutputPrint(msg=f"Retrieving data from results file", print_type="info")
-    monitored_processes: list = get_results_file_data(results_file)
-    ConsoleOutputPrint(msg=f"Creating visualization data", print_type="info")
-    visualization_data = get_visualization_data(monitored_processes)
-    output_visualization_data(visualization_data)
+    results_file_was_provided: bool = provided_result_file(sys.argv)
+    if results_file_was_provided:
+        results_file: str = sys.argv[1]
+        ConsoleOutputPrint(msg=f"Retrieving data from results file", print_type="info")
+        monitored_processes: list = get_results_file_data(results_file)
+        ConsoleOutputPrint(msg=f"Creating visualization data", print_type="info")
+        visualization_data = get_visualization_data(monitored_processes)
+        output_visualization_data(visualization_data)
+    else:
+        ConsoleOutputPrint(msg=f"Visualizing from existing results file", print_type="info")
     ConsoleOutputPrint(msg=f"Hosting visualization via http://{HTTP_HOST_ADRESS}:{HTTP_HOST_PORT}", print_type="info")
     try:
         start_http_server()
