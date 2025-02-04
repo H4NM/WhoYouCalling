@@ -21,10 +21,19 @@
       height: 100%;
     }
 
+    #api-source-title{
+      display: flex;
+      justify-content: center; 
+      margin-bottom: -18px;
+      margin-top: -5px;
+      font-weight: bold;
+      font-size: 16px;
+      color: #000000;
+    }
+
     #endpoint-type{
       display: flex;
       justify-content: center; 
-      color: red;
       margin-bottom: -30px;
       margin-top: -5px;
       font-size: 30px;
@@ -46,7 +55,9 @@
       background-color: #cc00cc; 
       padding: 10px 0px;
       width: 100%;
-      border-radius: 5px; 
+      border-radius: 5px;
+      border-width: 1px; 
+      border-color: #000000;
       transition: background-color 0.2s ease, transform 0.1s ease;
       font-weight: bold;
     }
@@ -63,6 +74,8 @@
     }
 
     a {
+      margin-top: 5px;
+      margin-bottom: -10px;
       display: flex;
       justify-content: center; 
       color: white;
@@ -129,12 +142,16 @@
       color: #000000;
     }
 
+    #checkbox-application-name{
+      font-size: 15px;
+      color: #111111;
+      margin-top: -18px;
+    }
+
     #checkbox-author{
-      text-align: left;
       font-size: 9px;
       color: #a0a0a0;
-      margin-top: -15px;
-      margin-left: 12px;
+      margin-top: -10px;
     }
 
     #checkbox-pane label {
@@ -172,6 +189,7 @@
     <div id="checkbox-pane">
       <div id="checkbox-header">
         <h3 id="checkbox-title">WhoYouCalling</h3>
+        <p id="checkbox-application-name">CallMapper</p>
         <p id="checkbox-author">By Hannes Michel</p>
       </div>
       <div id="checkbox-list"></div>
@@ -232,7 +250,8 @@
             {
               selector: 'node[type = "process"]',
               style: {
-                'border-width': 2,              
+                'shape': 'data(shape)',         
+                'border-width': 2,     
                 'border-color': '#000000',     
                 'border-style': 'solid',
                 'background-color': '#cc00cc',  
@@ -248,6 +267,7 @@
             {
               selector: 'node[type = "domain"]',
               style: {
+                'shape': 'data(shape)',         
                 'border-width': 2,              
                 'border-color': '#000000',      
                 'border-style': 'solid',
@@ -262,6 +282,7 @@
             {
               selector: 'node[type = "ip"]',
               style: {
+                'shape': 'data(shape)',         
                 'border-width': 2,             
                 'border-color': '#000000',     
                 'border-style': 'solid',
@@ -327,61 +348,113 @@
                 'border-width': 4, 
                 'width': '65',
                 'height': '65',
-                'transition-property': 'width height', 
+                'transition-property': 'width height font-size font-weight', 
                 'transition-duration': '0.3s', 
-                'transition-timing-function': 'ease' 
+                'transition-timing-function': 'ease',
+                'font-weight': 'bold',
+                'font-size': '22px',
+                'text-opacity': 1,
+                'z-index': 9999       
               }
             }
           ],
        
         });
-
         /*
           ==================================
         |
-        |   Checkbox management
+        |   Checkbox management 
         |
           ===================================
         */ 
-        
         const checkboxPane = document.getElementById('checkbox-list');
 
         const selectAllCheckbox = document.createElement('input');
         selectAllCheckbox.type = 'checkbox';
         selectAllCheckbox.id = 'checkbox-select-all';
-        selectAllCheckbox.checked = true; 
+        selectAllCheckbox.checked = true;
 
         const selectAllLabel = document.createElement('label');
         selectAllLabel.htmlFor = 'checkbox-select-all';
-        selectAllLabel.textContent = 'Select All';
+        selectAllLabel.textContent = 'Every process';
 
         selectAllCheckbox.addEventListener('change', () => {
           const isChecked = selectAllCheckbox.checked;
+
+          hideOrphanedCheckbox.checked = isChecked;
           checkboxes.forEach(({ node, checkbox }) => {
             checkbox.checked = isChecked;
-            toggleNodeVisibility(node, isChecked); 
+            toggleNodeVisibility(node, isChecked);
           });
+
           updateTargetNodeVisibility();
+          hideTooltip();
+          cy.nodes().removeClass('highlighted'); 
         });
 
         const selectAllContainer = document.createElement('div');
         selectAllContainer.appendChild(selectAllCheckbox);
         selectAllContainer.appendChild(selectAllLabel);
+
+        /*
+          ==================================
+        |
+        |   Checkbox management - Processes without network activity
+        |
+          ===================================
+        */ 
+
+        const hideOrphanedCheckbox = document.createElement('input');
+        hideOrphanedCheckbox.type = 'checkbox';
+        hideOrphanedCheckbox.id = 'checkbox-hide-orphaned';
+        hideOrphanedCheckbox.checked = true; 
+
+        const hideOrphanedLabel = document.createElement('label');
+        hideOrphanedLabel.htmlFor = 'checkbox-hide-orphaned';
+        hideOrphanedLabel.textContent = 'Processes without network activty';
+
+        const hideOrphanedContainer = document.createElement('div');
+        hideOrphanedContainer.appendChild(hideOrphanedCheckbox);
+        hideOrphanedContainer.appendChild(hideOrphanedLabel);
+
+        checkboxPane.insertBefore(hideOrphanedContainer, checkboxPane.firstChild);
+
+        hideOrphanedCheckbox.addEventListener('change', () => {
+          const isChecked = hideOrphanedCheckbox.checked;
+
+          processNodes.forEach((node) => {
+            const hasTargetEdges = node.connectedEdges().some((edge) => {
+              const targetNode = edge.target();
+              return targetNode.data('type') === 'domain' || targetNode.data('type') === 'ip';
+            });
+
+            const orphanedNodeId = node.data('id');
+            if (!hasTargetEdges) {
+              toggleNodeVisibility(node, isChecked); 
+              const checkbox = document.getElementById(`checkbox-${orphanedNodeId}`);
+              checkbox.checked = isChecked;
+            }
+          });
+
+          updateTargetNodeVisibility();
+      });
+
+        checkboxPane.appendChild(hideOrphanedContainer);
         checkboxPane.appendChild(selectAllContainer);
 
         const processNodes = cy.nodes()
           .filter(node => node.data('type') === 'process')
-          .sort((a, b) => a.data('label').localeCompare(b.data('label'))); // Sort by label
+          .sort((a, b) => a.data('label').localeCompare(b.data('label')));
 
-        const checkboxes = []; 
+        const checkboxes = [];
 
         processNodes.forEach((node) => {
-          const nodeLabel = node.data('label'); 
+          const nodeLabel = node.data('label');
 
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
           checkbox.id = `checkbox-${node.id()}`;
-          checkbox.checked = true; 
+          checkbox.checked = true;
 
           checkbox.addEventListener('change', () => {
             toggleNodeVisibility(node, checkbox.checked);
@@ -389,7 +462,8 @@
 
             const allChecked = checkboxes.every(({ checkbox }) => checkbox.checked);
             const noneChecked = checkboxes.every(({ checkbox }) => !checkbox.checked);
-            selectAllCheckbox.checked = allChecked; 
+            selectAllCheckbox.checked = allChecked;
+            hideOrphanedCheckbox.checked = allChecked;
             selectAllCheckbox.indeterminate = !allChecked && !noneChecked;
           });
 
@@ -398,8 +472,8 @@
           label.textContent = nodeLabel;
 
           const container = document.createElement('div');
-          container.appendChild(checkbox); 
-          container.appendChild(label);   
+          container.appendChild(checkbox);
+          container.appendChild(label);
 
           checkboxPane.appendChild(container);
 
@@ -422,7 +496,7 @@
               if (connectedProcesses.length === 0) {
                 targetNode.style('display', 'none');
               } else {
-                targetNode.style('display', 'element'); 
+                targetNode.style('display', 'element');
               }
             }
           });
@@ -473,7 +547,6 @@
             })
             .update();
       });
-
 
       cy.on('click', function (event) {
         if (event.target === cy) {

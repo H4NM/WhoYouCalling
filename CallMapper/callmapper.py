@@ -7,19 +7,148 @@ from typing import Tuple, Optional
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from datetime import datetime
 
-#import requests 
-
-#=======================
-#       VARIABLES 
-#=======================
-
+#=====================================
+#  CHANGABLE VARIABLES AND FUNCTIONS
+#=====================================
 HTTP_HOST_ADRESS:str = "127.0.0.1"
 HTTP_HOST_PORT:int = 8080
+VIRUSTOTAL_API_KEY: str = "1aad87624fd83214854d1a687010e2573d783216f8f382993fb46c538b5d2fde"
 
+
+def lookup_endpoints(endpoints: dict) -> None:
+    """
+    This is where you may add additional lookup functionality to your own APIs 
+    to enrich your data additionally. All you need to do is to do is use the template function below.
+    It will take the endpoints as a parameter in which you may iterate all of the to generate a report for each.
+    The passed endpoints variable is a dict in the following structure:
+    
+    endpoints: dict = {
+        'domains': set(),
+        'ips': set()
+    }
+    
+    You need to import the library requests in the parent function for all reports. 
+    The reason for this is simply due to making this script not requiring the requests library to run.
+    
+    For more information, see the get_virustotal_report function on how it was made.
+    """
+    if VIRUSTOTAL_API_KEY:
+        REPORTS.extend(get_virustotal_report(endpoints))
+
+#====================
+#  VIRUSTOTAL LOOKUP
+#====================
+
+def get_virustotal_report(endpoints: dict) -> list: 
+    import requests
+    headers = {"x-apikey": VIRUSTOTAL_API_KEY}
+    api_source = 'VirusTotal'
+    virustotal_reports = []
+    
+    def get_data(endpoint: str, lookup_type: LookupType) -> dict:
+        api_adapted_lookup_type: str = "ip_addresses" if lookup_type == LookupType.IP else "domains"
+        url = f"https://www.virustotal.com/api/v3/{api_adapted_lookup_type}/{endpoint}"
+        try:
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                ConsoleOutputPrint(msg=f"Error during virustotal lookup of \"{lookup_type}\" \"{endpoint}\". Response: {response.status_code}, {response.text}", print_type="error")
+                return None
+        except Exception as error_msg:
+            ConsoleOutputPrint(msg=f"Error during virustotal lookup of \"{lookup_type}\" \"{endpoint}\": {str(error_msg)}", print_type="error")
+            return None
+    
+    def get_presentable_data_for_domain(returned_data: dict) -> Tuple[dict,bool]:
+        presentable_data: dict = {}
+        status: str = ""
+        votes: str = ""
+        is_potentially_malicious: bool = False
+        
+        if returned_data['data']['attributes']['last_analysis_stats']['malicious'] > 0:
+            status = 'Potentially malicious'
+            is_potentially_malicious = True
+        elif returned_data['data']['attributes']['last_analysis_stats']['suspicious'] > 0:
+            status = 'Suspicious'
+        else:
+            status = 'Harmless or undetected'
+        
+        presentable_data['Status'] = status
+        presentable_data['Community votes harmless'] = returned_data['data']['attributes']['total_votes']['harmless']
+        presentable_data['Community votes malicious'] = returned_data['data']['attributes']['total_votes']['malicious']
+        presentable_data['Reputation'] = returned_data['data']['attributes']['reputation']
+        presentable_data['Registrar'] = returned_data['data']['attributes']['registrar']
+        if len(returned_data['data']['attributes']['tags']) > 0:
+            presentable_data['Tags'] = ", ".join(returned_data['data']['attributes']['tags'])
+
+        return presentable_data, is_potentially_malicious
+        
+    def get_domain_reports(domains: list) -> list:
+        reports = []
+        for domain in domains:
+            returned_data: dict = get_data(domain, lookup_type=LookupType.DOMAIN) 
+            if returned_data == None:
+                continue
+            presentable_data, is_potentially_malicious = get_presentable_data_for_domain(returned_data=returned_data)
+            virustotal_report = Report(api_source=api_source,
+                                    endpoint=domain,
+                                    endpoint_type=LookupType.DOMAIN,
+                                    presentable_data=presentable_data,
+                                    is_potentially_malicious=is_potentially_malicious)
+            reports.append(virustotal_report)
+        return reports
+    
+    virustotal_reports.extend(get_domain_reports(domains=endpoints['domains']))
+    
+    return virustotal_reports
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#==================================================
+#  Dont touch these variables or anything below :) 
+#==================================================
 NODE_COUNTER: int = 0
 PROCESS_NODE_LOOKUP_INDEX: dict = {}
 PROCESS_START_SECONDS_RANGE: int = 3
+SCRIPT_DIRECTORY: Path.parent = Path(__file__).parent
+HTML_FILE: str = SCRIPT_DIRECTORY / "index.html"
+DATA_FILE: str = SCRIPT_DIRECTORY / "data.json"
+PERFORM_LOOKUP: bool = False
+DATA_FILE_JSON_STRUCTURE: dict = {
+    "elements": {
+        "nodes": list,
+        "edges": list
+    }
+}
+REPORTS = []    
 
+class LookupType:
+    IP = "ip"
+    DOMAIN = "domain"
+    
+class Report:
+    def __init__(self, api_source: str, endpoint:str, endpoint_type: LookupType, presentable_data: list, is_potentially_malicious: bool):
+        self.api_source = api_source
+        self.endpoint = endpoint
+        self.endpoint_type = endpoint_type
+        self.is_potentially_malicious=is_potentially_malicious
+        self.presentable_data = []
+        for title in presentable_data:
+            self.presentable_data.append(get_html_attribute_and_value(title=title, value=presentable_data[title]))
+        
 class NodeType:
     PROCESS = "process"
     IP = "ip"
@@ -33,7 +162,7 @@ class EdgeType:
     
 class HttpHandlerWithoutLogging(SimpleHTTPRequestHandler):
     def translate_path(self, path):
-        return str(Path(__file__).parent.resolve() / path.lstrip("/"))
+        return str(SCRIPT_DIRECTORY.resolve() / path.lstrip("/"))
     
     def end_headers(self):
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -43,6 +172,27 @@ class HttpHandlerWithoutLogging(SimpleHTTPRequestHandler):
         
     def log_message(self, format, *args): 
         return 
+        
+def get_unique_endpoints_to_lookup(monitored_processes: dict) -> dict:
+    endpoints: dict = {
+        'domains': set(),
+        'ips': set()
+    }
+    for process in monitored_processes:
+        for connection_record in process['TCPIPTelemetry']:
+            endpoints['ips'].add(connection_record['DestinationIP'])
+        for dns_query in process['DNSQueries']:
+            endpoints['domains'].add(dns_query['DomainQueried'])
+        for dns_response in process['DNSResponses']:
+            endpoints['domains'].add(dns_response['DomainQueried'])
+    return endpoints
+
+def requests_is_installed() -> bool:
+    try:
+        import requests
+        return True
+    except ImportError:
+        return False
 
 def is_bundled_ipv4(ipv6_address: str) -> Tuple[bool, Optional[str]]:
     try:
@@ -73,7 +223,7 @@ def convert_to_datetime_object(date_str: str) -> datetime:
             date_str = f"{base}.{fraction}"
     return datetime.fromisoformat(date_str)
 
-def start_http_server():
+def start_http_server() -> None:
   httpd = HTTPServer((HTTP_HOST_ADRESS, HTTP_HOST_PORT), HttpHandlerWithoutLogging)
   httpd.serve_forever()
   
@@ -100,14 +250,14 @@ def get_results_file_data(results_file:str) -> list:
 
 def output_visualization_data(visualization_data:dict) -> None:
     try:
-        json_file = open("data.json", "wt")
+        json_file = open(DATA_FILE, "wt")
         json.dump(visualization_data, json_file, indent=4)
         json_file.close()
     except Exception as error_msg:
         ConsoleOutputPrint(msg=f"Error when creating visualization data file: {str(error_msg)}", print_type="fatal")
         sys.exit(1)
 
-def validate_structure(data, expected):
+def validate_structure(data, expected) -> bool:
     if not isinstance(data, dict) or not isinstance(expected, dict):
         return isinstance(data, expected)
     for key, value in expected.items():
@@ -116,33 +266,42 @@ def validate_structure(data, expected):
     return True
 
 def index_file_exists() -> bool:
-    html_file = Path(__file__).parent / "index.html"
-    if html_file.exists():
+    if HTML_FILE.exists():
         return True
     else:
         return False
 
 def provided_result_file(args: list) -> bool:
-    if len(args) == 2:
+    global PERFORM_LOOKUP
+    
+    if len(args) >= 2:
         results_file:str = sys.argv[1] 
         if not os.path.isfile(results_file):
             ConsoleOutputPrint(msg=f"The provided results file {results_file} is not a valid file.", print_type="error")
             sys.exit(1)
         else:
+            if len(args) == 3 and args[2] == 'lookup':
+                if requests_is_installed():
+                    ConsoleOutputPrint("Required libraries are installed", print_type="info")
+                    PERFORM_LOOKUP = True
+                else:
+                    msg ="""
+The library 'requests' doesn't seem to be installed.
+It's needed to perform API lookups
+Run the following to install it: 
+        
+        pip install requests
+
+                    """
+                    ConsoleOutputPrint(msg, print_type="fatal")
+                    sys.exit(1)
             return True
         
-    data_json_structure = {
-        "elements": {
-            "nodes": list,
-            "edges": list
-        }
-    }
-    data_file = Path(__file__).parent / "data.json"
-    if data_file.exists():
+    if DATA_FILE.exists():
         try:
-            with data_file.open("rt", encoding="utf-8") as f:
+            with DATA_FILE.open("rt", encoding="utf-8") as f:
                 data = json.load(f)
-            if validate_structure(data, data_json_structure):
+            if validate_structure(data, DATA_FILE_JSON_STRUCTURE):
                 return False
             else:
                 ConsoleOutputPrint(msg=f"The provided data file has an invalid JSON structure", print_type="error")
@@ -257,14 +416,17 @@ def get_node(label:str, type: NodeType, monitored_process={}) -> dict:
     global NODE_COUNTER
     NODE_COUNTER += 1
     node_info: list = []
+    is_potentially_malicious = False
     if type == NodeType.PROCESS:
         node_info = get_process_metadata(monitored_process=monitored_process, node_id=NODE_COUNTER)
     elif type == NodeType.IP or type == NodeType.DOMAIN:
-        node_info = get_ip_or_domain_metadata(endpoint=label, type=type)
-    node: dict = { "data": { "id": NODE_COUNTER, "type": type, "label": label, "info": '<br>'.join(node_info)} } 
+        node_info, is_potentially_malicious = get_ip_or_domain_metadata(endpoint=label, type=type)
+    node: dict = { "data": { "id": NODE_COUNTER, "type": type, "label": label, "shape": "ellipse", "info": '<br>'.join(node_info)} } 
+    if is_potentially_malicious:
+        node['shape'] = 'star'
     return node
 
-def get_html_attribute_and_value(title: str = "", value:str = ""):
+def get_html_attribute_and_value(title: str = "", value:str = "") -> str:
     return f"<b>{title}</b>: {value}"
 
 def get_process_metadata(monitored_process: dict, node_id: int) -> list:
@@ -290,10 +452,18 @@ def get_process_metadata(monitored_process: dict, node_id: int) -> list:
     metadata.append(f"<button id='deselect-button' onclick=\"deselectNode({node_id})\">Hide process</button>") 
     return metadata
 
-def get_ip_or_domain_metadata(endpoint: str, type: NodeType) -> list:
+def get_ip_or_domain_metadata(endpoint: str, type: NodeType) -> Tuple[list, bool]:
     metadata: list = []
+    is_potentially_malicious: bool = False
     metadata.append(f"<h3 id='endpoint-type'>{type.title()}</h3>") 
     metadata.append(f"<p id='endpoint-value'>{endpoint}</p>") 
+    for report in REPORTS:
+        if endpoint == report.endpoint and report.endpoint_type == type:
+            metadata.append(f"<p id='api-source-title'>{report.api_source}</p>")
+            for presentable_text in report.presentable_data:
+                metadata.append(presentable_text)
+            if report.is_potentially_malicious:
+                is_potentially_malicious = True
 
     if type == NodeType.IP:
         metadata.append(f"<a href='https://ipinfo.io/{endpoint}' target='_blank'>ipinfo.io</a>")
@@ -302,7 +472,7 @@ def get_ip_or_domain_metadata(endpoint: str, type: NodeType) -> list:
         metadata.append(f"<a href='https://www.whois.com/whois/{endpoint}' target='_blank'>whois.com</a>")
         metadata.append(f"<a href='https://www.virustotal.com/gui/domain/{endpoint}' target='_blank'>virustotal.com</a>")
 
-    return metadata
+    return metadata, is_potentially_malicious
 
 def get_nodes(visualization_data: dict, monitored_processes: list) -> dict:
     ips = set()
@@ -329,8 +499,8 @@ def get_nodes(visualization_data: dict, monitored_processes: list) -> dict:
         visualization_data["elements"]["nodes"].append(domain_node)
     
     return visualization_data
-    
-def main():
+
+def main() -> None:
     if not index_file_exists():
         ConsoleOutputPrint(msg=f"Unable to find index.html in the same directory as the script", print_type="error")
         sys.exit(1)
@@ -339,9 +509,27 @@ def main():
         results_file: str = sys.argv[1]
         ConsoleOutputPrint(msg=f"Retrieving data from results file", print_type="info")
         monitored_processes: list = get_results_file_data(results_file)
+        
+        if PERFORM_LOOKUP:
+            endpoints: dict = get_unique_endpoints_to_lookup(monitored_processes)
+            lookup_endpoints(endpoints) 
+        
         ConsoleOutputPrint(msg=f"Creating visualization data", print_type="info")
         visualization_data = get_visualization_data(monitored_processes)
-        output_visualization_data(visualization_data)
+        if os.path.isfile(DATA_FILE):
+            while True:
+                answer = input("[!] An existing data.json file was found in the same directory as the script. Do you want to overwrite it? (Y/n): ").strip().lower()
+                if answer == "y" or answer == "":
+                    ConsoleOutputPrint(msg=f"Overwriting existing data.json.", print_type="info")
+                    output_visualization_data(visualization_data)
+                    break
+                elif answer == "n":
+                    ConsoleOutputPrint(msg=f"Keeping existing data.json", print_type="info")
+                    break  
+                else:
+                    ConsoleOutputPrint(msg=f"Invalid input. Please enter 'y' or 'n'.", print_type="warning")
+        else:
+            output_visualization_data(visualization_data)
     else:
         ConsoleOutputPrint(msg=f"Visualizing from existing results file", print_type="info")
     ConsoleOutputPrint(msg=f"Hosting visualization via http://{HTTP_HOST_ADRESS}:{HTTP_HOST_PORT}", print_type="info")
