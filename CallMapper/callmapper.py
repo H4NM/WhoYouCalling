@@ -8,113 +8,27 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from datetime import datetime
 
 #=====================================
+#  API LOOKUP IMPORTS
+#=====================================
+import api_lookups
+
+#=====================================
 #  CHANGABLE VARIABLES AND FUNCTIONS
 #=====================================
 HTTP_HOST_ADRESS:str = "127.0.0.1"
 HTTP_HOST_PORT:int = 8080
-VIRUSTOTAL_API_KEY: str = "1aad87624fd83214854d1a687010e2573d783216f8f382993fb46c538b5d2fde"
-
-
-def lookup_endpoints(endpoints: dict) -> None:
-    """
-    This is where you may add additional lookup functionality to your own APIs 
-    to enrich your data additionally. All you need to do is to do is use the template function below.
-    It will take the endpoints as a parameter in which you may iterate all of the to generate a report for each.
-    The passed endpoints variable is a dict in the following structure:
-    
-    endpoints: dict = {
-        'domains': set(),
-        'ips': set()
+VIRUSTOTAL_API_KEY: str = ""
+ABUSEIPDB_API_KEY: str = ""
+API_LOOKUPS = {
+    'VirusTotal': {
+        'api_key': '', 
+        'api': api_lookups.VirusTotalLookup,
+    },
+    'AbuseIPDB': {
+        'api_key': '', 
+        'api': api_lookups.get_abuseipdb_report,
     }
-    
-    You need to import the library requests in the parent function for all reports. 
-    The reason for this is simply due to making this script not requiring the requests library to run.
-    
-    For more information, see the get_virustotal_report function on how it was made.
-    """
-    if VIRUSTOTAL_API_KEY:
-        REPORTS.extend(get_virustotal_report(endpoints))
-
-#====================
-#  VIRUSTOTAL LOOKUP
-#====================
-
-def get_virustotal_report(endpoints: dict) -> list: 
-    import requests
-    headers = {"x-apikey": VIRUSTOTAL_API_KEY}
-    api_source = 'VirusTotal'
-    virustotal_reports = []
-    
-    def get_data(endpoint: str, lookup_type: LookupType) -> dict:
-        api_adapted_lookup_type: str = "ip_addresses" if lookup_type == LookupType.IP else "domains"
-        url = f"https://www.virustotal.com/api/v3/{api_adapted_lookup_type}/{endpoint}"
-        try:
-            response = requests.get(url, headers=headers)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                ConsoleOutputPrint(msg=f"Error during virustotal lookup of \"{lookup_type}\" \"{endpoint}\". Response: {response.status_code}, {response.text}", print_type="error")
-                return None
-        except Exception as error_msg:
-            ConsoleOutputPrint(msg=f"Error during virustotal lookup of \"{lookup_type}\" \"{endpoint}\": {str(error_msg)}", print_type="error")
-            return None
-    
-    def get_presentable_data_for_domain(returned_data: dict) -> Tuple[dict,bool]:
-        presentable_data: dict = {}
-        status: str = ""
-        votes: str = ""
-        is_potentially_malicious: bool = False
-        
-        if returned_data['data']['attributes']['last_analysis_stats']['malicious'] > 0:
-            status = 'Potentially malicious'
-            is_potentially_malicious = True
-        elif returned_data['data']['attributes']['last_analysis_stats']['suspicious'] > 0:
-            status = 'Suspicious'
-        else:
-            status = 'Harmless or undetected'
-        
-        presentable_data['Status'] = status
-        presentable_data['Community votes harmless'] = returned_data['data']['attributes']['total_votes']['harmless']
-        presentable_data['Community votes malicious'] = returned_data['data']['attributes']['total_votes']['malicious']
-        presentable_data['Reputation'] = returned_data['data']['attributes']['reputation']
-        presentable_data['Registrar'] = returned_data['data']['attributes']['registrar']
-        if len(returned_data['data']['attributes']['tags']) > 0:
-            presentable_data['Tags'] = ", ".join(returned_data['data']['attributes']['tags'])
-
-        return presentable_data, is_potentially_malicious
-        
-    def get_domain_reports(domains: list) -> list:
-        reports = []
-        for domain in domains:
-            returned_data: dict = get_data(domain, lookup_type=LookupType.DOMAIN) 
-            if returned_data == None:
-                continue
-            presentable_data, is_potentially_malicious = get_presentable_data_for_domain(returned_data=returned_data)
-            virustotal_report = Report(api_source=api_source,
-                                    endpoint=domain,
-                                    endpoint_type=LookupType.DOMAIN,
-                                    presentable_data=presentable_data,
-                                    is_potentially_malicious=is_potentially_malicious)
-            reports.append(virustotal_report)
-        return reports
-    
-    virustotal_reports.extend(get_domain_reports(domains=endpoints['domains']))
-    
-    return virustotal_reports
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}
 
 
 #==================================================
@@ -134,6 +48,7 @@ DATA_FILE_JSON_STRUCTURE: dict = {
     }
 }
 REPORTS = []    
+
 
 class LookupType:
     IP = "ip"
@@ -172,7 +87,21 @@ class HttpHandlerWithoutLogging(SimpleHTTPRequestHandler):
         
     def log_message(self, format, *args): 
         return 
+
+def lookup_endpoints(endpoints: dict) -> None:  
+    for name, details in API_LOOKUPS.items():
+        ConsoleOutputPrint(msg=f"Performing lookup of endpoints via {name}", print_type="info")
+        api_key = details['api_key']
+        class_ref = details['api']
+        instance = class_ref(name, api_key)
+        if instance.has_api_prerequisites():
+            ConsoleOutputPrint(msg=f"API key required for lookup via {name}. Skipping..", print_type="warning")
+            continue
+        result = class_ref(name, api_key).lookup(endpoints)  
         
+    for API in API_LOOKUPS:
+        API_LOOKUPS[API]['function'](endpoints, API, API_LOOKUPS[API]['api_key'])
+
 def get_unique_endpoints_to_lookup(monitored_processes: dict) -> dict:
     endpoints: dict = {
         'domains': set(),
@@ -417,13 +346,31 @@ def get_node(label:str, type: NodeType, monitored_process={}) -> dict:
     NODE_COUNTER += 1
     node_info: list = []
     is_potentially_malicious = False
+    node_color: str = ""
+    node_shape: str = "ellipse"
+    node_width: str = "30"
+    node_height: str = "30"
+    
     if type == NodeType.PROCESS:
         node_info = get_process_metadata(monitored_process=monitored_process, node_id=NODE_COUNTER)
-    elif type == NodeType.IP or type == NodeType.DOMAIN:
+        node_color = "#cc00cc"
+        node_width = "40"
+        node_height = "40"
+    elif type == NodeType.IP:
         node_info, is_potentially_malicious = get_ip_or_domain_metadata(endpoint=label, type=type)
-    node: dict = { "data": { "id": NODE_COUNTER, "type": type, "label": label, "shape": "ellipse", "info": '<br>'.join(node_info)} } 
+        node_color = "#2ffcf3"
+    elif type == NodeType.DOMAIN:
+        node_info, is_potentially_malicious = get_ip_or_domain_metadata(endpoint=label, type=type)
+        node_color = "#fcf62f"
+        
     if is_potentially_malicious:
-        node['shape'] = 'star'
+        node_shape = "star"
+        node_color = "#ff0000"
+        node_width = "60"
+        node_height = "60"
+        
+    node: dict = { "data": { "id": NODE_COUNTER, "type": type, "label": label, "shape": node_shape, "width": node_width, "height": node_height, "color": node_color, "info": '<br>'.join(node_info)} } 
+        
     return node
 
 def get_html_attribute_and_value(title: str = "", value:str = "") -> str:
