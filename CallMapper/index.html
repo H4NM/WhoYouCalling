@@ -25,7 +25,7 @@
       display: flex;
       justify-content: center; 
       margin-bottom: -18px;
-      margin-top: -5px;
+      margin-top: 5px;
       font-weight: bold;
       font-size: 16px;
       color: #000000;
@@ -45,6 +45,8 @@
       justify-content: center; 
       color: rgb(0, 0, 0);
       margin-bottom: -2px;
+      max-width: 100%; 
+      word-break: break-all; 
     }
 
     #deselect-button{
@@ -117,6 +119,9 @@
       background-color: rgb(255, 255, 255);
       word-wrap: break-word; 
       overflow-wrap: break-word; 
+      
+      white-space: normal; /* Ensures text can wrap */
+      overflow: hidden; /* Prevents content from overflowing */
     }
 
     #checkbox-pane{

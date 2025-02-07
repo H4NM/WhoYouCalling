@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import ipaddress
+import argparse
 from pathlib import Path
 from typing import Tuple, Optional
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -10,7 +11,8 @@ from datetime import datetime
 #=====================================
 #  API LOOKUP IMPORTS
 #=====================================
-import api_lookups
+from api_lookups import *
+from custom_api_lookups import *
 
 #=====================================
 #  CHANGABLE VARIABLES AND FUNCTIONS
@@ -22,18 +24,29 @@ ABUSEIPDB_API_KEY: str = ""
 API_LOOKUPS = {
     'VirusTotal': {
         'api_key': '', 
-        'api': api_lookups.VirusTotalLookup,
+        'api': VirusTotal,
     },
     'AbuseIPDB': {
         'api_key': '', 
-        'api': api_lookups.get_abuseipdb_report,
+        'api': AbuseIPDB,
     }
 }
-
 
 #==================================================
 #  Dont touch these variables or anything below :) 
 #==================================================
+SCRIPT_BANNER = r"""  
+        o=o        o         o--o   o            *
+   _____      _ _ __  __         \\    o-o        \    
+  / ____|    | | |  \/  |    o     o-o             o         
+ | |     __ _| | | \  / | __ _ _ __  _ __   ___ _ __ 
+ | |    / _` | | | |\/| |/ _` | '_ \| '_ \ / _ \ '__|  o
+ | |___| (_| | | | |  | | (_| | |_) | |_) |  __/ |    /
+  \_____\__,_|_|_|_|  |_|\__,_| .__/| .__/ \___|_|   o  
+  *Part of WhoYouCalling      | |   | |           
+                              |_|   |_|           
+        o--o                              o--o--o--o
+"""
 NODE_COUNTER: int = 0
 PROCESS_NODE_LOOKUP_INDEX: dict = {}
 PROCESS_START_SECONDS_RANGE: int = 3
@@ -47,7 +60,7 @@ DATA_FILE_JSON_STRUCTURE: dict = {
         "edges": list
     }
 }
-REPORTS = []    
+REPORTS: list = []    
 
 
 class LookupType:
@@ -88,32 +101,47 @@ class HttpHandlerWithoutLogging(SimpleHTTPRequestHandler):
     def log_message(self, format, *args): 
         return 
 
-def lookup_endpoints(endpoints: dict) -> None:  
-    for name, details in API_LOOKUPS.items():
-        ConsoleOutputPrint(msg=f"Performing lookup of endpoints via {name}", print_type="info")
-        api_key = details['api_key']
-        class_ref = details['api']
-        instance = class_ref(name, api_key)
-        if instance.has_api_prerequisites():
-            ConsoleOutputPrint(msg=f"API key required for lookup via {name}. Skipping..", print_type="warning")
+def lookup_endpoints(endpoints: dict, apis_to_use: list) -> None:  
+    for api_name in apis_to_use:
+        ConsoleOutputPrint(msg=f"Performing {api_name} API lookups...", print_type="info")
+        api_key = API_LOOKUPS[api_name]['api_key']
+        class_reference = API_LOOKUPS[api_name]['api']
+        instance = class_reference(api_name, api_key)
+        if not instance.has_api_prerequisites():
+            ConsoleOutputPrint(msg=f"API key required for lookup via {api_name}. Skipping..", print_type="warning")
             continue
-        result = class_ref(name, api_key).lookup(endpoints)  
-        
-    for API in API_LOOKUPS:
-        API_LOOKUPS[API]['function'](endpoints, API, API_LOOKUPS[API]['api_key'])
+        REPORTS.extend(instance.lookup(endpoints)) 
 
-def get_unique_endpoints_to_lookup(monitored_processes: dict) -> dict:
+def is_private_ip_or_localhost(ip):
+    ip_obj = ipaddress.ip_address(ip)
+    if ip_obj.is_private or ip_obj.is_loopback:
+        return True
+    else:
+        return False
+
+def is_valid_domain_name(domain):
+    if "." in domain:
+        return True
+    else:
+        return False
+
+def get_unique_endpoints_to_lookup(monitored_processes: dict, processes_to_lookup_with_network_activity: list) -> dict:
     endpoints: dict = {
         'domains': set(),
         'ips': set()
     }
+    
     for process in monitored_processes:
-        for connection_record in process['TCPIPTelemetry']:
-            endpoints['ips'].add(connection_record['DestinationIP'])
-        for dns_query in process['DNSQueries']:
-            endpoints['domains'].add(dns_query['DomainQueried'])
-        for dns_response in process['DNSResponses']:
-            endpoints['domains'].add(dns_response['DomainQueried'])
+        if process['ProcessName'] in processes_to_lookup_with_network_activity:
+            for connection_record in process['TCPIPTelemetry']:
+                if not is_private_ip_or_localhost(connection_record['DestinationIP']):
+                    endpoints['ips'].add(connection_record['DestinationIP'])
+            for dns_query in process['DNSQueries']:
+                if is_valid_domain_name(dns_query['DomainQueried']):
+                    endpoints['domains'].add(dns_query['DomainQueried'])
+            for dns_response in process['DNSResponses']:
+                if is_valid_domain_name(dns_response['DomainQueried']):
+                    endpoints['domains'].add(dns_response['DomainQueried'])
     return endpoints
 
 def requests_is_installed() -> bool:
@@ -186,61 +214,19 @@ def output_visualization_data(visualization_data:dict) -> None:
         ConsoleOutputPrint(msg=f"Error when creating visualization data file: {str(error_msg)}", print_type="fatal")
         sys.exit(1)
 
-def validate_structure(data, expected) -> bool:
+def valid_structure(data, expected) -> bool:
     if not isinstance(data, dict) or not isinstance(expected, dict):
         return isinstance(data, expected)
     for key, value in expected.items():
-        if key not in data or not validate_structure(data[key], value):
+        if key not in data or not valid_structure(data[key], value):
             return False
     return True
 
-def index_file_exists() -> bool:
-    if HTML_FILE.exists():
+def file_exists_in_same_script_folder(file: str) -> bool:
+    if (SCRIPT_DIRECTORY / file).exists():
         return True
     else:
         return False
-
-def provided_result_file(args: list) -> bool:
-    global PERFORM_LOOKUP
-    
-    if len(args) >= 2:
-        results_file:str = sys.argv[1] 
-        if not os.path.isfile(results_file):
-            ConsoleOutputPrint(msg=f"The provided results file {results_file} is not a valid file.", print_type="error")
-            sys.exit(1)
-        else:
-            if len(args) == 3 and args[2] == 'lookup':
-                if requests_is_installed():
-                    ConsoleOutputPrint("Required libraries are installed", print_type="info")
-                    PERFORM_LOOKUP = True
-                else:
-                    msg ="""
-The library 'requests' doesn't seem to be installed.
-It's needed to perform API lookups
-Run the following to install it: 
-        
-        pip install requests
-
-                    """
-                    ConsoleOutputPrint(msg, print_type="fatal")
-                    sys.exit(1)
-            return True
-        
-    if DATA_FILE.exists():
-        try:
-            with DATA_FILE.open("rt", encoding="utf-8") as f:
-                data = json.load(f)
-            if validate_structure(data, DATA_FILE_JSON_STRUCTURE):
-                return False
-            else:
-                ConsoleOutputPrint(msg=f"The provided data file has an invalid JSON structure", print_type="error")
-                sys.exit(1)
-        except json.JSONDecodeError:
-            ConsoleOutputPrint(msg=f"The provided data file has an invalid JSON format", print_type="error")
-            sys.exit(1)
-    else:
-        ConsoleOutputPrint(msg=f"No results file provided nor was a data.json file found in the same directory as the script.", print_type="error")
-        sys.exit(1)
 
 def get_visualization_data(monitored_processes: list) -> dict:
     visualization_data = {
@@ -413,8 +399,9 @@ def get_ip_or_domain_metadata(endpoint: str, type: NodeType) -> Tuple[list, bool
                 is_potentially_malicious = True
 
     if type == NodeType.IP:
-        metadata.append(f"<a href='https://ipinfo.io/{endpoint}' target='_blank'>ipinfo.io</a>")
+        metadata.append(f"<a href='https://ipinfo.io/{endpoint}' target='_blank'>ipinfo.io</a>") 
         metadata.append(f"<a href='https://www.virustotal.com/gui/ip-address/{endpoint}' target='_blank'>virustotal.com</a>")
+        metadata.append(f"<a href='https://www.abuseipdb.com/check/{endpoint}' target='_blank'>abuseipdb.com</a>")
     elif type == NodeType.DOMAIN:
         metadata.append(f"<a href='https://www.whois.com/whois/{endpoint}' target='_blank'>whois.com</a>")
         metadata.append(f"<a href='https://www.virustotal.com/gui/domain/{endpoint}' target='_blank'>virustotal.com</a>")
@@ -447,34 +434,180 @@ def get_nodes(visualization_data: dict, monitored_processes: list) -> dict:
     
     return visualization_data
 
-def main() -> None:
-    if not index_file_exists():
-        ConsoleOutputPrint(msg=f"Unable to find index.html in the same directory as the script", print_type="error")
-        sys.exit(1)
-    results_file_was_provided: bool = provided_result_file(sys.argv)
-    if results_file_was_provided:
-        results_file: str = sys.argv[1]
-        ConsoleOutputPrint(msg=f"Retrieving data from results file", print_type="info")
-        monitored_processes: list = get_results_file_data(results_file)
+def get_unique_process_names_with_external_network_activity(monitored_processes: dict) -> set:
+    unique_process_names = set()
+    for process in monitored_processes:
+        if process_has_network_activity(process):
+            unique_process_names.add(process['ProcessName'])
+    return sorted(unique_process_names)
+
+def process_has_network_activity(process: dict) -> bool:
+    not_only_private_or_loopback_traffic: bool = False
+    if len(process['TCPIPTelemetry']):
+        for connection_record in process['TCPIPTelemetry']:
+            if not is_private_ip_or_localhost(connection_record['DestinationIP']):
+                not_only_private_or_loopback_traffic = True
+
+    if len(process['TCPIPTelemetry']) > 0 and not_only_private_or_loopback_traffic:
+        return True
+    elif len(process['DNSQueries']) > 0:
+        return True
+    elif len(process['DNSResponses']) > 0:
+        return True
+    else:
+        return False
+
+def valid_data_file_exists() -> bool:
+    try:
+        with DATA_FILE.open("rt", encoding="utf-8") as f:
+            data = json.load(f)
+        if valid_structure(data, DATA_FILE_JSON_STRUCTURE):
+            return True
+        else:
+            return False
+    except json.JSONDecodeError:
+        return False
+
+def prompt_user_for_processes_to_lookup(unique_process_names: set) -> list:
+    processes_to_lookup: list = []
+    ConsoleOutputPrint(msg="Which processes with network activity do you want to lookup IPs and domains for?", print_type="info")
+    print("enter \"all\" or nothing for every process, or enter the corresponding number for the ones you want to lookup.") 
+    print("Multiple ones can be comma separate, e.g. 3,5,7")
+    for counter, process_name in enumerate(unique_process_names):
+        print(f" {counter}) {process_name}")
         
-        if PERFORM_LOOKUP:
-            endpoints: dict = get_unique_endpoints_to_lookup(monitored_processes)
-            lookup_endpoints(endpoints) 
+    while True:
+        answer = input("Choice: ").strip().lower()
+        if answer == "all" or answer == "":
+            for process_name in unique_process_names:
+                processes_to_lookup.append(process_name)
+            break
+        elif "," in answer:
+            multiple_numbers_as_string = answer.split(",")
+            multiple_numbers_as_integer: set = set()
+            for value in multiple_numbers_as_string:
+                try:
+                    integer = int(value)
+                    if integer >= len(unique_process_names) or integer < 0:
+                        ConsoleOutputPrint(msg=f"Provided value {integer} doesn't exist. Skipping..", print_type="warning")
+                    else:
+                        multiple_numbers_as_integer.add(int(value))
+                except:
+                    ConsoleOutputPrint(msg=f"Invalid number provided in the comma separated awnser: {answer}", print_type="error")
+                    return prompt_user_for_processes_to_lookup(unique_process_names)
+
+            for integer in multiple_numbers_as_integer:
+                processes_to_lookup.append(unique_process_names[integer])
+            break
+        else:
+            try:
+                integer = int(answer)
+                processes_to_lookup.append(unique_process_names[integer])
+                break
+            except:
+                ConsoleOutputPrint(msg=f"Invalid answer provided: {answer}", print_type="warning")
+    return processes_to_lookup
+
+def prompt_user_for_apis_to_use() -> list:
+    apis_to_use: list = []
+    ConsoleOutputPrint(msg="Which APIs do you want to use to lookup IPs and domains?", print_type="info")
+    print("enter \"all\" or nothing for every API, or enter the corresponding number for the ones you want to use.") 
+    print("Multiple ones can be comma separate, e.g. 0,1,4")
+    for counter, api_name in enumerate(API_LOOKUPS):
+        print(f" {counter}) {api_name}")
+        
+    while True:
+        answer = input("Choice: ").strip().lower()
+        if answer == "all" or answer == "":
+            for api in API_LOOKUPS:
+                apis_to_use.append(api)
+            break
+        elif "," in answer:
+            multiple_numbers_as_string = answer.split(",")
+            multiple_numbers_as_integer: set = set()
+            for value in multiple_numbers_as_string:
+                try:
+                    integer = int(value)
+                    if integer >= len(API_LOOKUPS) or integer < 0:
+                        ConsoleOutputPrint(msg=f"Provided value {integer} doesn't exist. Skipping..", print_type="warning")
+                    else:
+                        multiple_numbers_as_integer.add(int(value))
+                except Exception as e:
+                    ConsoleOutputPrint(msg=f"Invalid number provided in the comma separated awnser: {answer}", print_type="error")
+                    return prompt_user_for_apis_to_use()
+
+            for integer in multiple_numbers_as_integer:
+                apis_to_use.append(list(API_LOOKUPS.keys())[integer])
+            break
+        else:
+            try:
+                integer = int(answer)
+                apis_to_use.append(list(API_LOOKUPS.keys())[integer])
+                break
+            except:
+                ConsoleOutputPrint(msg=f"Invalid answer provided: {answer}", print_type="warning")
+    return apis_to_use
+
+def prompt_user_for_overwrite_of_data_file() -> bool:
+    while True:
+        answer = input("[!] An existing data.json file was found in the same directory as the script. Overwrite it? (Y/n): ").strip().lower()
+        if answer == "y" or answer == "":
+            return True
+        elif answer == "n":
+            return False
+        else:
+            ConsoleOutputPrint(msg=f"Invalid input. Please enter 'y' or 'n'.", print_type="warning")
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="A script demonstrating argparse with flags.")
+    parser.add_argument("-r", "--results-file", type=str, help="Results file")
+    parser.add_argument("-a", "--api-lookup", action="store_true", help="Lookup endpoints against defined APIs")
+    args = parser.parse_args()
+    print(SCRIPT_BANNER)
+    
+    if not file_exists_in_same_script_folder("index.html"):
+        ConsoleOutputPrint(msg=f"Unable to find index.html in the same directory as the script", print_type="fatal")
+        sys.exit(1)
+        
+    if not args.results_file:
+        if not file_exists_in_same_script_folder("data.json"):
+            ConsoleOutputPrint(msg=f"Unable to find data.json in the same directory as the script. Please supply a Results.json file or move data.json to the same path as the script", print_type="fatal")
+            sys.exit(1)
+        if not valid_data_file_exists():
+            ConsoleOutputPrint(msg=f"{DATA_FILE} has an invalid JSON structure", print_type="fatal")
+            sys.exit(1)
+    
+    if args.api_lookup and not requests_is_installed():
+        msg ="""
+The library 'requests' doesn't seem to be installed.
+It's needed to perform API lookups
+Run the following to install it: 
+
+pip install requests
+
+            """
+        ConsoleOutputPrint(msg, print_type="fatal")
+        sys.exit(1)
+        
+    if args.results_file:
+        ConsoleOutputPrint(msg=f"Retrieving data from results file", print_type="info")
+        monitored_processes: list = get_results_file_data(args.results_file)
+        
+        if args.api_lookup:
+            unique_process_names: set = get_unique_process_names_with_external_network_activity(monitored_processes)
+            processes_to_lookup_with_network_activity: list = prompt_user_for_processes_to_lookup(unique_process_names)
+            endpoints: dict = get_unique_endpoints_to_lookup(monitored_processes, processes_to_lookup_with_network_activity)
+            apis_to_use: list = prompt_user_for_apis_to_use()
+            lookup_endpoints(endpoints, apis_to_use) 
         
         ConsoleOutputPrint(msg=f"Creating visualization data", print_type="info")
         visualization_data = get_visualization_data(monitored_processes)
         if os.path.isfile(DATA_FILE):
-            while True:
-                answer = input("[!] An existing data.json file was found in the same directory as the script. Do you want to overwrite it? (Y/n): ").strip().lower()
-                if answer == "y" or answer == "":
-                    ConsoleOutputPrint(msg=f"Overwriting existing data.json.", print_type="info")
-                    output_visualization_data(visualization_data)
-                    break
-                elif answer == "n":
-                    ConsoleOutputPrint(msg=f"Keeping existing data.json", print_type="info")
-                    break  
-                else:
-                    ConsoleOutputPrint(msg=f"Invalid input. Please enter 'y' or 'n'.", print_type="warning")
+            if prompt_user_for_overwrite_of_data_file():
+                ConsoleOutputPrint(msg=f"Overwriting existing data.json.", print_type="info")
+                output_visualization_data(visualization_data)
+            else:
+                ConsoleOutputPrint(msg=f"Keeping existing data.json", print_type="info")
         else:
             output_visualization_data(visualization_data)
     else:

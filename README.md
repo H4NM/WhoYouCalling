@@ -5,7 +5,7 @@
 ![WYC dependencies](imgs/dependencies.svg)
 ![Visualization dependencies](imgs/visualization_dependencies.svg)
 
-Monitors a process network activity using [Windows Event Tracing (ETW)](https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/event-tracing-for-windows--etw-) and Full Packet Capture (FPC). A packet capture file (.pcap) is generated and filtered based on the recorded TCPIP activity, allowing for a pcap file per process.  
+A Windows commandline tool that monitors a process network activity using [Windows Event Tracing (ETW)](https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/event-tracing-for-windows--etw-) and full packet capture. A packet capture file (.pcap) is generated and filtered based on the recorded TCPIP activity, allowing for a pcap file per process.  
 WhoYouCalling makes process network monitoring hella' easy.
 
 <details>
@@ -32,7 +32,8 @@ However, there are some downsides:
 - Monitoring is applied to all spawned child processes by default.
 - Spawned process and its childprocesses can be killed on stop. 
 - JSON output of results.
-- Visualize the processes and their network activity with a network graph
+- Visualize the processes and their network activity with an interactive network graph.
+- Perform API lookups to get the reputation of IPs and domains.
 - Generate a Wireshark DFL filter per process.
 - Generate a BPF filter per process.
 
@@ -139,7 +140,7 @@ bin\Release\net8.0\win-x64\wyc.exe [arguments]...
 
 ### To Do:
 - Refactor. Lots and lots to refactor and make more tidy :)
-- Automatic IP and domain name lookup option to get reputation
 
 ### Nice to have
+- Linux port
 - Process network redirect to proxy for TLS inspection
