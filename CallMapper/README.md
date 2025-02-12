@@ -1,9 +1,9 @@
 # CallMapper
-CallMapper is a visualization solution for the output from WhoYouCalling. It offers a network graph with analytics of looking up domains and IP addresses against APIs, or via static links to websites such as [ipinfo.io](https://ipinfo.io/), [whois.com](https://www.whois.com/), [abuseipdb.com](https://www.abuseipdb.com/) and [virustotal.com](https://www.virustotal.com/). The choice to use python and javascript is due to simplicity and usability. Python offers flexible JSON processing and transparency, and can easily be modified by the end user, allowing for customization - such as adding your own REST API integrations. The Cytoscape javascript library is great in terms of customization and interaction with the visualized data. 
+CallMapper offers a network graph with analytics of looking up domains and IP addresses against APIs, or via static links to websites such as [ipinfo.io](https://ipinfo.io/), [whois.com](https://www.whois.com/), [abuseipdb.com](https://www.abuseipdb.com/) and [virustotal.com](https://www.virustotal.com/).
 
 ## How it works:
-1. callmapper.py parses the JSON results file from WhoYouCalling and creates a data.json file in the same directory as the script. If the flag for API lookups is provided, the data in the data.json files are enriched with stored HTML.
-2. callmapper.py hosts a HTTP server in the same directory as the script at localhost port 8080 that serves the data.json and the index.html that uses `/js/cytoscape.min.js` and `/css/style.css`. 
+1. `callmapper.py` parses the JSON results file from WhoYouCalling and creates a `data.json` file in the same directory as the script. If the flag for API lookups is provided, the data in the `data.json` files are enriched with stored HTML.
+2. `callmapper.py` hosts a HTTP server in the same directory as the script at localhost port 8080 that serves the data.json and the index.html that uses `/js/cytoscape.min.js` and `/css/style.css`. 
 3. You can now view the visualization via http://127.0.0.1:8080 in a web browser
 
 ## Usage:
@@ -53,6 +53,7 @@ If the field is empty and the API source requires an API key, and you as a user 
 
 ## Add you own API integration
 > **Note:** Only REST APIs are supported.
+
 To create your own API integration, there's a template in `/custom/custom_api_lookups.py`. 
 Any API integration must have the following structure:
 
@@ -84,8 +85,6 @@ class MyCustomAPILookupClass(APILookup):
         #.... 
         return presentable_data, is_potentially_malicious
 ```
-You can call the class whatever you want, and thereafter add it to the dict `AVAILABLE_APIS` in `calmmapper.py`
-
 The function `__init__` is invoked when the object of the class is initiated. In there, you need to define:
     1. If the API-key is required or not: `self.api_key_required = True`
     2. Should you lookup IPs, domains or both: `self.lookup_types = [LookupType.IP, LookupType.DOMAIN]`
@@ -105,4 +104,4 @@ class APIErrorType:
 
 The function `get_presentable_data_for_ip` and `get_presentable_data_for_domain` simply takes the returned JSON object retrieves the fields that are of value and places them within a flat dict (not nested). The keys in the dict will be the titles presented in the visualization and the data with be the corresponding values. The functions will return the dict and a bool wether the retrieved data indicates that the endpoint may be malicious. If the bool variable is returned `True` (potentially malicious), the nodes take a red star shape in the network graph, clearly indicating that they're worth investigating. 
 
-When it's done and ready, import the custom API you have defined in `/custom/` (e.g. `from custom.MyCustomAPILookupClass import *`) in `callmapper.py`, then simply add it in the same fashion as `VirusTotal` and `AbsueIPDB` are in `AVAILABLE_APIS`. 
+When it's done and ready, import the custom API you have defined in `/custom/` (e.g. `from custom.MyCustomAPILookupClass import *`) in `callmapper.py`, then simply add it in the same fashion as `VirusTotal` and `AbuseIPDB` are in `AVAILABLE_APIS`. 

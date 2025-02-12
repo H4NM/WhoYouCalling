@@ -36,7 +36,7 @@ However, there are some downsides:
 - Generate a Wireshark DFL filter per process.
 - Generate a BPF filter per process.
 - Visualize the processes and their network activity with an interactive network graph.
-- Perform automatic API lookups of IPs and domains
+- Perform automatic API lookups of IPs and domains.
 
 ## Usage:
 > **Note:** Must be run as administrator - for packet capture and listening to ETW.
@@ -81,14 +81,14 @@ wyc.exe -e "C:\Program Files\Mozilla Firefox\firefox.exe" --nopcap --names "fire
 ```
 
 ## Analyze the results
-To analyze and visualize the results, this repo includes **CallMapper**, a Python and JavaScript solution that reads the JSON output from WhoYouCalling and hosts a network graph of all processes and they're related network activity that was capture by WhoYouCalling. **CallMapper** also allows for performing automatic API lookups of IPs and domains to statically enrich the data.
+To analyze and visualize the results, this repo includes **CallMapper**, a Python and JavaScript solution that reads the JSON output from WhoYouCalling and hosts a network graph of all processes and their related network activity. **CallMapper** allows for performing automatic API lookups of IPs and domains to statically enrich the data.
 
 **Simple usage**:
 ```
 python callmapper.py -r ./Result.json
 ```
 
-See [CallMapper README.md](https://github.com/H4NM/WhoYouCalling/blob/main/CallMapper/README.md) to know more!  
+See [CallMapper README.md](https://github.com/H4NM/WhoYouCalling/blob/main/CallMapper/README.md) for more.  
 
 ### Complementary Tools
 There are other tools that can compliment your quest of application network analysis:
