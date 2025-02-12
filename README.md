@@ -32,13 +32,14 @@ However, there are some downsides:
 - Monitoring is applied to all spawned child processes by default.
 - Spawned process and its childprocesses can be killed on stop. 
 - JSON output of results.
-- Visualize the processes and their network activity with an interactive network graph.
 - Perform API lookups to get the reputation of IPs and domains.
 - Generate a Wireshark DFL filter per process.
 - Generate a BPF filter per process.
+- Visualize the processes and their network activity with an interactive network graph.
+- Perform automatic API lookups of IPs and domains
 
 ## Usage:
-(*Must be run as administrator - for packet capture and listening to ETW*) 
+> **Note:** Must be run as administrator - for packet capture and listening to ETW.
 
 ![Example Usage](imgs/ExampleUsage.gif)
 
@@ -79,6 +80,16 @@ wyc.exe -e C:\Users\H4NM\Desktop\sus.exe -t 60 -k -i 8 -o C:\Users\H4NM\Desktop
 wyc.exe -e "C:\Program Files\Mozilla Firefox\firefox.exe" --nopcap --names "firefox.exe,svchost,cmd"
 ```
 
+## Analyze the results
+To analyze and visualize the results, this repo includes **CallMapper**, a Python and JavaScript solution that reads the JSON output from WhoYouCalling and hosts a network graph of all processes and they're related network activity that was capture by WhoYouCalling. **CallMapper** also allows for performing automatic API lookups of IPs and domains to statically enrich the data.
+
+**Simple usage**:
+```
+python callmapper.py -r ./Result.json
+```
+
+See [CallMapper README.md](https://github.com/H4NM/WhoYouCalling/blob/main/CallMapper/README.md) to know more!  
+
 ### Complementary Tools
 There are other tools that can compliment your quest of application network analysis:
 - [Frida](https://frida.re/): Provides the most granular interaction with applications in which you can view API calls made. 
@@ -88,10 +99,9 @@ There are other tools that can compliment your quest of application network anal
 
 ### Limitations
 - **DNS**: In ETW, `Microsoft-Windows-DNS-Client` only logs A and AAAA queries, neglecting other DNS query types such as PTR, TXT, MX, SOA etc. It does capture CNAME and it's respective adresses, which are part of the DNS response. However, with the FPC the requests are captured either way, just not portrayed as in registered DNS traffic by the application. The FPC and registered TCPIP activity helps identify processes that do not utilize **Windows DNS Client Service** (e.g. `nslookup`) since they're not logged in the DNS ETW.
-- **Execution integrity**: It's currently not possible to delegate the privilege of executing applications in an elevated state to other users, meaning that if you want to run the application elevated you need to be signed in as the user with administrator rights.   
-  Since WhoYouCalling requires elevated privileges to run (*ETW + FPC*), spawned processes naturally inherits the security token making them also posess the same integrity level - and .NET api does not work too well with creating less privileged processes from an already elevated state.
+- **Execution integrity**: Since WhoYouCalling requires elevated privileges to run (*ETW + FPC*), spawned processes naturally inherits the security token making them also posess the same integrity level - and .NET api does not work too well with creating less privileged processes from an already elevated state.
   The best and most reliable approach was to duplicate the low privileged token of the desktop shell in an interactive logon (explorer.exe).
-  However, there may be use cases in which WhoYouCalling is executed via a remote management tool like PowerShell, SSH or PsExec, where there is no instance of a desktop shell, in these case you need to provide a username and password of a user that may execute it. 
+  However, there may be use cases in which WhoYouCalling is executed via a remote management tool like PowerShell, SSH or PsExec, where there is no instance of a desktop shell, in these case you need to provide a username and password of a user that may execute it. It's also not currently possible to delegate the privilege of executing applications in an elevated state to other users, meaning that if you want to start another application with WYC in an elevated state, you need to be signed in as the user with administrator rights and provide the flag for running elevated.  
 
 ### Dependencies
 This project has been tested and works with .NET 8 with two nuget packages, and drivers for capturing network packets: 
