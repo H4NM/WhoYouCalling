@@ -3,7 +3,7 @@ CallMapper offers a network graph with analytics of looking up domains and IP ad
 
 ## How it works:
 1. `callmapper.py` parses the JSON results file from WhoYouCalling and creates a `data.json` file in the same directory as the script. If the flag for API lookups is provided, the data in the `data.json` files are enriched with stored HTML.
-2. `callmapper.py` hosts a HTTP server in the same directory as the script at localhost port 8080 that serves the data.json and the index.html that uses `/js/cytoscape.min.js` and `/css/style.css`. 
+2. `callmapper.py` hosts a HTTP server in the same directory as the script at localhost port 8080 that serves the `data.json` and the `index.html` with other related resources (css, js and icon).
 3. You can now view the visualization via http://127.0.0.1:8080 in a web browser
 
 ## Usage:
@@ -26,7 +26,7 @@ python callmapper.py --results-file ./Result.json --api-lookup
 - API Lookups:
   - [requests](https://pypi.org/project/requests/) (*Optional - if API lookup of IPs and domains is wanted.*)
 
-In order to run callmapper as is, all you really need is Python. All other required files are within this repo.
+In order to run **CallMapper**, all you really need is Python.
 
 ## Using API lookups
 When running `callmapper.py` with the flag `--api-lookup` or `-a` for short, you will be prompted to choose which processes with network activity you want to lookup. 
