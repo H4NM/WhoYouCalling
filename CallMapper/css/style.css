@@ -15,6 +15,9 @@ html, body {
     font-weight: bold;
 }
 
+/* 
+================ Right pane endpoint details ================================
+*/
 #invalid-endpoint-title{
     display: flex;
     justify-content: center; 
@@ -53,6 +56,9 @@ html, body {
     word-break: break-all; 
 }
 
+/* 
+================ Process node deselect button ================================
+*/
 #deselect-button{
     margin-top: 5px;
     display: flex;
@@ -79,13 +85,17 @@ html, body {
     transform: translateY(0); 
 }
 
-a {
+
+/* 
+================ IP and DOMAIN lookup links ================================
+*/
+#ip-lookup-link {
     margin-top: 5px;
     margin-bottom: -10px;
     display: flex;
     justify-content: center; 
-    color: white;
-    background-color: #cc00cc; 
+    color: black;
+    background-color: #2ffcf3; 
     border: 1px solid #4b4b4b;
     padding: 10px 0px;
     width: 100%;
@@ -94,17 +104,47 @@ a {
     transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
-a:hover {
-    background-color: #cc00ccab; 
+#ip-lookup-link:hover {
+    background-color: #2ffcf283; 
     transform: translateY(-2px);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
 }
 
-a:active {
-    background-color: #cc00cc62; 
+#ip-lookup-link:active {
+    color: rgb(165, 165, 165);
+    background-color: rgba(47, 252, 242, 0.226)83; 
     transform: translateY(0); 
 }
 
+#domain-lookup-link {
+    margin-top: 5px;
+    margin-bottom: -10px;
+    display: flex;
+    justify-content: center; 
+    color: black;
+    background-color: #fcf62f; 
+    border: 1px solid #4b4b4b;
+    padding: 10px 0px;
+    width: 100%;
+    border-radius: 5px; 
+    text-decoration: none; 
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+#domain-lookup-link:hover {
+    background-color: #fcf52f81; 
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+}
+
+#domain-lookup-link:active {
+    color: rgb(165, 165, 165);
+    background-color: #fcf52f3b; 
+    transform: translateY(0); 
+}
+/* 
+================ Right pane tooltip ================================
+*/
 #tooltip {
     display: none;
     position: absolute;
@@ -127,7 +167,9 @@ a:active {
     white-space: normal;
     overflow: hidden;
 }
-
+/* 
+================ Left pane checkboxes ================================
+*/
 #checkbox-pane{
     padding: 10px; 
     border-right: 1px solid #ccc; 
@@ -151,16 +193,11 @@ a:active {
     color: #000000;
 }
 
-#checkbox-application-name{
-    font-size: 15px;
-    color: #111111;
-    margin-top: -18px;
-}
-
-#checkbox-author{
+#checkbox-title-subtext{
     font-size: 9px;
     color: #a0a0a0;
-    margin-top: -10px;
+    margin-top: -12px;
+    margin-bottom: -16px;
 }
 
 #checkbox-pane label {

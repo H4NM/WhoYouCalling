@@ -7,10 +7,9 @@ SCRIPT_BANNER = r"""
  | |    / _` | | | |\/| |/ _` | '_ \| '_ \ / _ \ '__|  o
  | |___| (_| | | | |  | | (_| | |_) | |_) |  __/ |    /
   \_____\__,_|_|_|_|  |_|\__,_| .__/| .__/ \___|_|   o  
-  *Part of WhoYouCalling      | |   | |           
+   Part of WhoYouCalling      | |   | |           
                               |_|   |_|           
-        o--o                              o--o--o--o
-"""
+                                          o--o--o--o"""
 PROCESS_START_SECONDS_RANGE: int = 3
 DATA_FILE_JSON_STRUCTURE: dict = {
     "elements": {

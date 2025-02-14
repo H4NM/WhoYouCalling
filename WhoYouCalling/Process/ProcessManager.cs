@@ -6,12 +6,37 @@ using WhoYouCalling.Win32;
 using System.Security;
 using WhoYouCalling.Network;
 using WhoYouCalling.Network.DNS;
+using Microsoft.Diagnostics.Tracing.StackSources;
 
 
 namespace WhoYouCalling.Process
 { 
     internal static class ProcessManager
     {
+        public static bool IsCorrectlyMatchingProcess(string retrievedProcessName, string providedProcessName)
+        {
+            if (!string.IsNullOrEmpty(providedProcessName) && providedProcessName != Constants.Miscellaneous.UnmappedProcessDefaultName && providedProcessName == retrievedProcessName)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        public static System.Diagnostics.Process? GetProcessSafelyByPID(int pid)
+        {
+            System.Diagnostics.Process? process;
+            try
+            {
+                process = System.Diagnostics.Process.GetProcessById(pid);
+            }
+            catch
+            {
+                process = null;
+            }
+            return process;
+        }
 
         public static bool ProcessHasNoRecordedNetworkActivity(MonitoredProcess monitoredProcess)
         {
@@ -249,15 +274,15 @@ namespace WhoYouCalling.Process
                 int errorCode = Marshal.GetLastWin32Error();
                 Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to open desktop shell process", errorCode);
             }
-            
+
             var hShellToken = IntPtr.Zero;
-            if (!Win32.WinAPI.OpenProcessToken(hShellProcess, Constants.TokenPrivileges.Duplicate, out hShellToken)) 
+            if (!Win32.WinAPI.OpenProcessToken(hShellProcess, Constants.TokenPrivileges.Duplicate, out hShellToken))
             {
                 int errorCode = Marshal.GetLastWin32Error();
                 Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to open process token from desktop shell window", errorCode);
             }
 
-            uint tokenAccess = Constants.TokenPrivileges.Query | 
+            uint tokenAccess = Constants.TokenPrivileges.Query |
                                Constants.TokenPrivileges.AssignPrimary |
                                Constants.TokenPrivileges.Duplicate |
                                Constants.TokenPrivileges.AdjustDefault |
@@ -276,12 +301,12 @@ namespace WhoYouCalling.Process
             var processInfo = new Win32.WinAPI.PROCESS_INFORMATION();
 
             string commandLine = $"{executablePath} {arguments}";
-            if (!Win32.WinAPI.CreateProcessWithTokenW(hToken, Constants.SecurityFlags.LogonFlags, "", commandLine, Constants.SecurityFlags.CreationFlags, IntPtr.Zero, tempWorkingDirectory, ref startInfo, out processInfo))
+            if (!Win32.WinAPI.CreateProcessWithTokenW(hToken, Constants.SecurityFlags.LogonFlags, null, commandLine, Constants.SecurityFlags.CreationFlags, IntPtr.Zero, tempWorkingDirectory, ref startInfo, out processInfo))
             {
                 int errorCode = Marshal.GetLastWin32Error();
                 Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to create unprivileged process with duplicated token", errorCode);
             }
-            return (int)(processInfo.dwProcessId); 
+            return (int)(processInfo.dwProcessId);
         }
 
         public static int StartProcessAndGetId(string executablePath = "", 

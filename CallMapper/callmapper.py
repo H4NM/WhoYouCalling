@@ -82,7 +82,7 @@ def main() -> None:
             else:
                 ConsoleOutputPrint(msg=f"Keeping existing data.json", print_type="info")
         else:
-            output_visualization_data(visualization_data)
+            output_visualization_data(DATA_FILE, visualization_data)
     else:
         ConsoleOutputPrint(msg=f"Visualizing from existing results file", print_type="info")
     ConsoleOutputPrint(msg=f"Hosting visualization via http://{HTTP_HOST_ADRESS}:{HTTP_HOST_PORT}", print_type="info")

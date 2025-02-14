@@ -215,7 +215,7 @@
         const hideOrphanedLabel = document.createElement('label');
         hideOrphanedLabel.id = 'label-hide-orphaned'
         hideOrphanedLabel.htmlFor = 'checkbox-hide-orphaned';
-        hideOrphanedLabel.textContent = 'Processes without network activty';
+        hideOrphanedLabel.textContent = 'Processes without DNS or TCPIP activity';
 
         const hideOrphanedContainer = document.createElement('div');
         hideOrphanedContainer.appendChild(hideOrphanedCheckbox);

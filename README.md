@@ -83,6 +83,8 @@ wyc.exe -e "C:\Program Files\Mozilla Firefox\firefox.exe" --nopcap --names "fire
 ## Analyze the results
 To analyze and visualize the results, this repo includes **CallMapper**, a Python and JavaScript solution that reads the JSON output from WhoYouCalling and hosts a network graph of all processes and their related network activity. **CallMapper** allows for performing automatic API lookups of IPs and domains to statically enrich the data.
 
+![Example Usage CallMapper](imgs/ExampleUsageCallMapper.gif)
+
 **Simple usage**:
 ```
 python callmapper.py -r ./Result.json

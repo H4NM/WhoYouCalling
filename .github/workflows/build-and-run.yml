@@ -1,0 +1,74 @@
+name: Compile and run WhoYouCalling
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Publish application
+      run: dotnet publish -c Release -r win-x64 --self-contained false -o output
+
+    - name: Upload compiled binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: compiled-binary
+        path: output
+
+  test-illuminate:
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+      - name: Download compiled binary
+        uses: actions/download-artifact@v4
+        with:
+          name: compiled-binary
+          path: output
+
+      - name: Run with Illuminate mode
+        run: output\wyc.exe --illuminate --nopcap --timer 20
+
+  test-executable:
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+      - name: Download compiled binary
+        uses: actions/download-artifact@v4
+        with:
+          name: compiled-binary
+          path: output
+
+      - name: Run with Execute mode with cmd.exe
+        run: output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --nopcap --killprocesses --timer 20
+
+  test-pid:
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+      - name: Download compiled binary
+        uses: actions/download-artifact@v4
+        with:
+          name: compiled-binary
+          path: output
+
+      - name: Run with Listen mode against System proces
+        run: output\wyc.exe --PID 4 --nopcap --timer 20

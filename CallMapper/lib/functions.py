@@ -22,7 +22,7 @@ def lookup_endpoints(available_apis: dict, endpoints: dict, apis_to_use: list) -
         class_reference = available_apis[api_name]['api']
         instance = class_reference(api_name, api_key)
         if not instance.has_api_prerequisites():
-            ConsoleOutputPrint(msg=f"API key required for lookup via {api_name}. Skipping..", print_type="warning")
+            ConsoleOutputPrint(msg=f"Skipping {api_name}. API-key is required", print_type="warning")
             continue
         REPORTS.extend(instance.lookup(endpoints)) 
 
@@ -303,16 +303,16 @@ def get_ip_or_domain_metadata(endpoint: str, type: NodeType) -> Tuple[list, bool
 
     if type == NodeType.IP:
         if not is_private_ip_or_localhost(endpoint):
-            metadata.append(f"<a href='https://ipinfo.io/{endpoint}' target='_blank'>ipinfo.io</a>") 
-            metadata.append(f"<a href='https://www.virustotal.com/gui/ip-address/{endpoint}' target='_blank'>virustotal.com</a>")
-            metadata.append(f"<a href='https://www.abuseipdb.com/check/{endpoint}' target='_blank'>abuseipdb.com</a>")
+            metadata.append(f"<a id='ip-lookup-link' href='https://ipinfo.io/{endpoint}' target='_blank'>ipinfo.io</a>") 
+            metadata.append(f"<a id='ip-lookup-link' href='https://www.virustotal.com/gui/ip-address/{endpoint}' target='_blank'>virustotal.com</a>")
+            metadata.append(f"<a id='ip-lookup-link' href='https://www.abuseipdb.com/check/{endpoint}' target='_blank'>abuseipdb.com</a>")
         else:
             metadata.append(f"<p id='invalid-endpoint-title'>Private or localhost IP</p>")
 
     elif type == NodeType.DOMAIN:
         if is_valid_domain_name(endpoint):
-            metadata.append(f"<a href='https://www.whois.com/whois/{endpoint}' target='_blank'>whois.com</a>")
-            metadata.append(f"<a href='https://www.virustotal.com/gui/domain/{endpoint}' target='_blank'>virustotal.com</a>")
+            metadata.append(f"<a id='domain-lookup-link' href='https://www.whois.com/whois/{endpoint}' target='_blank'>whois.com</a>")
+            metadata.append(f"<a id='domain-lookup-link' href='https://www.virustotal.com/gui/domain/{endpoint}' target='_blank'>virustotal.com</a>")
         else:
             metadata.append(f"<p id='invalid-endpoint-title'>Single-label domain</p>")
             

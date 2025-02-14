@@ -37,7 +37,15 @@ namespace WhoYouCalling.Win32
         public static extern bool DuplicateTokenEx(IntPtr hExistingToken, uint dwDesiredAccess, IntPtr lpTokenAttributes, int ImpersonationLevel, int TokenType, out IntPtr phNewToken);
 
         [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-        public static extern bool CreateProcessWithTokenW(IntPtr hToken, uint dwLogonFlags, string lpApplicationName, string lpCommandLine, uint dwCreationFlags, IntPtr lpEnvironment, string lpCurrentDirectory, ref STARTUPINFO lpStartupInfo, out PROCESS_INFORMATION lpProcessInformation);
+        public static extern bool CreateProcessWithTokenW(IntPtr hToken, 
+                                                          uint dwLogonFlags, 
+                                                          string? lpApplicationName, 
+                                                          string lpCommandLine, 
+                                                          uint dwCreationFlags, 
+                                                          IntPtr lpEnvironment, 
+                                                          string lpCurrentDirectory, 
+                                                          ref STARTUPINFO lpStartupInfo, 
+                                                          out PROCESS_INFORMATION lpProcessInformation);
 
         [StructLayout(LayoutKind.Sequential)]
         public struct PROCESS_INFORMATION

@@ -20,7 +20,7 @@ python callmapper.py --results-file ./Result.json --api-lookup
 ```
 
 ## Dependencies
-**CallMapper** has been tested and works with Python version 3.9 or later. The packages that are used: 
+**CallMapper** has been tested and works with Python version 3.11 or later. The packages that are used: 
 - Visualization: 
   - [Cytoscape.js](https://github.com/cytoscape/cytoscape)
 - API Lookups:

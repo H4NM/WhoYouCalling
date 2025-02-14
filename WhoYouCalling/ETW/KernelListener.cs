@@ -149,7 +149,6 @@ namespace WhoYouCalling.ETW
                     Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName, commandLine: data.CommandLine);
                 }
 
-
                 monitoredParentProcess.ChildProcesses.Add(new ChildProcessInfo
                 {
                     PID = data.ProcessID,
