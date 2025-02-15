@@ -43,9 +43,7 @@ jobs:
           path: output
 
       - name: Run with Illuminate mode
-        run: |
-          Start-Process powershell -Verb RunAs -ArgumentList 'output\wyc.exe --illuminate --nopcap --timer 20 --privileged'
-        shell: pwsh
+        run: output\wyc.exe --illuminate --nopcap --timer 20 --privileged
 
   test-executable:
     needs: build
@@ -59,9 +57,7 @@ jobs:
           path: output
 
       - name: Run with Execute mode with cmd.exe
-        run: |
-          Start-Process powershell -Verb RunAs -ArgumentList 'output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --nopcap --killprocesses --timer 20 --privileged'
-        shell: pwsh
+        run: output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --nopcap --killprocesses --timer 20 --privileged
 
   test-pid:
     needs: build
@@ -75,7 +71,5 @@ jobs:
           path: output
 
       - name: Run with Listen mode against System proces
-        run: |
-          Start-Process powershell -Verb RunAs -ArgumentList 'output\wyc.exe --PID 4 --nopcap --timer 20 --privileged'
-        shell: pwsh
+        run: output\wyc.exe --PID 4 --nopcap --timer 20 --privileged
 
