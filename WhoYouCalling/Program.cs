@@ -80,10 +80,13 @@ namespace WhoYouCalling
             RunningMode = GetMainMode(s_argumentData);
             SetCancelKeyEvent();
 
-            ConsoleOutput.PrintStartMonitoringText();
             if (Debug())
             {
                 ConsoleOutput.PrintArgumentValues(s_argumentData);
+            }
+            else
+            {
+                ConsoleOutput.PrintStartMonitoringText();
             }
 
             if (RunningMode == WYCMainMode.Illuminate)

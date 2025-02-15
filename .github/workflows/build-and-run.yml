@@ -43,7 +43,7 @@ jobs:
           path: output
 
       - name: Run with Illuminate mode
-        run: output\wyc.exe --illuminate --nopcap --timer 20 --privileged
+        run: output\wyc.exe --illuminate --nopcap --timer 20
 
   test-executable:
     needs: build
@@ -71,5 +71,5 @@ jobs:
           path: output
 
       - name: Run with Listen mode against System proces
-        run: output\wyc.exe --PID 4 --nopcap --timer 20 --privileged
+        run: output\wyc.exe --PID 4 --nopcap --timer 20
 
