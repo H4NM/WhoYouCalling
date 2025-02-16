@@ -273,7 +273,7 @@ namespace WhoYouCalling
         {
             s_trackedMainPid = pid;
             s_mainExecutableProcessName = System.Diagnostics.Process.GetProcessById(s_trackedMainPid).ProcessName;
-            AddProcessToMonitor(pid: s_trackedMainPid);
+            AddProcessToMonitor(pid: s_trackedMainPid, processName: s_mainExecutableProcessName);
             ConsoleOutput.Print($"Listening to PID {s_trackedMainPid}({s_mainExecutableProcessName})", PrintType.Info);
             CatalogETWActivity(eventType: EventType.ProcessMonitor, processName: s_mainExecutableProcessName, processID: s_trackedMainPid);
         }
