@@ -45,7 +45,6 @@ namespace WhoYouCalling
 
         private static bool s_shutDownMonitoring = false;
         private static bool s_timerExpired = false;
-        private static string? s_mainExecutableFileName = "";
         private static string s_mainExecutableProcessName = "";
 
         private static LivePacketCapture s_livePacketCapture = new();
@@ -96,9 +95,8 @@ namespace WhoYouCalling
             else
             {
                 ConsoleOutput.Print("Retrieving executable filename", PrintType.Debug);
-                s_mainExecutableFileName = GetMainExecutableFileNameWithPIDOrPath(s_argumentData.TrackedProcessId, s_argumentData.ExecutablePath);
-
-                s_rootFolderName = Generic.NormalizePath(Generic.GetRunInstanceFolderName(s_mainExecutableFileName));
+                string mainInstanceFolderName = GetMainInstanceNameWithPIDOrPath(s_argumentData.TrackedProcessId, s_argumentData.ExecutablePath);
+                s_rootFolderName = Generic.NormalizePath(Generic.GetRunInstanceFolderName(mainInstanceFolderName));
             }
 
             if (s_argumentData.OutputDirectoryFlagSet)
@@ -1042,13 +1040,13 @@ namespace WhoYouCalling
             s_shutDownMonitoring = true;
         }
 
-        private static string GetMainExecutableFileNameWithPIDOrPath(int pid = 0, string executablePath = "")
+        private static string GetMainInstanceNameWithPIDOrPath(int pid = 0, string executablePath = "")
         {
-            string? executableFileName = "";
+            string? instanceName = "";
             if (pid != 0)
             {
                 if (ProcessManager.IsProcessRunning(pid)) {
-                    executableFileName = ProcessManager.GetProcessFileName(pid);
+                    instanceName = ProcessManager.GetPIDProcessName(pid);
                 }
                 else
                 {
@@ -1058,14 +1056,14 @@ namespace WhoYouCalling
             }
             else
             {
-                executableFileName = Path.GetFileName(executablePath);
+                instanceName = Path.GetFileName(executablePath);
             }
 
-            if (executableFileName == null)
+            if (instanceName == null)
             {
-                executableFileName = Constants.Miscellaneous.MainExecutableUnretrievableName;
+                instanceName = Constants.Miscellaneous.MainExecutableUnretrievableName;
             }
-            return executableFileName;
+            return instanceName;
         }
         
         public static void AddProcessToMonitor(int pid, string processName = "", string? commandLine = null)
