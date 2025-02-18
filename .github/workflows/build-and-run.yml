@@ -73,8 +73,8 @@ jobs:
 
       - name: Run with Execute mode with cmd.exe as low privileged user
         run: |
-          net user ga ETphon3H0me@_123 /add
-          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --user ga --password ETphon3H0me@_123 --arguments "/c \"net session\"" --nopcap --killprocesses --timer 10 -d
+          net user ga ETphon3H0me@_1 /add
+          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --user ga --password ETphon3H0me@_1 --arguments "/c \"net session\"" --nopcap --killprocesses --timer 10 -d
 
   test-pid:
     needs: build
