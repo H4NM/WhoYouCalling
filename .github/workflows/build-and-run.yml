@@ -45,7 +45,7 @@ jobs:
       - name: Run with Illuminate mode
         run: output\wyc.exe --illuminate --nopcap --timer 20 -d
 
-  test-executable:
+  test-executable-privileged:
     needs: build
     runs-on: windows-latest
 
@@ -56,8 +56,25 @@ jobs:
           name: compiled-binary
           path: output
 
-      - name: Run with Execute mode with cmd.exe
-        run: output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --nopcap --killprocesses --timer 20 --privileged -d
+      - name: Run with Execute mode with cmd.exe as privileged user
+        run: |
+          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --arguments "/c \"net session\"" --nopcap --killprocesses --timer 10 --privileged -d
+
+  test-executable-unprivileged:
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+      - name: Download compiled binary
+        uses: actions/download-artifact@v4
+        with:
+          name: compiled-binary
+          path: output
+
+      - name: Run with Execute mode with cmd.exe as low privileged user
+        run: |
+          net user ga ETphoneHome /add
+          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --user ga --password ETphoneHome --arguments "/c \"net session\"" --nopcap --killprocesses --timer 10 -d
 
   test-pid:
     needs: build
@@ -71,5 +88,5 @@ jobs:
           path: output
 
       - name: Run with Listen mode against System proces
-        run: output\wyc.exe --PID 4 --nopcap --timer 20 -d
+        run: output\wyc.exe --PID 4 --nopcap --timer 10 -d
 
