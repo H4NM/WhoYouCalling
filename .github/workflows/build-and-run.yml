@@ -58,7 +58,7 @@ jobs:
 
       - name: Run with Execute mode with cmd.exe as privileged user
         run: |
-          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --arguments "/c \"net session\"" --nopcap --killprocesses --timer 10 --privileged -d
+          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --arguments "/c whoami" --nopcap --killprocesses --timer 10 --privileged -d
 
   test-executable-unprivileged:
     needs: build
@@ -74,7 +74,7 @@ jobs:
       - name: Run with Execute mode with cmd.exe as low privileged user
         run: |
           net user ga ETphon3H0me@_1 /add
-          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --user ga --password ETphon3H0me@_1 --arguments "/c \"net session\"" --nopcap --killprocesses --timer 10 -d
+          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --user ga --password ETphon3H0me@_1 --arguments "/c whoami" --nopcap --killprocesses --timer 10 -d
 
   test-pid:
     needs: build
