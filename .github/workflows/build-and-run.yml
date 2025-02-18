@@ -1,0 +1,92 @@
+name: Compile and run WhoYouCalling
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Publish application
+      run: dotnet publish -c Release -r win-x64 --self-contained false -o output
+
+    - name: Upload compiled binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: compiled-binary
+        path: output
+
+  test-illuminate:
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+      - name: Download compiled binary
+        uses: actions/download-artifact@v4
+        with:
+          name: compiled-binary
+          path: output
+
+      - name: Run with Illuminate mode
+        run: output\wyc.exe --illuminate --nopcap --timer 20 -d
+
+  test-executable-privileged:
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+      - name: Download compiled binary
+        uses: actions/download-artifact@v4
+        with:
+          name: compiled-binary
+          path: output
+
+      - name: Run with Execute mode with cmd.exe as privileged user
+        run: |
+          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --arguments "/c whoami" --nopcap --killprocesses --timer 10 --privileged -d
+
+  test-executable-unprivileged:
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+      - name: Download compiled binary
+        uses: actions/download-artifact@v4
+        with:
+          name: compiled-binary
+          path: output
+
+      - name: Run with Execute mode with cmd.exe as low privileged user
+        run: |
+          net user ga ETphon3H0me@_1 /add
+          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --user ga --password ETphon3H0me@_1 --arguments "/c whoami" --nopcap --killprocesses --timer 10 -d
+
+  test-pid:
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+      - name: Download compiled binary
+        uses: actions/download-artifact@v4
+        with:
+          name: compiled-binary
+          path: output
+
+      - name: Run with Listen mode against System proces
+        run: output\wyc.exe --PID 4 --nopcap --timer 10 -d
+

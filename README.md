@@ -1,10 +1,11 @@
 ﻿# WhoYouCalling 
 
-![Python Versions](imgs/version.svg)
-![Groppy version](imgs/target_framework.svg)
-![Groppy version](imgs/dependencies.svg)
+![WYC version](imgs/version.svg)
+![Framework](imgs/target_framework.svg)
+![WYC dependencies](imgs/dependencies.svg)
+![Visualization dependencies](imgs/visualization_dependencies.svg)
 
-Monitors a process network activity using [Windows Event Tracing (ETW)](https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/event-tracing-for-windows--etw-) and Full Packet Capture (FPC). A packet capture file (.pcap) is generated and filtered based on the recorded TCPIP activity, allowing for a pcap file per process.  
+A Windows commandline tool that monitors a process network activity using [Windows Event Tracing (ETW)](https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/event-tracing-for-windows--etw-) and full packet capture. A packet capture file (.pcap) is generated and filtered based on the recorded TCPIP activity, allowing for a pcap file per process.  
 WhoYouCalling makes process network monitoring hella' easy.
 
 <details>
@@ -12,7 +13,7 @@ WhoYouCalling makes process network monitoring hella' easy.
 
 One of the best methods of monitoring activities by a process in Windows is with the Sysinternal tool [ProcMon](https://learn.microsoft.com/sv-se/sysinternals/downloads/procmon). 
 However, there are some downsides:
-1. **Manual Work**: To get a Full Packet Capture per process you need to manually start a packet capture with a tool like Wireshark/Tshark, and create a filter for endpoints based on the results of ProcMon, which can be timeconsuming and potential endpoints may be missed due to human error if the process is not automated.
+1. **Manual Work**: To get a Full Packet Capture per process you need to manually start a packet capture with a tool like Wireshark/Tshark, and create a filter for endpoints based on the results of ProcMon, which can be time consuming and potential endpoints may be missed due to human error if the process is not automated.
 2. **Child processes**: It can be tedious to maintain a track record of all of the child processes that may spawn and the endpoints they're communicating with.
 3. **DNS queries**: (AFAIK) ProcMon doesn't support capturing DNS queries. It does provide with UDP/TCP sent to port 53, but no information of the actual domain name that's queried nor the given address response.
 </details>
@@ -31,11 +32,14 @@ However, there are some downsides:
 - Monitoring is applied to all spawned child processes by default.
 - Spawned process and its childprocesses can be killed on stop. 
 - JSON output of results.
+- Perform API lookups to get the reputation of IPs and domains.
 - Generate a Wireshark DFL filter per process.
 - Generate a BPF filter per process.
+- Visualize the processes and their network activity with an interactive network graph.
+- Perform automatic API lookups of IPs and domains.
 
 ## Usage:
-(*Must be run as administrator - for packet capture and listening to ETW*) 
+> **Note:** Must be run as administrator - for packet capture and listening to ETW.
 
 ![Example Usage](imgs/ExampleUsage.gif)
 
@@ -76,6 +80,18 @@ wyc.exe -e C:\Users\H4NM\Desktop\sus.exe -t 60 -k -i 8 -o C:\Users\H4NM\Desktop
 wyc.exe -e "C:\Program Files\Mozilla Firefox\firefox.exe" --nopcap --names "firefox.exe,svchost,cmd"
 ```
 
+## Analyze the results
+To analyze and visualize the results, this repo includes **CallMapper**, a Python and JavaScript solution that reads the JSON output from WhoYouCalling and hosts a network graph of all processes and their related network activity. **CallMapper** allows for performing automatic API lookups of IPs and domains to statically enrich the data.
+
+![Example Usage CallMapper](imgs/ExampleUsageCallMapper.gif)
+
+**Simple usage**:
+```
+python callmapper.py -r ./Result.json
+```
+
+See [CallMapper README.md](https://github.com/H4NM/WhoYouCalling/blob/main/CallMapper/README.md) for more.  
+
 ### Complementary Tools
 There are other tools that can compliment your quest of application network analysis:
 - [Frida](https://frida.re/): Provides the most granular interaction with applications in which you can view API calls made. 
@@ -85,10 +101,9 @@ There are other tools that can compliment your quest of application network anal
 
 ### Limitations
 - **DNS**: In ETW, `Microsoft-Windows-DNS-Client` only logs A and AAAA queries, neglecting other DNS query types such as PTR, TXT, MX, SOA etc. It does capture CNAME and it's respective adresses, which are part of the DNS response. However, with the FPC the requests are captured either way, just not portrayed as in registered DNS traffic by the application. The FPC and registered TCPIP activity helps identify processes that do not utilize **Windows DNS Client Service** (e.g. `nslookup`) since they're not logged in the DNS ETW.
-- **Execution integrity**: It's currently not possible to delegate the privilege of executing applications in an elevated state to other users, meaning that if you want to run the application elevated you need to be signed in as the user with administrator rights.   
-  Since WhoYouCalling requires elevated privileges to run (*ETW + FPC*), spawned processes naturally inherits the security token making them also posess the same integrity level - and .NET api does not work too well with creating less privileged processes from an already elevated state.
+- **Execution integrity**: Since WhoYouCalling requires elevated privileges to run (*ETW + FPC*), spawned processes naturally inherits the security token making them also posess the same integrity level - and .NET api does not work too well with creating less privileged processes from an already elevated state.
   The best and most reliable approach was to duplicate the low privileged token of the desktop shell in an interactive logon (explorer.exe).
-  However, there may be use cases in which WhoYouCalling is executed via a remote management tool like PowerShell, SSH or PsExec, where there is no instance of a desktop shell, in these case you need to provide a username and password of a user that may execute it. 
+  However, there may be use cases in which WhoYouCalling is executed via a remote management tool like PowerShell, SSH or PsExec, where there is no instance of a desktop shell, in these case you need to provide a username and password of a user that may execute it. It's also not currently possible to delegate the privilege of executing applications in an elevated state to other users, meaning that if you want to start another application with WYC in an elevated state, you need to be signed in as the user with administrator rights and provide the flag for running elevated.  
 
 ### Dependencies
 This project has been tested and works with .NET 8 with two nuget packages, and drivers for capturing network packets: 
@@ -137,8 +152,7 @@ bin\Release\net8.0\win-x64\wyc.exe [arguments]...
 
 ### To Do:
 - Refactor. Lots and lots to refactor and make more tidy :)
-- Network graph visualizing the process tree and summarized network traffic by each process
-- IP and domain name lookup option to get reputation
 
 ### Nice to have
+- Linux port
 - Process network redirect to proxy for TLS inspection

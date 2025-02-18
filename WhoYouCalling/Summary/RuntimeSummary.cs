@@ -1,4 +1,5 @@
-﻿using WhoYouCalling.Network;
+﻿using System.Net;
+using WhoYouCalling.Network;
 using WhoYouCalling.Network.DNS;
 using WhoYouCalling.Process;
 
@@ -7,6 +8,7 @@ namespace WhoYouCalling.Summary
     public struct RuntimeSummary
     {
         public string WYCCommandline { get; set; }
+        public string Hostname { get; set; }
         public DateTime StartTime { get; set; }
         public string PresentableDuration { get; set; }
         public int NumberOfProcesses { get; set; }
@@ -43,6 +45,7 @@ namespace WhoYouCalling.Summary
             }
 
             WYCCommandline = GetFullWYCCommandLine();
+            Hostname = GetHostname();
             StartTime = startTime;
             PresentableDuration = presentableMonitorDuration;
             NumberOfProcesses = monitoredProcesses.Count;
@@ -50,6 +53,18 @@ namespace WhoYouCalling.Summary
             TopLevelDomains = GetTLDText(uniqueDomains);
             MostCommonConnections = GetFiveMostCommonConnections(destinationPortsAndProtocol, maxNumberOfPorts: 5);
             NumberOfUniqueDomainsQueried = uniqueDomains.Count;
+        }
+        private static string GetHostname()
+        {
+            try
+            {
+                string fqdn = System.Net.Dns.GetHostEntry("").HostName;
+                return !string.IsNullOrWhiteSpace(fqdn) ? fqdn : Environment.MachineName;
+            }
+            catch
+            {
+                return Environment.MachineName;
+            }
         }
         private static string GetFullWYCCommandLine()
         {

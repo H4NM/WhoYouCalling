@@ -12,6 +12,8 @@ using WhoYouCalling.ETW;
 using WhoYouCalling.Summary;
 using WhoYouCalling.Utilities.Arguments;
 using System.Text.Json.Serialization;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using WhoYouCalling.Constants;
 
 /*
                                                                    ? 
@@ -43,7 +45,6 @@ namespace WhoYouCalling
 
         private static bool s_shutDownMonitoring = false;
         private static bool s_timerExpired = false;
-        private static string? s_mainExecutableFileName = "";
         private static string s_mainExecutableProcessName = "";
 
         private static LivePacketCapture s_livePacketCapture = new();
@@ -78,10 +79,13 @@ namespace WhoYouCalling
             RunningMode = GetMainMode(s_argumentData);
             SetCancelKeyEvent();
 
-            ConsoleOutput.PrintStartMonitoringText();
             if (Debug())
             {
                 ConsoleOutput.PrintArgumentValues(s_argumentData);
+            }
+            else
+            {
+                ConsoleOutput.PrintStartMonitoringText();
             }
 
             if (RunningMode == WYCMainMode.Illuminate)
@@ -91,9 +95,8 @@ namespace WhoYouCalling
             else
             {
                 ConsoleOutput.Print("Retrieving executable filename", PrintType.Debug);
-                s_mainExecutableFileName = GetMainExecutableFileNameWithPIDOrPath(s_argumentData.TrackedProcessId, s_argumentData.ExecutablePath);
-
-                s_rootFolderName = Generic.NormalizePath(Generic.GetRunInstanceFolderName(s_mainExecutableFileName));
+                string mainInstanceFolderName = GetMainInstanceNameWithPIDOrPath(s_argumentData.TrackedProcessId, s_argumentData.ExecutablePath);
+                s_rootFolderName = Generic.NormalizePath(Generic.GetRunInstanceFolderName(mainInstanceFolderName));
             }
 
             if (s_argumentData.OutputDirectoryFlagSet)
@@ -270,7 +273,7 @@ namespace WhoYouCalling
         {
             s_trackedMainPid = pid;
             s_mainExecutableProcessName = System.Diagnostics.Process.GetProcessById(s_trackedMainPid).ProcessName;
-            AddProcessToMonitor(pid: s_trackedMainPid);
+            AddProcessToMonitor(pid: s_trackedMainPid, processName: s_mainExecutableProcessName);
             ConsoleOutput.Print($"Listening to PID {s_trackedMainPid}({s_mainExecutableProcessName})", PrintType.Info);
             CatalogETWActivity(eventType: EventType.ProcessMonitor, processName: s_mainExecutableProcessName, processID: s_trackedMainPid);
         }
@@ -300,10 +303,10 @@ namespace WhoYouCalling
                     if (userNameWasProvided && userPasswordWasProvided) 
                     {
                         s_trackedMainPid = ProcessManager.StartProcessAndGetId(executablePath: executablePath,
-                                                   arguments: executableArguments,
-                                                   username: userName,
-                                                   password: userPassword,
-                                                   runPrivileged: false);
+                                                                               arguments: executableArguments,
+                                                                               username: userName,
+                                                                               password: userPassword,
+                                                                               runPrivileged: false);
                     }
                     else if (Win32.WinAPI.HasShellWindow())
                     {
@@ -318,27 +321,17 @@ namespace WhoYouCalling
 
                 ConsoleOutput.Print($"Executing \"{executablePath}\" with args \"{executableArguments}\" in {executionContext} context", PrintType.Debug);
                 ConsoleOutput.Print($"Executing \"{executablePath}\"", PrintType.Info);
-                AddProcessToMonitor(pid: s_trackedMainPid, commandLine: executableArguments);
-
-                if (MonitoredProcessCanBeRetrievedWithPID(s_trackedMainPid))
-                {
-                    s_mainExecutableProcessName = GetMonitoredProcessWithPID(s_trackedMainPid).ProcessName;
-                }
-                else
-                {
-                    string initialProcessName = ProcessManager.GetPIDProcessName(s_trackedMainPid);
-                    s_mainExecutableProcessName = initialProcessName == Constants.Miscellaneous.UnmappedProcessDefaultName
-                        ? GetBackupProcessName(s_trackedMainPid)
-                        : initialProcessName;
-                }
+                s_mainExecutableProcessName = ProcessManager.GetPIDProcessName(s_trackedMainPid);
+                AddProcessToMonitor(pid: s_trackedMainPid, processName: s_mainExecutableProcessName, commandLine: executableArguments);
                 CatalogETWActivity(eventType: EventType.ProcessStart, processName: s_mainExecutableProcessName, processID: s_trackedMainPid, processCommandLine: executableArguments);
-            }
-            catch (Exception ex)
-            {
-                ConsoleOutput.Print($"An error occurred while starting the process: {ex.Message}", PrintType.Fatal);
-                System.Environment.Exit(1);
-            }
+             }
+             catch (Exception ex)
+             {
+                 ConsoleOutput.Print($"An error occurred while starting the process: {ex.Message}", PrintType.Fatal);
+                 System.Environment.Exit(1);
+             }
         }
+
         private static void ShutdownMonitoring()
         {
             if (s_argumentData.KillProcesses) // If spawned processes are to be killed
@@ -576,6 +569,7 @@ namespace WhoYouCalling
             textList.Add($"Commandline: {runtimeSummary.WYCCommandline}");
             textList.Add($"Start time: {runtimeSummary.StartTime}");
             textList.Add($"Duration: {runtimeSummary.PresentableDuration}");
+            textList.Add($"Hostname: {runtimeSummary.Hostname}");
             textList.Add($"Total processes: {runtimeSummary.NumberOfProcesses}");
             textList.Add($"Processes with network activity: {runtimeSummary.NumberOfProcessesWithNetworkActivity}");
             if (runtimeSummary.MostCommonConnections.Count > 0)
@@ -1046,13 +1040,13 @@ namespace WhoYouCalling
             s_shutDownMonitoring = true;
         }
 
-        private static string GetMainExecutableFileNameWithPIDOrPath(int pid = 0, string executablePath = "")
+        private static string GetMainInstanceNameWithPIDOrPath(int pid = 0, string executablePath = "")
         {
-            string? executableFileName = "";
+            string? instanceName = "";
             if (pid != 0)
             {
                 if (ProcessManager.IsProcessRunning(pid)) {
-                    executableFileName = ProcessManager.GetProcessFileName(pid);
+                    instanceName = ProcessManager.GetPIDProcessName(pid);
                 }
                 else
                 {
@@ -1062,16 +1056,16 @@ namespace WhoYouCalling
             }
             else
             {
-                executableFileName = Path.GetFileName(executablePath);
+                instanceName = Path.GetFileName(executablePath);
             }
 
-            if (executableFileName == null)
+            if (instanceName == null)
             {
-                executableFileName = Constants.Miscellaneous.MainExecutableUnretrievableName;
+                instanceName = Constants.Miscellaneous.MainExecutableUnretrievableName;
             }
-            return executableFileName;
+            return instanceName;
         }
-
+        
         public static void AddProcessToMonitor(int pid, string processName = "", string? commandLine = null)
         {
             MonitoredProcess monitoredProcess = new MonitoredProcess
@@ -1085,20 +1079,26 @@ namespace WhoYouCalling
             try
             {
                 System.Diagnostics.Process process = System.Diagnostics.Process.GetProcessById(pid);
-                monitoredProcess.ProcessName = process.ProcessName;
-                if (process.SessionId == 0)
+                if (monitoredProcess.ProcessName == Constants.Miscellaneous.UnmappedProcessDefaultName)
                 {
-                    monitoredProcess.IsolatedProcess = true;
+                    monitoredProcess.ProcessName = process.ProcessName;
                 }
-                else
+
+                if (ProcessManager.IsCorrectlyMatchingProcess(retrievedProcessName: process.ProcessName, providedProcessName: monitoredProcess.ProcessName))
                 {
-                    monitoredProcess.IsolatedProcess = false;
-                    monitoredProcess.ProcessStartTime = process.StartTime;
+                    if (process.SessionId == 0)
+                    {
+                        monitoredProcess.IsolatedProcess = true;
+                    }
+                    else
+                    {
+                        monitoredProcess.IsolatedProcess = false;
+                        monitoredProcess.ProcessStartTime = process.StartTime;
+                    }
                 }
             }
             catch
             {
-                ConsoleOutput.Print($"Unable to instantiate monitored process object for PID {pid} with process name \"{monitoredProcess.ProcessName}\"", PrintType.Debug);
             }
 
             if (string.IsNullOrEmpty(monitoredProcess.ProcessName))
@@ -1106,33 +1106,34 @@ namespace WhoYouCalling
                 monitoredProcess.ProcessName = Constants.Miscellaneous.UnmappedProcessDefaultName;
             }
 
-            if (monitoredProcess.ProcessName == Constants.Miscellaneous.UnmappedProcessDefaultName){
+            if (monitoredProcess.ProcessName == Constants.Miscellaneous.UnmappedProcessDefaultName)
+            {
                 monitoredProcess.MappedProcess = false;
+                ConsoleOutput.Print($"Unable to correctly map PID {monitoredProcess.PID}", PrintType.Debug);
             }
 
-            string uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: pid, processName: monitoredProcess.ProcessName);
-
+            string uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: monitoredProcess.PID, processName: monitoredProcess.ProcessName);
             if (s_uniqueMonitoredProcessIdentifiers.ContainsKey(uniqueProcessIdentifier)) // PID and Process collision has occured. Remove OLD uniqueProcessIdentifier value
             {
                 s_uniqueMonitoredProcessIdentifiers.Remove(uniqueProcessIdentifier);
             }
 
-            if (!s_monitoredProcessBackupProcessName.ContainsKey(pid))
+            if (!s_monitoredProcessBackupProcessName.ContainsKey(monitoredProcess.PID))
             {
-                s_monitoredProcessBackupProcessName.Add(pid, monitoredProcess.ProcessName);
+                s_monitoredProcessBackupProcessName.Add(monitoredProcess.PID, monitoredProcess.ProcessName);
             }
-            monitoredProcess.ExecutableFileName = ProcessManager.GetProcessFileName(pid);
+            monitoredProcess.ExecutableFileName = ProcessManager.GetProcessFileName(monitoredProcess.PID);
             s_monitoredProcesses.Add(monitoredProcess);
             int monitoredProcessesIndexPosition = s_monitoredProcesses.Count - 1;
             s_uniqueMonitoredProcessIdentifiers.Add(uniqueProcessIdentifier, monitoredProcessesIndexPosition);
 
-            if (s_monitoredProcessIdentifiers.ContainsKey(pid))
+            if (s_monitoredProcessIdentifiers.ContainsKey(monitoredProcess.PID))
             {
-                s_monitoredProcessIdentifiers[pid].Add(monitoredProcessesIndexPosition);
+                s_monitoredProcessIdentifiers[monitoredProcess.PID].Add(monitoredProcessesIndexPosition);
             }
             else
             {
-                s_monitoredProcessIdentifiers.Add(pid, new List<int> { monitoredProcessesIndexPosition });
+                s_monitoredProcessIdentifiers.Add(monitoredProcess.PID, new List<int> { monitoredProcessesIndexPosition });
             }
         }
 
@@ -1286,6 +1287,7 @@ namespace WhoYouCalling
                     }
 
                     uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: processID, processName: processName);
+
                     if (UniqueProcessIDIsMonitored(uniqueProcessIdentifier))
                     {
                         return GetMonitoredProcessWithUniqueProcessID(uniqueProcessIdentifier);
@@ -1350,6 +1352,7 @@ namespace WhoYouCalling
         {
             s_monitoredProcessBackupProcessName.Remove(pid);
         }
+        
         public static void DeleteProcessIDIndex(int pid)
         {
             int indexPos = s_monitoredProcessIdentifiers[pid][0];
@@ -1367,11 +1370,11 @@ namespace WhoYouCalling
             s_uniqueMonitoredProcessIdentifiers.Remove(uniqueProcessIdentifier);
         }
 
-
         public static void IncrementDNSQueries()
         {
             ++s_uniqueDomainNamesQueried;
         }
+        
         public static int GetDNSActivityCount()
         {
             return s_uniqueDomainNamesQueried;
