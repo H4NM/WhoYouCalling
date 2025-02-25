@@ -1,7 +1,7 @@
 import json
 import ipaddress
 import sys
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union
 from datetime import datetime
 
 #=====================================
@@ -130,6 +130,12 @@ def file_exists_in_same_script_folder(directory: str, file: str) -> bool:
         return True
     else:
         return False
+    
+def get_port_information(transport_protocol: str, port: int) -> Union[str, None]: 
+    if port in WELL_KNOWN_PORTS[transport_protocol]:
+        return f" ({WELL_KNOWN_PORTS[transport_protocol][port]})"
+    else:
+        return None
 
 def get_visualization_data(monitored_processes: list) -> dict:
     visualization_data = {
@@ -179,6 +185,9 @@ def get_edges(visualization_data: dict, monitored_processes: list) -> dict:
                     unique_destination_edges.append(simple_connection_record)
                     
                     event_info: str = f"{connection_record['TransportProtocol']} port {connection_record['DestinationPort']}"
+                    port_information = get_port_information(transport_protocol = connection_record['TransportProtocol'], port = connection_record['DestinationPort'])
+                    if port_information:
+                        event_info += port_information
                     tcpip_edge = get_edge(event=event_info, 
                                           source=current_process_node_id, 
                                           target=node['data']['id'],

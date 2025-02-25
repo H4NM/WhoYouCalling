@@ -5,6 +5,7 @@ dist/
 Caps/
 TestApplication*
 args.txt
+release_text.txt
 requirements.txt
 autobadge.py
 requesttest.py
