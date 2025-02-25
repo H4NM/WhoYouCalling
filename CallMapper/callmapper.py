@@ -46,6 +46,10 @@ def main() -> None:
     args = parser.parse_args()
     print(SCRIPT_BANNER)
     
+    if not has_prerequisites():
+        ConsoleOutputPrint(msg=f"Invalid python version. You need atleast python version {MINIMUM_PYTHON_VERSION}. You have {sys.version}", print_type="fatal")
+        sys.exit(1) 
+    
     if not file_exists_in_same_script_folder(SCRIPT_DIRECTORY, "index.html"):
         ConsoleOutputPrint(msg=f"Unable to find index.html in the same directory as the script", print_type="fatal")
         sys.exit(1)

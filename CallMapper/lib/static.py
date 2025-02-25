@@ -11,6 +11,7 @@ SCRIPT_BANNER = r"""
                               |_|   |_|           
                                           o--o--o--o"""
 PROCESS_START_SECONDS_RANGE: int = 3
+MINIMUM_PYTHON_VERSION: str = '3.11'
 DATA_FILE_JSON_STRUCTURE: dict = {
     "elements": {
         "nodes": list,
@@ -23,3 +24,4 @@ REQUESTS_LIBRARY_MISSING_MSG="""The library 'requests' doesn't seem to be instal
 
         pip install requests
             """
+            

@@ -288,6 +288,15 @@ def get_process_metadata(monitored_process: dict, node_id: int) -> list:
     metadata.append(f"<button id='deselect-button' onclick=\"deselectNode({node_id})\">Hide process</button>") 
     return metadata
 
+def has_prerequisites() -> bool:
+    versions = MINIMUM_PYTHON_VERSION.split(".")
+    major_version = int(versions[0])
+    minor_version = int(versions[1])
+    if sys.version_info >= (major_version, minor_version):
+        return True
+    else:
+        return False    
+    
 def get_ip_or_domain_metadata(endpoint: str, type: NodeType) -> Tuple[list, bool]:
     metadata: list = []
     is_potentially_malicious: bool = False
