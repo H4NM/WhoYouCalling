@@ -87,6 +87,6 @@ jobs:
           name: compiled-binary
           path: output
 
-      - name: Run with Listen mode against System proces
+      - name: Run with Listen mode against System process
         run: output\wyc.exe --PID 4 --nopcap --timer 10 -d
 
