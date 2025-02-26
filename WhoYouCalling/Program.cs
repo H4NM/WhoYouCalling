@@ -1,6 +1,8 @@
 ﻿
 using System.Timers;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Collections.Concurrent;
 
 // CUSTOM
 using WhoYouCalling.Utilities;
@@ -11,9 +13,6 @@ using WhoYouCalling.Network.DNS;
 using WhoYouCalling.ETW;
 using WhoYouCalling.Summary;
 using WhoYouCalling.Utilities.Arguments;
-using System.Text.Json.Serialization;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using WhoYouCalling.Constants;
 
 /*
                                                                    ? 
@@ -32,9 +31,9 @@ namespace WhoYouCalling
     class Program
     {
         private static List<MonitoredProcess> s_monitoredProcesses = new();
-        private static Dictionary<string, int> s_uniqueMonitoredProcessIdentifiers = new();
-        private static Dictionary<int, List<int>> s_monitoredProcessIdentifiers = new();
-        private static Dictionary<int, string> s_monitoredProcessBackupProcessName = new();
+        private static ConcurrentDictionary<string, int> s_uniqueMonitoredProcessIdentifiers = new();
+        private static ConcurrentDictionary<int, List<int>> s_monitoredProcessIdentifiers = new();
+        private static ConcurrentDictionary<int, string> s_monitoredProcessBackupProcessName = new();
 
         private static int s_uniqueDomainNamesQueried = new();
         private static int s_processDataOutputCounter = 0;
@@ -1115,17 +1114,18 @@ namespace WhoYouCalling
             string uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: monitoredProcess.PID, processName: monitoredProcess.ProcessName);
             if (s_uniqueMonitoredProcessIdentifiers.ContainsKey(uniqueProcessIdentifier)) // PID and Process collision has occured. Remove OLD uniqueProcessIdentifier value
             {
-                s_uniqueMonitoredProcessIdentifiers.Remove(uniqueProcessIdentifier);
+                s_uniqueMonitoredProcessIdentifiers.TryRemove(uniqueProcessIdentifier, out _);
             }
 
             if (!s_monitoredProcessBackupProcessName.ContainsKey(monitoredProcess.PID))
             {
-                s_monitoredProcessBackupProcessName.Add(monitoredProcess.PID, monitoredProcess.ProcessName);
+                s_monitoredProcessBackupProcessName.TryAdd(monitoredProcess.PID, monitoredProcess.ProcessName);
             }
             monitoredProcess.ExecutableFileName = ProcessManager.GetProcessFileName(monitoredProcess.PID);
             s_monitoredProcesses.Add(monitoredProcess);
             int monitoredProcessesIndexPosition = s_monitoredProcesses.Count - 1;
-            s_uniqueMonitoredProcessIdentifiers.Add(uniqueProcessIdentifier, monitoredProcessesIndexPosition);
+
+            s_uniqueMonitoredProcessIdentifiers.TryAdd(uniqueProcessIdentifier, monitoredProcessesIndexPosition);
 
             if (s_monitoredProcessIdentifiers.ContainsKey(monitoredProcess.PID))
             {
@@ -1133,7 +1133,7 @@ namespace WhoYouCalling
             }
             else
             {
-                s_monitoredProcessIdentifiers.Add(monitoredProcess.PID, new List<int> { monitoredProcessesIndexPosition });
+                s_monitoredProcessIdentifiers.TryAdd(monitoredProcess.PID, new List<int> { monitoredProcessesIndexPosition });
             }
         }
 
@@ -1350,7 +1350,7 @@ namespace WhoYouCalling
 
         public static void DeleteOldBackupProcessName(int pid)
         {
-            s_monitoredProcessBackupProcessName.Remove(pid);
+            s_monitoredProcessBackupProcessName.TryRemove(pid, out _);
         }
         
         public static void DeleteProcessIDIndex(int pid)
@@ -1361,13 +1361,13 @@ namespace WhoYouCalling
             s_monitoredProcessIdentifiers[pid].RemoveAt(0);
             if (s_monitoredProcessIdentifiers[pid].Count == 0) 
             {
-                s_monitoredProcessIdentifiers.Remove(pid);
+                s_monitoredProcessIdentifiers.TryRemove(pid, out _);
             }
 
             // Remove the unique identifier to be able to manage PID and process name collisions
             string processName = s_monitoredProcesses[indexPos].ProcessName;
             string uniqueProcessIdentifier = ProcessManager.GetUniqueProcessIdentifier(pid: pid, processName: processName);
-            s_uniqueMonitoredProcessIdentifiers.Remove(uniqueProcessIdentifier);
+            s_uniqueMonitoredProcessIdentifiers.TryRemove(uniqueProcessIdentifier, out _);
         }
 
         public static void IncrementDNSQueries()
