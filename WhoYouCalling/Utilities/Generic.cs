@@ -12,6 +12,13 @@ namespace WhoYouCalling.Utilities
             return sortedList;
         }
 
+        public static string GetVersion()
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            var fileVersion = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version ?? "Unknown";
+            return $"v{fileVersion}";
+        }
+
         public static string NormalizePath(string path)
         {
             return path.Replace(@"\\", @"\"); 

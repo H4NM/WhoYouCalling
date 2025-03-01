@@ -70,7 +70,8 @@ namespace WhoYouCalling
             s_argumentData = argsManager.ParseArguments(args);
 
             if (s_argumentData.InvalidArgumentValueProvided || !argsManager.IsValidCombinationOfArguments(s_argumentData)) {
-                ConsoleOutput.PrintHeader();
+                string version = Utilities.Generic.GetVersion();
+                ConsoleOutput.PrintHeader(version);
                 ConsoleOutput.PrintHelp();
                 System.Environment.Exit(1);
             }
