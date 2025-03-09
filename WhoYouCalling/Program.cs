@@ -563,12 +563,11 @@ namespace WhoYouCalling
                                                                startTime: startTime, 
                                                                presentableMonitorDuration: presentableMonitorDuration, 
                                                                processesWithnetworkActivity: processesWithnetworkActivity);
-            textList.Add("  ======================================= ");
-            textList.Add($"|                 Summary               |");
-            textList.Add("  ======================================= ");
+            textList.Add(" ============================= ");
+            textList.Add("|           Summary           |");
+            textList.Add(" ============================= ");
             textList.Add($"# WhoYouCalling {runtimeSummary.WYCVersion} session initiated on \"{runtimeSummary.Hostname}\" at {runtimeSummary.StartTime} as: {runtimeSummary.WYCCommandline}");
-            textList.Add($"The session lasted for {runtimeSummary.PresentableDuration}.");
-            textList.Add($"{runtimeSummary.NumberOfProcesses} were monitored. {runtimeSummary.NumberOfProcessesWithNetworkActivity} had recorded network activity.");
+            textList.Add($"The session lasted for {runtimeSummary.PresentableDuration} and monitored {runtimeSummary.NumberOfProcesses} processes where {runtimeSummary.NumberOfProcessesWithNetworkActivity} had recorded network activity.");
             textList.Add("");
             textList.Add(" ============================= ");
             textList.Add("|          Processes          |");
@@ -581,9 +580,9 @@ namespace WhoYouCalling
                 {
                     continue;
                 }
-                textList.Add("  __________________________");
+                textList.Add("  _______________________");
                 textList.Add($"[ {monitoredProcess.ProcessName}-{monitoredProcess.PID}");
-                textList.Add("  --------------------------");
+                textList.Add("  -----------------------");
                 if (monitoredProcess.ExecutableFileName != null)
                 {
                     textList.Add($"Executable: {monitoredProcess.ExecutableFileName}");
@@ -609,24 +608,24 @@ namespace WhoYouCalling
                 if (monitoredProcess.TCPIPTelemetry.Count > 0)
                 {
                     TCPIPSummary tcpipSummary = new TCPIPSummary(monitoredProcess);
-                    textList.Add($"\tIP versions: {tcpipSummary.IPversionsText}");
-                    textList.Add($"\tProtocols: {tcpipSummary.TransportProtocolsText}");
-                    textList.Add($"\tIPs:");
+                    textList.Add($" IP versions: {tcpipSummary.IPversionsText}");
+                    textList.Add($" Protocols: {tcpipSummary.TransportProtocolsText}");
+                    textList.Add($" IPs:");
                     foreach (string ip in tcpipSummary.UniqueIPs)
                     {
-                        textList.Add($"\t\t- {ip}");
+                        textList.Add($"  - {ip}");
                     }
                 }
                 textList.Add($"DNS queries: {monitoredProcess.DNSQueries.Count}");
                 if (monitoredProcess.DNSQueries.Count > 0)
                 {
                     DNSQueriesSummary dnsQueriesSummary = new DNSQueriesSummary(monitoredProcess);
-                    textList.Add($"\tDomains:");
+                    textList.Add($" Domains:");
                     foreach (string domain in dnsQueriesSummary.UniqueDomains)
                     {
-                        textList.Add($"\t\t- {domain}");
+                        textList.Add($"  - {domain}");
                     }
-                    textList.Add($"\tRecord types: {dnsQueriesSummary.UniqueDNSRecordTypesText}");
+                    textList.Add($" Record types: {dnsQueriesSummary.UniqueDNSRecordTypesText}");
                 }
                 textList.Add($"DNS responses: {monitoredProcess.DNSResponses.Count}");
                 if (monitoredProcess.DNSResponses.Count > 0)
@@ -634,19 +633,19 @@ namespace WhoYouCalling
                     DNSResponsesSummary dnsResponsesSummary = new DNSResponsesSummary(monitoredProcess);
                     if (!string.IsNullOrEmpty(dnsResponsesSummary.UniqueBundledRecordTypeText))
                     {
-                        textList.Add($"\tRecord types: {dnsResponsesSummary.UniqueBundledRecordTypeText}"); 
+                        textList.Add($" Record types: {dnsResponsesSummary.UniqueBundledRecordTypeText}"); 
                     }
-                    textList.Add($"\tIPs resolved: {dnsResponsesSummary.UniqueHostsResolvedCount}");
+                    textList.Add($" IPs resolved: {dnsResponsesSummary.UniqueHostsResolvedCount}");
                 }   
                 textList.Add($"Child processes: {monitoredProcess.ChildProcesses.Count}");
                 if (monitoredProcess.ChildProcesses.Count > 0)
                 {
                     ChildProcessesSummary childProcessesSummary = new ChildProcessesSummary(monitoredProcess);
-                    textList.Add($"\tChild processes: {childProcessesSummary.NumberOfChildProcesses}");
-                    textList.Add($"\tProcess names: {childProcessesSummary.NumberOfChildProcesses}");
+                    textList.Add($" Child processes: {childProcessesSummary.NumberOfChildProcesses}");
+                    textList.Add($" Process names: {childProcessesSummary.NumberOfChildProcesses}");
                     foreach (string childProcessName in childProcessesSummary.ChildProcessesNames)
                     {
-                        textList.Add($"\t\t- {childProcessName}");
+                        textList.Add($"  - {childProcessName}");
                     }
                 }
                 textList.Add("");

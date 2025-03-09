@@ -15,7 +15,7 @@ namespace WhoYouCalling.Summary
 
             foreach (DNSResponse dnsResponse in monitoredProcess.DNSResponses)
             {
-                if (dnsResponse.QueryResult.BundledRecordTypeText != null)
+                if (!string.IsNullOrEmpty(dnsResponse.QueryResult.BundledRecordTypeText))
                 {
                     bundledRecordTypesTexts.Add(dnsResponse.QueryResult.BundledRecordTypeText);
                 }
