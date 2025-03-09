@@ -564,15 +564,11 @@ namespace WhoYouCalling
                                                                presentableMonitorDuration: presentableMonitorDuration, 
                                                                processesWithnetworkActivity: processesWithnetworkActivity);
             textList.Add("  ======================================= ");
-            textList.Add($"| WhoYouCalling {runtimeSummary.WYCVersion}");
+            textList.Add($"|                 Summary               |");
             textList.Add("  ======================================= ");
-            textList.Add($"Commandline: {runtimeSummary.WYCCommandline}");
-            textList.Add($"Hostname: {runtimeSummary.Hostname}");
-            textList.Add($"Start time: {runtimeSummary.StartTime}");
-            textList.Add($"Duration: {runtimeSummary.PresentableDuration}");
-            textList.Add($"Total processes: {runtimeSummary.NumberOfProcesses}");
-            textList.Add($"Processes with network activity: {runtimeSummary.NumberOfProcessesWithNetworkActivity}");
-
+            textList.Add($"# WhoYouCalling {runtimeSummary.WYCVersion} session initiated on \"{runtimeSummary.Hostname}\" at {runtimeSummary.StartTime} as: {runtimeSummary.WYCCommandline}");
+            textList.Add($"The session lasted for {runtimeSummary.PresentableDuration}.");
+            textList.Add($"{runtimeSummary.NumberOfProcesses} were monitored. {runtimeSummary.NumberOfProcessesWithNetworkActivity} had recorded network activity.");
             textList.Add("");
             textList.Add(" ============================= ");
             textList.Add("|          Processes          |");
@@ -585,9 +581,9 @@ namespace WhoYouCalling
                 {
                     continue;
                 }
-                textList.Add(" ____________________ ");
+                textList.Add("  __________________________");
                 textList.Add($"[ {monitoredProcess.ProcessName}-{monitoredProcess.PID}");
-                textList.Add(" -------------------- ");
+                textList.Add("  --------------------------");
                 if (monitoredProcess.ExecutableFileName != null)
                 {
                     textList.Add($"Executable: {monitoredProcess.ExecutableFileName}");
