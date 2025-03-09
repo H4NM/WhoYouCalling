@@ -563,13 +563,13 @@ namespace WhoYouCalling
                                                                startTime: startTime, 
                                                                presentableMonitorDuration: presentableMonitorDuration, 
                                                                processesWithnetworkActivity: processesWithnetworkActivity);
-            textList.Add(" ======================================= ");
-            textList.Add("|                Summary                |");
-            textList.Add(" ======================================= ");
+            textList.Add("  ======================================= ");
+            textList.Add($"| WhoYouCalling {runtimeSummary.WYCVersion}");
+            textList.Add("  ======================================= ");
             textList.Add($"Commandline: {runtimeSummary.WYCCommandline}");
+            textList.Add($"Hostname: {runtimeSummary.Hostname}");
             textList.Add($"Start time: {runtimeSummary.StartTime}");
             textList.Add($"Duration: {runtimeSummary.PresentableDuration}");
-            textList.Add($"Hostname: {runtimeSummary.Hostname}");
             textList.Add($"Total processes: {runtimeSummary.NumberOfProcesses}");
             textList.Add($"Processes with network activity: {runtimeSummary.NumberOfProcessesWithNetworkActivity}");
 

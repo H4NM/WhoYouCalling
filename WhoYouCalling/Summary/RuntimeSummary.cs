@@ -8,6 +8,7 @@ namespace WhoYouCalling.Summary
     public struct RuntimeSummary
     {
         public string WYCCommandline { get; set; }
+        public string WYCVersion { get; set; }
         public string Hostname { get; set; }
         public DateTime StartTime { get; set; }
         public string PresentableDuration { get; set; }
@@ -43,6 +44,7 @@ namespace WhoYouCalling.Summary
             }
 
             WYCCommandline = GetFullWYCCommandLine();
+            WYCVersion= Utilities.Generic.GetVersion();
             Hostname = GetHostname();
             StartTime = startTime;
             PresentableDuration = presentableMonitorDuration;
