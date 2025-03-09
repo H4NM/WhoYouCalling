@@ -8,15 +8,52 @@
 A Windows commandline tool that monitors a process network activity using [Windows Event Tracing (ETW)](https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/event-tracing-for-windows--etw-) and full packet capture. A packet capture file (.pcap) is generated and filtered based on the recorded TCPIP activity, allowing for a pcap file per process.  
 WhoYouCalling makes process network monitoring hella' easy.
 
+### FAQ
 <details>
-  <summary>"Why not just use ProcMon+Wireshark??"🤔🤔</summary>
+  <summary>Who is this tool for?</summary>
+  
 
-One of the best methods of monitoring activities by a process in Windows is with the Sysinternal tool [ProcMon](https://learn.microsoft.com/sv-se/sysinternals/downloads/procmon). 
-However, there are some downsides:
-1. **Manual Work**: To get a Full Packet Capture per process you need to manually start a packet capture with a tool like Wireshark/Tshark, and create a filter for endpoints based on the results of ProcMon, which can be time consuming and potential endpoints may be missed due to human error if the process is not automated.
-2. **Child processes**: It can be tedious to maintain a track record of all of the child processes that may spawn and the endpoints they're communicating with.
-3. **DNS queries**: (AFAIK) ProcMon doesn't support capturing DNS queries. It does provide with UDP/TCP sent to port 53, but no information of the actual domain name that's queried nor the given address response.
+It's a tool for anyone that would like to know what network traffic is coming from processes in Windows. Some examples:
+- **Blueteamers**: Incident response and controlled malware analysis.
+- **Security researchers**: Understanding what an application is doing to identify vulnerabilities.
+- **Game hackers**: Understanding game traffic for possible packet manipulation.
+- **Red teamers**: Payload creators for testing detection.
+- **Sysadmins**: Understanding which traffic a host or process requires before a migration.
+- **Curious/paranoid people**: That just wants to understand who the heck processes are calling.
+
 </details>
+
+<details>
+  <summary>What about ProcMon, TCPView and Pktmon??</summary>
+
+Some of the best methods of monitoring network activities by a process in Windows is with the Sysinternal tools [ProcMon](https://learn.microsoft.com/sv-se/sysinternals/downloads/procmon) or [TCPView](https://learn.microsoft.com/en-us/sysinternals/downloads/tcpview). 
+There's also the native Windows application [Pktmon](https://learn.microsoft.com/en-us/windows-server/networking/technologies/pktmon/pktmon) that's great for capturing packets in different network stacks and event correlations.
+
+The tools and what they're offering:
+- **ProcMon**: <i>Continous</i> TCPIP traffic monitoring of processes.
+- **TCPView**: Retrieves  <i>active</i> TCPIP connections of processes.
+- **Pktmon**: Collects packets from different network stacks.
+
+Neither ProcMon nor TCPView captures the DNS traffic or provides with packet capture. Pktmon doesnt register which PID or process name the network packet comes from unless combined with additional log sources. But it doesn't filter a packet capture file for these.
+The main downsides that are adressed by WhoYouCalling:
+1. **Manual work**: To get a Full Packet Capture per process you need to manually start a packet capture with a tool like Wireshark/Tshark, and create a filter for endpoints based on the results of ProcMon or TCPView, which can be time consuming and potential endpoints may be missed due to human error if the process is not automated. Pktmon still requires manual mapping with events from other log sources.
+2. **Child processes**: It can be tedious to maintain a track record of all of the child processes that may spawn and the endpoints they're communicating with.
+3. **DNS queries**: Neither ProcMon nor TCPView supports capturing DNS queries. They do provide with insights of UDP/TCP sent to port 53, but no information of the actual domain name that's queried nor the given address response.
+
+Simply put, WhoYouCalling is a combination of these tools and addresses the downsides defined above, and more. 
+I still highly recommend the other listed tools as they may fit other use cases. ProcMon, for instance, can provide with information of file system activity and access right invocations, which WhoYouCalling cant.
+WhoYouCalling is strictly for network based activity analysis of processes.
+
+</details>
+
+<details>
+  <summary>What does this tool not do?</summary>
+
+  - **TCPIP**: WhoYouCalling does not capture traffic outside of the TCPIP stack, e.g. ICMP (layer 3, network) and ARP (layer 2, data link).
+  - **Server applications**: The tool does not monitor process socket creations for listening to ports, as it's mainly focused on processes in a client perspective. However, it can still be useful for monitoring to server applications based on their overall TCPIP activity.
+
+</details>
+
 
 ## Features: 
 - Start or monitor an already running process.
