@@ -111,7 +111,8 @@ namespace WhoYouCalling.Utilities
         public static void PrintStartMonitoringText()
         {
             Console.Clear();
-            PrintHeader();
+            string version = Utilities.Generic.GetVersion();
+            PrintHeader(version);
             Print($"Starting.. Press CTRL+C to cancel process monitoring.", PrintType.InfoTime);
         }
 
@@ -121,16 +122,16 @@ namespace WhoYouCalling.Utilities
             Generic.PrintObjectProperties(argumentData);      
         }
 
-        public static void PrintHeader()
+        public static void PrintHeader(string fileVersion)
         {
-            string headerText = @" 
+            string headerText = $@" 
                                                                    ? 
                                                                    | 
   __      ___      __   __         ___      _ _ _              .===:
   \ \    / / |_  __\ \ / /__ _  _ / __|__ _| | (_)_ _  __ _    |[_]|
    \ \/\/ /| ' \/ _ \ V / _ \ || | (__/ _` | | | | ' \/ _` |   |:::|
     \_/\_/ |_||_\___/|_|\___/\_,_|\___\__,_|_|_|_|_||_\__, |   |:::|
-                                                      |___/     \___\
+                                                      |___/     \___\ {fileVersion}
 
 By Hannes Michel (@H4NM)
 ";

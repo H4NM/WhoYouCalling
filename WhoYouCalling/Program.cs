@@ -59,7 +59,6 @@ namespace WhoYouCalling
         private static DateTime s_startTime;
         private static string s_presentableMonitorDuration = "";
 
-
         // Arguments
         public static WYCMainMode RunningMode;
         private static ArgumentData s_argumentData;
@@ -70,7 +69,8 @@ namespace WhoYouCalling
             s_argumentData = argsManager.ParseArguments(args);
 
             if (s_argumentData.InvalidArgumentValueProvided || !argsManager.IsValidCombinationOfArguments(s_argumentData)) {
-                ConsoleOutput.PrintHeader();
+                string version = Utilities.Generic.GetVersion();
+                ConsoleOutput.PrintHeader(version);
                 ConsoleOutput.PrintHelp();
                 System.Environment.Exit(1);
             }
@@ -345,6 +345,7 @@ namespace WhoYouCalling
             ConsoleOutput.Print($"Stopping ETW sessions", PrintType.Debug);
             StopETWSession(s_etwKernelListener);
             StopETWSession(s_etwDnsClientListener);
+            Thread.Sleep(Constants.Timeouts.ETWSubscriptionStopTime);
             if (!s_argumentData.NoPacketCapture)
             {
                 ConsoleOutput.Print($"Stopping packet capture saved to \"{s_fullPcapFile}\"", PrintType.Debug);
@@ -571,21 +572,7 @@ namespace WhoYouCalling
             textList.Add($"Hostname: {runtimeSummary.Hostname}");
             textList.Add($"Total processes: {runtimeSummary.NumberOfProcesses}");
             textList.Add($"Processes with network activity: {runtimeSummary.NumberOfProcessesWithNetworkActivity}");
-            if (runtimeSummary.MostCommonConnections.Count > 0)
-            {
-                textList.Add($"Most common connections:");
-                int portCounter = 1;
-                foreach (string portAndTransportProtocol in runtimeSummary.MostCommonConnections)
-                {
-                    textList.Add($"\t{portCounter}. {portAndTransportProtocol}");
-                    portCounter++;
-                }
-            }
-            textList.Add($"Unique domains queried: {runtimeSummary.NumberOfUniqueDomainsQueried}");
-            if (!string.IsNullOrEmpty(runtimeSummary.TopLevelDomains))
-            {
-                textList.Add($"Top level domains: {runtimeSummary.TopLevelDomains}");
-            }
+
             textList.Add("");
             textList.Add(" ============================= ");
             textList.Add("|          Processes          |");
@@ -633,17 +620,6 @@ namespace WhoYouCalling
                     {
                         textList.Add($"\t\t- {ip}");
                     }
-
-                    if (tcpipSummary.MostCommonConnections.Count > 0)
-                    {
-                        textList.Add($"\tMost common connections:");
-                        int processPortCounter = 1;
-                        foreach (string portAndTransportProtocol in tcpipSummary.MostCommonConnections)
-                        {
-                            textList.Add($"\t\t{processPortCounter}. {portAndTransportProtocol}");
-                            processPortCounter++;
-                        }
-                    }
                 }
                 textList.Add($"DNS queries: {monitoredProcess.DNSQueries.Count}");
                 if (monitoredProcess.DNSQueries.Count > 0)
@@ -662,7 +638,7 @@ namespace WhoYouCalling
                     DNSResponsesSummary dnsResponsesSummary = new DNSResponsesSummary(monitoredProcess);
                     if (!string.IsNullOrEmpty(dnsResponsesSummary.UniqueBundledRecordTypeText))
                     {
-                        textList.Add($"\tRecord types: {dnsResponsesSummary.UniqueBundledRecordTypeText}");
+                        textList.Add($"\tRecord types: {dnsResponsesSummary.UniqueBundledRecordTypeText}"); 
                     }
                     textList.Add($"\tIPs resolved: {dnsResponsesSummary.UniqueHostsResolvedCount}");
                 }   
@@ -792,7 +768,7 @@ namespace WhoYouCalling
             }
             else
             {
-                ConsoleOutput.Print($"Successfully {etwListener.SourceName} ETW session", PrintType.Debug);
+                ConsoleOutput.Print($"Successfully stopped {etwListener.SourceName} ETW session", PrintType.Debug);
             }
         }
 

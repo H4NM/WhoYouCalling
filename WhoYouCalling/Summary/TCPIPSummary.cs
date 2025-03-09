@@ -10,7 +10,6 @@ namespace WhoYouCalling.Summary
         public string TransportProtocolsText { get; set; }
         public HashSet<string> UniqueIPs { get; set; }
         public string OnlyLocalhostTrafficText { get; set; }
-        public List<string> MostCommonConnections { get; set; }
 
         public TCPIPSummary(MonitoredProcess monitoredProcess)
         {
@@ -42,12 +41,6 @@ namespace WhoYouCalling.Summary
             TransportProtocolsText = GetTransportProtocolText(transportProtocols);
             UniqueIPs = destinationHosts;
             OnlyLocalhostTrafficText = GetIfOnlyLocalhostTrafficText(onlyLocalhostTraffic);
-            MostCommonConnections = GetFiveMostCommonPorts(destinationPortsAndProtocol, maxNumberOfPorts: 5);
-
-        }
-        private static List<string> GetFiveMostCommonPorts(List<string> destinationPortsAndProtocol, int maxNumberOfPorts)
-        {
-            return Utilities.Generic.GetMostCommonStringOccurrances(destinationPortsAndProtocol, maxNumberOfPorts);
         }
 
         private static string GetIfOnlyLocalhostTrafficText(bool onlyLocalhostTraffic)

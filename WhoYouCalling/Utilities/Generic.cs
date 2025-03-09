@@ -12,6 +12,13 @@ namespace WhoYouCalling.Utilities
             return sortedList;
         }
 
+        public static string GetVersion()
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            var fileVersion = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version ?? "Unknown";
+            return $"v{fileVersion}";
+        }
+
         public static string NormalizePath(string path)
         {
             return path.Replace(@"\\", @"\"); 
@@ -45,39 +52,7 @@ namespace WhoYouCalling.Utilities
         {
             return DateTime.Now.ToString("HH:mm:ss");
         }
-        public static List<string> GetMostCommonStringOccurrances(List<string> stringList, int maxNumberToReturn)
-        {
-            Dictionary<string, int> counts = new();
-            foreach (string stringVariable in stringList)
-            {
-                if (counts.ContainsKey(stringVariable))
-                {
-                    counts[stringVariable]++;
-                }
-                else
-                {
-                    counts[stringVariable] = 1;
-                }
-            }
-
-            List<KeyValuePair<string, int>> orderedKVPStringList = new List<KeyValuePair<string, int>>(counts);
-            orderedKVPStringList.Sort((pair1, pair2) => pair2.Value.CompareTo(pair1.Value));
-
-            List<string> retrievedOrderedStringList = new();
-            int count = 0;
-            foreach (var pair in orderedKVPStringList)
-            {
-                retrievedOrderedStringList.Add(pair.Key);
-                count++;
-
-                if (count >= maxNumberToReturn)
-                {
-                    break;
-                }
-            }
-
-            return retrievedOrderedStringList;
-        }
+   
         public static void PrintObjectProperties(object obj)
         {
             Type type = obj.GetType();
