@@ -16,13 +16,10 @@ namespace WhoYouCalling.ETW
 
         public void Listen()
         {
-            using (_session = new TraceEventSession("WhoYouCallingDNSClientSession"))
-            {
-                _session.EnableProvider("Microsoft-Windows-DNS-Client");
-                _session.Source.Dynamic.All += DnsClientEvent;
-                _session.Source.Process();
-            }
-
+            _session = new TraceEventSession("WhoYouCallingDNSClientSession");
+            _session.EnableProvider("Microsoft-Windows-DNS-Client");
+            _session.Source.Dynamic.All += DnsClientEvent;
+            _session.Source.Process();
         }
 
         private void ProcessDnsQuery(dynamic data, string processName)

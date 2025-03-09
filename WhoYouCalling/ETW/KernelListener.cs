@@ -1,10 +1,8 @@
 ﻿using Microsoft.Diagnostics.Tracing.Parsers;
 using Microsoft.Diagnostics.Tracing.Parsers.Kernel;
 using Microsoft.Diagnostics.Tracing.Session;
-using Microsoft.Diagnostics.Tracing.StackSources;
 using WhoYouCalling.Network;
 using WhoYouCalling.Process;
-using WhoYouCalling.Utilities;
 
 namespace WhoYouCalling.ETW
 {
@@ -17,26 +15,24 @@ namespace WhoYouCalling.ETW
 
         public void Listen()
         {
-            using (_session = new TraceEventSession(KernelTraceEventParser.KernelSessionName)) //KernelTraceEventParser
-            {
-                _session.EnableKernelProvider(
-                    KernelTraceEventParser.Keywords.NetworkTCPIP |
-                    KernelTraceEventParser.Keywords.Process
-                );
+            _session = new TraceEventSession(KernelTraceEventParser.KernelSessionName);
+            _session.EnableKernelProvider(
+                KernelTraceEventParser.Keywords.NetworkTCPIP |
+                KernelTraceEventParser.Keywords.Process
+            );
 
-                // TCP/IP
-                _session.Source.Kernel.TcpIpSend += IPv4TCPSend; // TcpIpConnect may be used. However, "send" is used to ensure capturing failed TCP handshakes
-                _session.Source.Kernel.TcpIpSendIPV6 += IPv6TCPSend;
-                _session.Source.Kernel.UdpIpSend += IPv4UDPSend;
-                _session.Source.Kernel.UdpIpSendIPV6 += IPv6UDPSend;
+            // TCP/IP
+            _session.Source.Kernel.TcpIpSend += IPv4TCPSend; // TcpIpConnect may be used. However, "send" is used to ensure capturing failed TCP handshakes
+            _session.Source.Kernel.TcpIpSendIPV6 += IPv6TCPSend;
+            _session.Source.Kernel.UdpIpSend += IPv4UDPSend;
+            _session.Source.Kernel.UdpIpSendIPV6 += IPv6UDPSend;
 
-                // Process
-                _session.Source.Kernel.ProcessStart += ProcessStart;
-                _session.Source.Kernel.ProcessStop += ProcessStop;
+            // Process
+            _session.Source.Kernel.ProcessStart += ProcessStart;
+            _session.Source.Kernel.ProcessStop += ProcessStop;
 
-                // Start Kernel ETW session
-                _session.Source.Process();
-            }
+            // Start Kernel ETW session
+            _session.Source.Process();
         }
 
         private void ProcessNetworkPacket(dynamic data, IPVersion ipVersion, TransportProtocol transportProto)

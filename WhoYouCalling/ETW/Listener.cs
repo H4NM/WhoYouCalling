@@ -6,21 +6,26 @@ namespace WhoYouCalling.ETW
     {
         protected TraceEventSession? _session;
         public string SourceName = "";
+        private readonly object _lock = new();
 
         public void StopSession()
         {
-            if (_session != null) 
+            lock (_lock) 
             {
-                _session.Dispose();
+                if (_session != null)
+                {
+                    _session.Dispose();
+                    _session = null;
+                }
             }
         }
         public bool GetSessionStatus()
         {
-            if (_session != null)
+            try
             {
-                return _session.IsActive;
+                return _session != null && _session.IsActive;
             }
-            else
+            catch (ObjectDisposedException)
             {
                 return false;
             }

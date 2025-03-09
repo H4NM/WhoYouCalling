@@ -345,6 +345,7 @@ namespace WhoYouCalling
             ConsoleOutput.Print($"Stopping ETW sessions", PrintType.Debug);
             StopETWSession(s_etwKernelListener);
             StopETWSession(s_etwDnsClientListener);
+            Thread.Sleep(Constants.Timeouts.ETWSubscriptionStopTime);
             if (!s_argumentData.NoPacketCapture)
             {
                 ConsoleOutput.Print($"Stopping packet capture saved to \"{s_fullPcapFile}\"", PrintType.Debug);
@@ -767,7 +768,7 @@ namespace WhoYouCalling
             }
             else
             {
-                ConsoleOutput.Print($"Successfully {etwListener.SourceName} ETW session", PrintType.Debug);
+                ConsoleOutput.Print($"Successfully stopped {etwListener.SourceName} ETW session", PrintType.Debug);
             }
         }
 
