@@ -49,7 +49,7 @@ WhoYouCalling is strictly for network based activity analysis of processes.
 <details>
   <summary>What does this tool not do?</summary>
 
-  - **TCPIP**: WhoYouCalling does not capture traffic outside of the TCPIP stack, e.g. ICMP (layer 3, network) and ARP (layer 2, data link).
+  - **Lower TCPIP levels**: WhoYouCalling does not capture traffic outside of the TCPIP stack, e.g. ICMP (layer 3, network) and ARP (layer 2, data link).
   - **Server applications**: The tool does not monitor process socket creations for listening to ports, as it's mainly focused on processes in a client perspective. However, it can still be useful for monitoring to server applications based on their overall TCPIP activity.
 
 </details>
