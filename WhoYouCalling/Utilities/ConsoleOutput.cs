@@ -86,7 +86,7 @@ namespace WhoYouCalling.Utilities
             while (!token.IsCancellationRequested)
             {
                 int processOutputCounter = Program.GetProcessOutputCounter();
-                Print($"Filtering {processesWithNetworkActivity} processes",
+                Print($"Processing results for {processesWithNetworkActivity} processes",
                       PrintType.RunningMetrics,
                       spinner: Constants.Miscellaneous.SpinnerChars[spinnerIndex]);
                 spinnerIndex = (spinnerIndex + 1) % Constants.Miscellaneous.SpinnerChars.Count;
