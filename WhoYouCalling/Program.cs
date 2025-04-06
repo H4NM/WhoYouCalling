@@ -535,11 +535,18 @@ namespace WhoYouCalling
 
             OutputJSONFileFromResults(filePath: s_jsonResultsFile, monitoredProcesses: s_monitoredProcesses);
             OutputSummaryFile(filePath: s_processesSummaryFile, 
-                              monitoredProcesses: s_monitoredProcesses, 
-                              startTime: s_startTime, 
-                              presentableMonitorDuration: s_presentableMonitorDuration,
-                              processesWithnetworkActivity: processesWithNetworkActivity);
+                              monitoredProcesses: s_monitoredProcesses);
             ConsoleOutput.Print($"Finished! Monitor duration: {s_presentableMonitorDuration}. Results are in the folder {s_rootFolderName}", PrintType.InfoTime);
+        }
+
+        public static DateTime GetStartTime()
+        {
+            return s_startTime;
+        }
+
+        public static string GetPresentableMonitorDuration()
+        {
+            return s_presentableMonitorDuration;
         }
 
         public static int GetProcessOutputCounter()
@@ -556,13 +563,10 @@ namespace WhoYouCalling
             };
         }
 
-        private static void OutputSummaryFile(string filePath, List<MonitoredProcess> monitoredProcesses, DateTime startTime, string presentableMonitorDuration, int processesWithnetworkActivity)
+        private static void OutputSummaryFile(string filePath, List<MonitoredProcess> monitoredProcesses)
         {
             List<string> textList = new();
-            RuntimeSummary runtimeSummary = new RuntimeSummary(monitoredProcesses: monitoredProcesses, 
-                                                               startTime: startTime, 
-                                                               presentableMonitorDuration: presentableMonitorDuration, 
-                                                               processesWithnetworkActivity: processesWithnetworkActivity);
+            RuntimeSummary runtimeSummary = new RuntimeSummary(monitoredProcesses: monitoredProcesses);
             textList.Add(" ============================= ");
             textList.Add("|           Summary           |");
             textList.Add(" ============================= ");
@@ -655,6 +659,13 @@ namespace WhoYouCalling
 
         private static void OutputJSONFileFromResults(string filePath, List<MonitoredProcess> monitoredProcesses)
         {
+
+            Dictionary<string, object> metadataAndMonitoredProcesses = new Dictionary<string, object>
+            {
+                { "Metadata", new Summary.RuntimeSummary(monitoredProcesses: monitoredProcesses) },
+                { "MonitoredProcesses", monitoredProcesses }
+            };
+
             var options = new JsonSerializerOptions
             {
                 Converters = { new JsonStringEnumConverter() },
@@ -662,7 +673,7 @@ namespace WhoYouCalling
             };
 
             ConsoleOutput.Print($"Creating json results file for process results \"{filePath}\"", PrintType.Debug);
-            string jsonProcessString = JsonSerializer.Serialize(monitoredProcesses, options);
+            string jsonProcessString = JsonSerializer.Serialize(metadataAndMonitoredProcesses, options);
             File.WriteAllText(filePath, jsonProcessString);
         }
 

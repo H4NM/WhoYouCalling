@@ -68,7 +68,13 @@ def main() -> None:
         
     if args.results_file:
         ConsoleOutputPrint(msg=f"Retrieving data from results file", print_type="info")
-        monitored_processes: list = get_results_file_data(args.results_file)
+        wyc_results: Union[dict, list] = get_results_file_data(args.results_file) # Can be either dict or list due to backwards compatiblity 
+        if type(wyc_results) == dict:
+            metadata: dict = wyc_results['Metadata']
+            monitored_processes: list = wyc_results['MonitoredProcesses']
+        else: # Pre 1.5.3 
+            metadata: dict = {}
+            monitored_processes: list = wyc_results
         
         if args.api_lookup:
             unique_process_names: set = get_unique_process_names_with_external_network_activity(monitored_processes)
@@ -78,7 +84,10 @@ def main() -> None:
             lookup_endpoints(AVAILABLE_APIS, endpoints, apis_to_use) 
         
         ConsoleOutputPrint(msg=f"Creating visualization data", print_type="info")
-        visualization_data = get_visualization_data(monitored_processes)
+        visualization_data: dict = get_visualization_data(monitored_processes)
+        
+        if metadata:
+            visualization_data = add_metadata_to_visualization_data(visualization_data, metadata)
         if os.path.isfile(DATA_FILE):
             if prompt_user_for_overwrite_of_data_file():
                 ConsoleOutputPrint(msg=f"Overwriting existing data.json.", print_type="info")

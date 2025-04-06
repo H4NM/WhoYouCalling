@@ -108,6 +108,10 @@ def get_results_file_data(results_file:str) -> list:
         ConsoleOutputPrint(msg=f"Error when reading results file: {str(error_msg)}", print_type="fatal")
         sys.exit(1)
 
+def add_metadata_to_visualization_data(visualization_data: dict, metadata:dict) -> dict:
+    visualization_data['metadata'] = metadata
+    return visualization_data
+
 def output_visualization_data(data_file: str, visualization_data:dict) -> None:
     try:
         json_file = open(data_file, "wt")

@@ -165,6 +165,55 @@
         /*
         ==================================
         |
+        |   Metadata management 
+        |
+        ===================================
+        */ 
+        const metadataPane = document.getElementById("metadata-pane");
+        const metadataLabel = document.getElementById("metadata-label");
+    
+        metadataPane.innerHTML = ''; 
+
+        if (data.metadata) {
+        
+            const keyMap = {
+                "WYCVersion": "Version",
+                "WYCCommandline": "Commandline",
+                "Hostname": "Hostname",
+                "StartTime": "Started",
+                "PresentableDuration": "Duration"
+            };
+        
+            for (const key in keyMap) {
+                if (data.metadata[key]) {
+                    const p = document.createElement("p");
+                    p.innerHTML = `<b>${keyMap[key]}</b>: ${data.metadata[key]}`;
+                    metadataPane.appendChild(p);
+                }
+            }
+            
+            if (data.metadata["NumberOfProcesses"] && data.metadata["NumberOfProcessesWithNetworkActivity"]) {
+                const p = document.createElement("p");
+                p.innerHTML = `${data.metadata["NumberOfProcessesWithNetworkActivity"]}/${data.metadata["NumberOfProcesses"]} processes had recorded TCPIP/DNS activity`;
+                metadataPane.appendChild(p);
+            }
+
+        }else{
+            const p = document.createElement("p");
+            p.innerHTML = `Nothing to display`;
+            metadataPane.appendChild(p);
+        }
+        metadataLabel.addEventListener("click", () => {
+            metadataPane.classList.toggle("open");
+        });
+    
+        metadataPane.addEventListener("click", () => {
+            metadataPane.classList.toggle("open");
+        });
+    
+        /*
+        ==================================
+        |
         |   Checkbox management 
         |
         ===================================
@@ -218,6 +267,7 @@
         hideOrphanedLabel.textContent = 'Processes without DNS or TCPIP activity';
 
         const hideOrphanedContainer = document.createElement('div');
+        hideOrphanedContainer.id = 'container-hide-orphaned';
         hideOrphanedContainer.appendChild(hideOrphanedCheckbox);
         hideOrphanedContainer.appendChild(hideOrphanedLabel);
 
