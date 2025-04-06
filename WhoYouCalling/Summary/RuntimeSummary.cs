@@ -8,14 +8,14 @@ namespace WhoYouCalling.Summary
     public struct RuntimeSummary
     {
         public string WYCCommandline { get; set; }
+        public string WYCVersion { get; set; }
         public string Hostname { get; set; }
         public DateTime StartTime { get; set; }
         public string PresentableDuration { get; set; }
         public int NumberOfProcesses { get; set; }
         public int NumberOfProcessesWithNetworkActivity { get; set; }
-        public int NumberOfUniqueDomainsQueried { get; set; }
 
-        public RuntimeSummary(List<MonitoredProcess> monitoredProcesses, DateTime startTime, string presentableMonitorDuration, int processesWithnetworkActivity)
+        public RuntimeSummary(List<MonitoredProcess> monitoredProcesses)
         {
             HashSet<string> uniqueDomains = new();
             List<string> destinationPortsAndProtocol = new();
@@ -43,11 +43,12 @@ namespace WhoYouCalling.Summary
             }
 
             WYCCommandline = GetFullWYCCommandLine();
+            WYCVersion= Utilities.Generic.GetVersion();
             Hostname = GetHostname();
-            StartTime = startTime;
-            PresentableDuration = presentableMonitorDuration;
+            StartTime = Program.GetStartTime();
+            PresentableDuration = Program.GetPresentableMonitorDuration();
             NumberOfProcesses = monitoredProcesses.Count;
-            NumberOfProcessesWithNetworkActivity = processesWithnetworkActivity;
+            NumberOfProcessesWithNetworkActivity = ProcessManager.GetNumberOfProcessesWithNetworkTraffic(monitoredProcesses);
         }
         private static string GetHostname()
         {

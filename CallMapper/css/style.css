@@ -11,9 +11,14 @@ html, body {
     height: 100%;
 }
 
-#label-hide-orphaned, #label-select-all{
+#label-hide-orphaned, #label-select-all {
     font-weight: bold;
+    border-width: 2px !important; 
+    border-color: #000000 !important;
+    justify-content: center !important;
+    text-align: center !important;
 }
+
 
 /* 
 ================ Right pane endpoint details ================================
@@ -170,6 +175,42 @@ html, body {
 /* 
 ================ Left pane checkboxes ================================
 */
+#metadata-container {
+    position: relative;
+    width: calc(100% - 10px); 
+    border: 1px solid #4b4b4b;
+    border-radius: 5px;
+    background-color: #f0f0f0;
+    cursor: pointer;
+}
+
+#metadata-label {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 12px;
+    border-radius: 4px;
+    z-index: 10;
+    font-size: 14px;
+}
+
+#metadata-pane {
+    position: relative;
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease;
+    padding: 20px 10px 10px; 
+    border-radius: 6px;
+    text-align: left;
+    word-wrap: break-word;
+    white-space: normal;
+    font-size: 12px;
+}
+
+#metadata-pane.open {
+    max-height: 1000px; 
+}
+  
 #checkbox-pane{
     padding: 10px; 
     border-right: 1px solid #ccc; 
@@ -205,7 +246,7 @@ html, body {
     width: calc(100% - 10px); 
     box-sizing: border-box;
     cursor: pointer;
-    padding: 8px 12px;
+    padding: 8px 12px; 
     margin: 4px 0;
     border: 1px solid #4b4b4b;
     border-radius: 5px;

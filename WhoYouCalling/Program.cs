@@ -535,11 +535,18 @@ namespace WhoYouCalling
 
             OutputJSONFileFromResults(filePath: s_jsonResultsFile, monitoredProcesses: s_monitoredProcesses);
             OutputSummaryFile(filePath: s_processesSummaryFile, 
-                              monitoredProcesses: s_monitoredProcesses, 
-                              startTime: s_startTime, 
-                              presentableMonitorDuration: s_presentableMonitorDuration,
-                              processesWithnetworkActivity: processesWithNetworkActivity);
+                              monitoredProcesses: s_monitoredProcesses);
             ConsoleOutput.Print($"Finished! Monitor duration: {s_presentableMonitorDuration}. Results are in the folder {s_rootFolderName}", PrintType.InfoTime);
+        }
+
+        public static DateTime GetStartTime()
+        {
+            return s_startTime;
+        }
+
+        public static string GetPresentableMonitorDuration()
+        {
+            return s_presentableMonitorDuration;
         }
 
         public static int GetProcessOutputCounter()
@@ -556,23 +563,15 @@ namespace WhoYouCalling
             };
         }
 
-        private static void OutputSummaryFile(string filePath, List<MonitoredProcess> monitoredProcesses, DateTime startTime, string presentableMonitorDuration, int processesWithnetworkActivity)
+        private static void OutputSummaryFile(string filePath, List<MonitoredProcess> monitoredProcesses)
         {
             List<string> textList = new();
-            RuntimeSummary runtimeSummary = new RuntimeSummary(monitoredProcesses: monitoredProcesses, 
-                                                               startTime: startTime, 
-                                                               presentableMonitorDuration: presentableMonitorDuration, 
-                                                               processesWithnetworkActivity: processesWithnetworkActivity);
-            textList.Add(" ======================================= ");
-            textList.Add("|                Summary                |");
-            textList.Add(" ======================================= ");
-            textList.Add($"Commandline: {runtimeSummary.WYCCommandline}");
-            textList.Add($"Start time: {runtimeSummary.StartTime}");
-            textList.Add($"Duration: {runtimeSummary.PresentableDuration}");
-            textList.Add($"Hostname: {runtimeSummary.Hostname}");
-            textList.Add($"Total processes: {runtimeSummary.NumberOfProcesses}");
-            textList.Add($"Processes with network activity: {runtimeSummary.NumberOfProcessesWithNetworkActivity}");
-
+            RuntimeSummary runtimeSummary = new RuntimeSummary(monitoredProcesses: monitoredProcesses);
+            textList.Add(" ============================= ");
+            textList.Add("|           Summary           |");
+            textList.Add(" ============================= ");
+            textList.Add($"# WhoYouCalling {runtimeSummary.WYCVersion} session initiated on \"{runtimeSummary.Hostname}\" at {runtimeSummary.StartTime} as: {runtimeSummary.WYCCommandline}");
+            textList.Add($"The session lasted for {runtimeSummary.PresentableDuration} and monitored {runtimeSummary.NumberOfProcesses} processes where {runtimeSummary.NumberOfProcessesWithNetworkActivity} had recorded network activity.");
             textList.Add("");
             textList.Add(" ============================= ");
             textList.Add("|          Processes          |");
@@ -585,9 +584,9 @@ namespace WhoYouCalling
                 {
                     continue;
                 }
-                textList.Add(" ____________________ ");
+                textList.Add("  _______________________");
                 textList.Add($"[ {monitoredProcess.ProcessName}-{monitoredProcess.PID}");
-                textList.Add(" -------------------- ");
+                textList.Add("  -----------------------");
                 if (monitoredProcess.ExecutableFileName != null)
                 {
                     textList.Add($"Executable: {monitoredProcess.ExecutableFileName}");
@@ -613,24 +612,24 @@ namespace WhoYouCalling
                 if (monitoredProcess.TCPIPTelemetry.Count > 0)
                 {
                     TCPIPSummary tcpipSummary = new TCPIPSummary(monitoredProcess);
-                    textList.Add($"\tIP versions: {tcpipSummary.IPversionsText}");
-                    textList.Add($"\tProtocols: {tcpipSummary.TransportProtocolsText}");
-                    textList.Add($"\tIPs:");
+                    textList.Add($" IP versions: {tcpipSummary.IPversionsText}");
+                    textList.Add($" Protocols: {tcpipSummary.TransportProtocolsText}");
+                    textList.Add($" IPs:");
                     foreach (string ip in tcpipSummary.UniqueIPs)
                     {
-                        textList.Add($"\t\t- {ip}");
+                        textList.Add($"  - {ip}");
                     }
                 }
                 textList.Add($"DNS queries: {monitoredProcess.DNSQueries.Count}");
                 if (monitoredProcess.DNSQueries.Count > 0)
                 {
                     DNSQueriesSummary dnsQueriesSummary = new DNSQueriesSummary(monitoredProcess);
-                    textList.Add($"\tDomains:");
+                    textList.Add($" Domains:");
                     foreach (string domain in dnsQueriesSummary.UniqueDomains)
                     {
-                        textList.Add($"\t\t- {domain}");
+                        textList.Add($"  - {domain}");
                     }
-                    textList.Add($"\tRecord types: {dnsQueriesSummary.UniqueDNSRecordTypesText}");
+                    textList.Add($" Record types: {dnsQueriesSummary.UniqueDNSRecordTypesText}");
                 }
                 textList.Add($"DNS responses: {monitoredProcess.DNSResponses.Count}");
                 if (monitoredProcess.DNSResponses.Count > 0)
@@ -638,19 +637,19 @@ namespace WhoYouCalling
                     DNSResponsesSummary dnsResponsesSummary = new DNSResponsesSummary(monitoredProcess);
                     if (!string.IsNullOrEmpty(dnsResponsesSummary.UniqueBundledRecordTypeText))
                     {
-                        textList.Add($"\tRecord types: {dnsResponsesSummary.UniqueBundledRecordTypeText}"); 
+                        textList.Add($" Record types: {dnsResponsesSummary.UniqueBundledRecordTypeText}"); 
                     }
-                    textList.Add($"\tIPs resolved: {dnsResponsesSummary.UniqueHostsResolvedCount}");
+                    textList.Add($" IPs resolved: {dnsResponsesSummary.UniqueHostsResolvedCount}");
                 }   
                 textList.Add($"Child processes: {monitoredProcess.ChildProcesses.Count}");
                 if (monitoredProcess.ChildProcesses.Count > 0)
                 {
                     ChildProcessesSummary childProcessesSummary = new ChildProcessesSummary(monitoredProcess);
-                    textList.Add($"\tChild processes: {childProcessesSummary.NumberOfChildProcesses}");
-                    textList.Add($"\tProcess names: {childProcessesSummary.NumberOfChildProcesses}");
+                    textList.Add($" Child processes: {childProcessesSummary.NumberOfChildProcesses}");
+                    textList.Add($" Process names: {childProcessesSummary.NumberOfChildProcesses}");
                     foreach (string childProcessName in childProcessesSummary.ChildProcessesNames)
                     {
-                        textList.Add($"\t\t- {childProcessName}");
+                        textList.Add($"  - {childProcessName}");
                     }
                 }
                 textList.Add("");
@@ -660,6 +659,13 @@ namespace WhoYouCalling
 
         private static void OutputJSONFileFromResults(string filePath, List<MonitoredProcess> monitoredProcesses)
         {
+
+            Dictionary<string, object> metadataAndMonitoredProcesses = new Dictionary<string, object>
+            {
+                { "Metadata", new Summary.RuntimeSummary(monitoredProcesses: monitoredProcesses) },
+                { "MonitoredProcesses", monitoredProcesses }
+            };
+
             var options = new JsonSerializerOptions
             {
                 Converters = { new JsonStringEnumConverter() },
@@ -667,7 +673,7 @@ namespace WhoYouCalling
             };
 
             ConsoleOutput.Print($"Creating json results file for process results \"{filePath}\"", PrintType.Debug);
-            string jsonProcessString = JsonSerializer.Serialize(monitoredProcesses, options);
+            string jsonProcessString = JsonSerializer.Serialize(metadataAndMonitoredProcesses, options);
             File.WriteAllText(filePath, jsonProcessString);
         }
 
