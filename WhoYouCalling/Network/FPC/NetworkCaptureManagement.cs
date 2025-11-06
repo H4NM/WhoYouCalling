@@ -52,7 +52,6 @@ namespace WhoYouCalling.Network.FPC
         {
             if (string.IsNullOrWhiteSpace(ip))
             {
-                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". It was Null or Whitespace", PrintType.Debug);
                 return IPAddress.None;
             }
 
@@ -65,7 +64,6 @@ namespace WhoYouCalling.Network.FPC
             }
             else
             {
-                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". Failed to parse it", PrintType.Debug);
                 return IPAddress.None;
             }
         }

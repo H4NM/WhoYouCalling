@@ -11,6 +11,7 @@ namespace WhoYouCalling.Constants
         public const string RootFolderETWHistoryFileName = "Events.txt";
         public const string RootFolderJSONProcessDetailsFileName = "Result.json";
         public const string RootFolderSummaryProcessDetailsFileName = "Summary.txt";
+        public const string RootFolderFilteredExistingPcapFileName = "FilteredPcap";
 
 
         //// Per Process

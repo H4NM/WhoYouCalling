@@ -30,8 +30,7 @@ namespace WhoYouCalling.ETW
             int queryTypeCode = 0;
             if (!int.TryParse(data.PayloadByName("QueryType").ToString(), out queryTypeCode))
             {
-                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query type. Failed to parse it", PrintType.Debug);
-                queryTypeCode = 999999; // Non-existing DNS type value. Is later looked up
+                queryTypeCode = Constants.Miscellaneous.NotApplicableStatusNumber; // Non-existing DNS type value. Is later looked up
             }
             string dnsRecordTypeCodeName = DnsCodeLookup.GetDnsTypeName(queryTypeCode); // Retrieve the DNS type code name
 
@@ -43,9 +42,9 @@ namespace WhoYouCalling.ETW
             };
 
             Program.CatalogETWActivity(eventType: EventType.DNSQuery,
-                  processName: processName,
-                  processID: data.ProcessID,
-                  dnsQuery: dnsQuery);
+                                      processName: processName,
+                                      processID: data.ProcessID,
+                                      dnsQuery: dnsQuery);
         }
 
         private void ProcessDnsResponse(dynamic data, string processName)
@@ -59,12 +58,10 @@ namespace WhoYouCalling.ETW
 
             if (!int.TryParse(data.PayloadByName("QueryStatus").ToString(), out queryStatusCode))
             {
-                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query status. Failed to parse it", PrintType.Debug);
                 queryStatusCode = Constants.Miscellaneous.NotApplicableStatusNumber; // Non-existing DNS status value. Is later looked up
             }
             if (!int.TryParse(data.PayloadByName("QueryType").ToString(), out queryTypeCode))
             {
-                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query type. Failed to parse it", PrintType.Debug);
                 queryTypeCode = Constants.Miscellaneous.NotApplicableStatusNumber; // Non-existing DNS type value. Is later looked up
             }
 
@@ -99,11 +96,11 @@ namespace WhoYouCalling.ETW
                             string processName = Program.GetMonitoredProcessName(pid: data.ProcessID, processName: data.ProcessName);
                             ProcessDnsQuery(data, processName);
                         }
-                        else if (Program.MonitorEverything() || (Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)))
+                        else if (Program.MonitorEverything())
                         {
                             string processName = Program.GetNewProcessName(pid: data.ProcessID, processName: data.ProcessName);
 
-                            if (!Program.IsMonitoredProcess(pid: data.ProcessID, processName: processName)) // This is to deal with race conditions as the DNS ETW registers before process starts sometimes, where it is added before the actua
+                            if (!Program.IsMonitoredProcess(pid: data.ProcessID, processName: processName)) // This is to deal with race conditions as the DNS ETW registers before process starts sometimes, where it is added before the actual process is started
                             {
                                 Program.AddProcessToMonitor(pid: data.ProcessID, processName: processName);
                             }
@@ -120,11 +117,11 @@ namespace WhoYouCalling.ETW
                             string processName = Program.GetMonitoredProcessName(pid: data.ProcessID, processName: data.ProcessName);
                             ProcessDnsResponse(data, processName);
                         }
-                        else if (Program.MonitorEverything() || (Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)))
+                        else if (Program.MonitorEverything())
                         {
                             string processName = Program.GetNewProcessName(pid: data.ProcessID, processName: data.ProcessName);
 
-                            if (!Program.IsMonitoredProcess(pid: data.ProcessID, processName: processName)) // This is to deal with race conditions as the DNS ETW registers before process starts sometimes, where it is added before the actua
+                            if (!Program.IsMonitoredProcess(pid: data.ProcessID, processName: processName)) // This is to deal with race conditions as the DNS ETW registers before process starts sometimes, where it is added before the actual process is started
                             {
                                 Program.AddProcessToMonitor(pid: data.ProcessID, processName: processName);
                             }

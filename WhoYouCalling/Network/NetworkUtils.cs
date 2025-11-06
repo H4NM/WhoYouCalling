@@ -1,4 +1,5 @@
 ﻿
+using PacketDotNet.Lldp;
 using System.Net;
 using System.Text.RegularExpressions;
 using WhoYouCalling.Network.DNS;
@@ -10,15 +11,12 @@ namespace WhoYouCalling.Network
     {
         public static bool IsLocalhostIP(string ip)
         {
-            if (ip == "127.0.0.1" || ip == "::1")
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            if (IPAddress.TryParse(ip, out var address))
+                return IPAddress.IsLoopback(address);
+
+            return false;
         }
+
         public static Dictionary<ConnectionRecordType, List<string>> GetPresentableConnectionRecordsFormat(Dictionary<ConnectionRecordType, HashSet<string>> networkDetails)
         {
             Dictionary<ConnectionRecordType, List<string>> sortedNetworkDetailsAsList = new();
@@ -58,7 +56,7 @@ namespace WhoYouCalling.Network
                 string endpoint = $"{connectionRecord.DestinationIP}:{connectionRecord.DestinationPort}";
                 if (connectionRecord.IPversion == Network.IPVersion.IPv4)
                 {
-                    if (connectionRecord.DestinationIP == "127.0.0.1")
+                    if (connectionRecord.DestinationIP == "127.0.0.1") 
                     {
                         filteredConnectionRecords[ConnectionRecordType.IPv4Localhost].Add(endpoint);
                     }
@@ -180,28 +178,6 @@ namespace WhoYouCalling.Network
             }
             return responseResult;
         }
-   
-
-        private static IPAddress CleanIPAdress(string ip)
-        {
-            if (string.IsNullOrWhiteSpace(ip))
-            {
-                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". It was Null or Whitespace", PrintType.Debug);
-                return IPAddress.None;
-            }
-
-            string pattern = @"[^0-9a-fA-F\.:]";
-            string cleanedIpAddress = Regex.Replace(ip, pattern, "").Trim();
-
-            if (IPAddress.TryParse(cleanedIpAddress, out IPAddress? cleanedIPAddressObject)) // Parsing IP address
-            {
-                return cleanedIPAddressObject!;
-            }
-            else
-            {
-                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". Failed to parse it", PrintType.Debug);
-                return IPAddress.None;
-            }
-        }
+        
     }
 }

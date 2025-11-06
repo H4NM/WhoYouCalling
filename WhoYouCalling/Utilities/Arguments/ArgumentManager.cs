@@ -27,30 +27,6 @@ namespace WhoYouCalling.Utilities.Arguments
                             ConsoleOutput.Print($"No arguments specified after {ArgumentFlags.ExecutableFlagShort}/{ArgumentFlags.ExecutableFlagLong} flag", PrintType.Warning);
                         }
                     }
-                    else if (args[i] == ArgumentFlags.MultipleNamePatternFlagShort || args[i] == ArgumentFlags.MultipleNamePatternFlagLong) 
-                    {
-                        // Ensure there's a subsequent argument that represents the executable
-                        if (i + 1 < args.Length)
-                        {
-                            string namePatternsProvided = args[i + 1];
-                            List<string> namePatternsParsed = new List<string>();
-
-                            if (namePatternsProvided.Contains(","))
-                            {
-                                namePatternsParsed.AddRange(namePatternsProvided.Split(","));
-                            }
-                            else
-                            {
-                                namePatternsParsed.Add(namePatternsProvided);
-                            }
-                            argumentData.ProcessesNamesToMonitor = namePatternsParsed;
-                            argumentData.ProcessesesNamesToMonitorFlagSet = true;
-                        }
-                        else
-                        {
-                            ConsoleOutput.Print($"No arguments specified after {ArgumentFlags.MultipleNamePatternFlagShort}/{ArgumentFlags.MultipleNamePatternFlagLong} flag", PrintType.Warning);
-                        }
-                    }
                     else if (args[i] == ArgumentFlags.ExecutableArgsFlagShort || args[i] == ArgumentFlags.ExecutableArgsFlagLong) 
                     {
                         if (i + 1 < args.Length)
@@ -155,6 +131,11 @@ namespace WhoYouCalling.Utilities.Arguments
                         }
 
                     }
+                    else if (args[i] == ArgumentFlags.CompressFlagShort || args[i] == ArgumentFlags.CompressFlagLong)
+                    {
+                        argumentData.CompressOutputFolder = true;
+                        argumentData.CompressOutputFolderFlagSet = true;
+                    }
                     else if (args[i] == ArgumentFlags.NoPcapFlagShort || args[i] == ArgumentFlags.NoPcapFlagLong) 
                     {
                         argumentData.NoPacketCapture = true;
@@ -247,10 +228,6 @@ namespace WhoYouCalling.Utilities.Arguments
                         }
                         Environment.Exit(1);
                     }
-                    else if (args[i] == ArgumentFlags.DebugFlagShort || args[i] == ArgumentFlags.DebugFlagLong) 
-                    {
-                        argumentData.Debug = true;
-                    }
                     else if (args[i] == ArgumentFlags.HelpFlagShort || args[i] == ArgumentFlags.HelpFlagLong) 
                     {
                         ConsoleOutput.PrintHelp();
@@ -269,14 +246,14 @@ namespace WhoYouCalling.Utilities.Arguments
 
         public bool IsValidCombinationOfArguments(ArgumentData argumentData)
         {
-            if ((argumentData.ExecutableFlagSet && argumentData.PIDFlagSet) && !argumentData.MonitorEverythingFlagSet) 
-            {
-                ConsoleOutput.Print($"Only one of {ArgumentFlags.ExecutableFlagShort} ({ArgumentFlags.ExecutableFlagLong}) and {ArgumentFlags.ProcessIDFlagShort} ({ArgumentFlags.ProcessIDFlagLong}) can be supplied, not both", PrintType.Error);
-                return false;
-            }
-            if ((!argumentData.ExecutableFlagSet && !argumentData.PIDFlagSet) && !argumentData.MonitorEverythingFlagSet)
+            if (!argumentData.ExecutableFlagSet && !argumentData.PIDFlagSet && !argumentData.MonitorEverythingFlagSet)
             {
                 ConsoleOutput.Print($"You need to either supply {ArgumentFlags.ExecutableFlagShort} ({ArgumentFlags.ExecutableFlagLong}) or {ArgumentFlags.ProcessIDFlagShort} ({ArgumentFlags.ProcessIDFlagLong}) or {ArgumentFlags.MonitorEverythingFlagShort} ({ArgumentFlags.MonitorEverythingFlagLong})", PrintType.Error);
+                return false;
+            }
+            else if ((argumentData.ExecutableFlagSet && argumentData.PIDFlagSet) && !argumentData.MonitorEverythingFlagSet) 
+            {
+                ConsoleOutput.Print($"Only one of {ArgumentFlags.ExecutableFlagShort} ({ArgumentFlags.ExecutableFlagLong}) and {ArgumentFlags.ProcessIDFlagShort} ({ArgumentFlags.ProcessIDFlagLong}) can be supplied, not both", PrintType.Error);
                 return false;
             }
             else if (argumentData.ExecutableArgsFlagSet && !argumentData.ExecutableFlagSet)
@@ -284,9 +261,9 @@ namespace WhoYouCalling.Utilities.Arguments
                 ConsoleOutput.Print($"You need to use {ArgumentFlags.ExecutableFlagShort}/{ArgumentFlags.ExecutableFlagLong} and specify an executable when providing with arguments with {ArgumentFlags.ExecutableArgsFlagShort}/{ArgumentFlags.ExecutableArgsFlagLong}", PrintType.Error);
                 return false;
             }
-            else if (argumentData.KillProcessesFlagSet && argumentData.PIDFlagSet)
+            else if (argumentData.KillProcessesFlagSet && (argumentData.PIDFlagSet || argumentData.MonitorEverythingFlagSet))
             {
-                ConsoleOutput.Print($"You can only specify {ArgumentFlags.KillChildProcessesFlagShort}/{ArgumentFlags.KillChildProcessesFlagLong} for killing process that's been started, and not via listening to a running process", PrintType.Error);
+                ConsoleOutput.Print($"You can only specify {ArgumentFlags.KillChildProcessesFlagShort}/{ArgumentFlags.KillChildProcessesFlagLong} for killing process that's been executed with {ArgumentFlags.ExecutableFlagShort}/{ArgumentFlags.ExecutableFlagLong}", PrintType.Error);
                 return false;
             }
             else if (argumentData.NetworkInterfaceDeviceFlagSet == argumentData.NoPCAPFlagSet)

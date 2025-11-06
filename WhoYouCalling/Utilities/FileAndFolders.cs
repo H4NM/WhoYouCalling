@@ -1,7 +1,4 @@
-﻿
-using System.Text.Json.Serialization;
-using System.Text.Json;
-using WhoYouCalling.Process;
+﻿using System.IO.Compression;
 
 namespace WhoYouCalling.Utilities
 {
@@ -14,16 +11,12 @@ namespace WhoYouCalling.Utilities
         }
         public static bool FolderExists(string directoryPath)
         {
-            if (Directory.Exists(directoryPath))
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            return Directory.Exists(directoryPath);
         }
-
+        public static bool FileExists(string filePath)
+        {
+            return File.Exists(filePath);
+        }
         public static void CreateFolder(string folder)
         {
             Directory.CreateDirectory(folder);
@@ -36,17 +29,31 @@ namespace WhoYouCalling.Utilities
         {
             File.WriteAllText(filePath, text);
         }
-
         public static void DeleteFile(string file)
         {
             if (File.Exists(file))
             {
                 File.Delete(file);
-                ConsoleOutput.Print($"Deleted file {file}", PrintType.Debug);
             }
             else
             {
                 ConsoleOutput.Print($"Unable to delete file {file}. It doesnt exist", PrintType.Warning);
+            }
+        }
+        public static void DeleteOutputFolder(string folder)
+        {
+            Directory.Delete(folder, true);
+        }
+
+        public static void ZipOutputFolder(string outputFolder, string compressedFolderName)
+        {
+            try
+            {
+                ZipFile.CreateFromDirectory(sourceDirectoryName: outputFolder, destinationArchiveFileName: compressedFolderName);
+            }
+            catch (Exception ex)
+            {
+                ConsoleOutput.Print($"Unable to compress output folder to ZIP file. Error: {ex}", PrintType.Error);
             }
         }
     }

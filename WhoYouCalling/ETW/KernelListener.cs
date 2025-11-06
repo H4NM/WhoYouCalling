@@ -1,8 +1,10 @@
 ﻿using Microsoft.Diagnostics.Tracing.Parsers;
 using Microsoft.Diagnostics.Tracing.Parsers.Kernel;
 using Microsoft.Diagnostics.Tracing.Session;
+using Microsoft.Diagnostics.Tracing.StackSources;
 using WhoYouCalling.Network;
 using WhoYouCalling.Process;
+using WhoYouCalling.Utilities;
 
 namespace WhoYouCalling.ETW
 {
@@ -52,7 +54,6 @@ namespace WhoYouCalling.ETW
             {
                 processName = ProcessManager.GetPIDProcessName(data.ProcessID);
             }
-
             Program.CatalogETWActivity(eventType: EventType.Network,
                                        processName: processName,
                                        processID: data.ProcessID,
@@ -65,7 +66,7 @@ namespace WhoYouCalling.ETW
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.TCP);
             }
-            else if ((Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)) || Program.MonitorEverything())
+            else if (Program.MonitorEverything())
             {
                 Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName);
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.TCP);
@@ -78,7 +79,7 @@ namespace WhoYouCalling.ETW
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.TCP);
             }
-            else if ((Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)) || Program.MonitorEverything())
+            else if (Program.MonitorEverything())
             {
                 Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName);
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.TCP);
@@ -91,7 +92,7 @@ namespace WhoYouCalling.ETW
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.UDP);
             }
-            else if ((Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)) || Program.MonitorEverything())
+            else if (Program.MonitorEverything())
             {
                 Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName);
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.UDP);
@@ -104,7 +105,7 @@ namespace WhoYouCalling.ETW
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.UDP);
             }
-            else if ((Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)) || Program.MonitorEverything())
+            else if (Program.MonitorEverything())
             {
                 Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName);
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv6, transportProto: Network.TransportProtocol.UDP);
@@ -173,20 +174,6 @@ namespace WhoYouCalling.ETW
                                            processName: data.ProcessName,
                                            processID: data.ProcessID,
                                            processCommandLine: data.CommandLine);
-            }
-            else if (Program.TrackProcessesByName() && (Program.IsTrackedProcessByName(pid: data.ParentID) || Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)))
-            {
-                string parentProcessName = ProcessManager.GetPIDProcessName(data.ParentID);
-                if (!Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName)) // This is to deal with race conditions as the DNS ETW registers before process starts sometimes, where it is added before the actua
-                {
-                    Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName, commandLine: data.CommandLine);
-                }
-                Program.CatalogETWActivity(eventType: EventType.StartedChildProcess,
-                                            parentProcessName: parentProcessName,
-                                            parentProcessID: data.ParentID,
-                                            processName: data.ProcessName,
-                                            processID: data.ProcessID,
-                                            processCommandLine: data.CommandLine);
             }
         }
 

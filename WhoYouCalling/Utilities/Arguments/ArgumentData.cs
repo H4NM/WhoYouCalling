@@ -18,6 +18,7 @@
         public bool UserPasswordFlagSet;
         public bool OutputDirectoryFlagSet;
         public bool MonitorEverythingFlagSet;
+        public bool CompressOutputFolderFlagSet;
 
         // Value holders
         public List<string> ProcessesNamesToMonitor;
@@ -36,7 +37,7 @@
         public bool StrictCommunicationEnabled;
         public bool OutputBPFFilter;
         public bool OutputWiresharkFilter;
-        public bool Debug;
+        public bool CompressOutputFolder;
 
         public ArgumentData()
         {
@@ -54,6 +55,7 @@
             UserPasswordFlagSet = false;
             OutputDirectoryFlagSet = false;
             MonitorEverythingFlagSet = false;
+            CompressOutputFolderFlagSet = false;
 
             ProcessesNamesToMonitor = new List<string>();
             TrackedProcessId = 0;
@@ -71,7 +73,7 @@
             StrictCommunicationEnabled = false;
             OutputBPFFilter = false;
             OutputWiresharkFilter = false;
-            Debug = false;
+            CompressOutputFolder = false;
         }
     }
 }

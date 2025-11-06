@@ -22,9 +22,6 @@ namespace WhoYouCalling.Utilities.Arguments
         public const string ProcessIDFlagShort = "-P";
         public const string ProcessIDFlagLong = "--PID";
 
-        public const string MultipleNamePatternFlagShort = "-N";
-        public const string MultipleNamePatternFlagLong = "--names";
-
         public const string MonitorEverythingFlagShort = "-I";
         public const string MonitorEverythingFlagLong = "--illuminate";
 
@@ -58,16 +55,22 @@ namespace WhoYouCalling.Utilities.Arguments
         public const string OutputDFLFlagShort = "-D";
         public const string OutputDFLFlagLong = "--outputdfl";
 
+        public const string BPFFilterShort = "-m";
+        public const string BPFFilterLong = "--bpffilter";
+
+        public const string BPFFilterFileShort = "-y";
+        public const string BPFFilterFileLong = "--bpffilterfile";
+
         public const string HelpFlagShort = "-h";
         public const string HelpFlagLong = "--help";
 
-        public const string DebugFlagShort = "-d";
-        public const string DebugFlagLong = "--debug";
+        public const string CompressFlagShort = "-c";
+        public const string CompressFlagLong = "--compress";
 
         public static string GetHelpText()
         {
             return $@"
-Usage: WhoYouCalling.exe [options]
+Usage: wyc.exe [options]
 Options:
   {ExecutableFlagShort}, {ExecutableFlagLong}    : Executes the specified executable which is in a non-privileged context
                         unless --privileged flag is provided.
@@ -77,14 +80,9 @@ Options:
   {UserNameFlagShort}, {UserNameFlagLong}          : The user that the process should run as.
   {UserPasswordFlagShort}, {UserPasswordFlagLong}      : The password for the specified user that the process should run as.
   {ProcessIDFlagShort}, {ProcessIDFlagLong}           : The running process id to track rather than executing the binary.
-  {MultipleNamePatternFlagShort}, {MultipleNamePatternFlagLong}         : A comma separated list of names file names to also monitor for.
-                        A useful scenario is when C:\Program Files\Mozilla Firefox\firefox.exe is launched.
-                        The PPID of the main firefox instance belongs to explorer.exe, which is 
-                        an already running process, meaning that following a PPID/PID trail misses the process.
-                        the provided names match as a part of the process name or executable file name. Is case insensitive.
   {MonitorEverythingFlagShort}, {MonitorEverythingFlagLong}    : Captures everything from everything. 
                         Good for incident response or just checking what the heck your computer is doing. 
-                        Can be used with pcap capture (Experimental).
+                        Can be used with pcap capture.
   {InterfaceFlagShort}, {InterfaceFlagLong}     : The network interface number. Retrievable with the {GetInterfacesFlagShort}/{GetInterfacesFlagLong} flag.
   {GetInterfacesFlagShort}, {GetInterfacesFlagLong} : Prints the network interface devices with corresponding number (usually 0-10).
   {TimerFlagShort}, {TimerFlagLong}         : The number of seconds to monitor. Is a double variable so can take floating-point values.
@@ -99,12 +97,13 @@ Options:
   {OutputBPFFlagShort}, {OutputBPFFlagLong}     : Write the applied BPF-filter to text file.
   {OutputDFLFlagShort}, {OutputDFLFlagLong}     : Write the equivalent Wireshark Display Filter to text file. 
                         Useful in conjunction with --savefullpcap to filter process activity based on all traffic.
+  {CompressFlagShort}, {CompressFlagLong}      : Compress the output folder to a .zip file. Only the compressed folder is kept. 
   {HelpFlagShort}, {HelpFlagLong}          : Displays this help information.
 
 Examples:
-  WhoYouCalling.exe {ExecutableFlagShort} C:\Windows\System32\calc.exe -t 10.5 -k -i 8 -o C:\Users\H4NM\Desktop 
-  WhoYouCalling.exe {ProcessIDFlagLong} 4351 {NoPcapFlagLong} {OutputDFLFlagLong} {OutputFolderFlagLong} C:\Windows\Temp 
-  WhoYouCalling.exe {MonitorEverythingFlagLong} {NoPcapFlagLong}
+  wyc.exe {ExecutableFlagShort} C:\Windows\System32\cmd.exe -t 10.5 -k -i 8 -o C:\Users\H4NM\Desktop 
+  wyc.exe {ProcessIDFlagLong} 4351 {NoPcapFlagLong} {OutputDFLFlagLong} {OutputFolderFlagLong} C:\Windows\Temp 
+  wyc.exe {MonitorEverythingFlagLong} {NoPcapFlagLong}
 ";
         }
     }

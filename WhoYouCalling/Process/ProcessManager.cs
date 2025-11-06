@@ -93,7 +93,6 @@ namespace WhoYouCalling.Process
                 }
                 else
                 {
-                    ConsoleOutput.Print($"Setting default process name for PID {pid}", PrintType.Debug);
                     return Constants.Miscellaneous.UnmappedProcessDefaultName;
                 }
             }
@@ -106,11 +105,9 @@ namespace WhoYouCalling.Process
             {
                 if (pid == activePID.Id)
                 {
-                    ConsoleOutput.Print($"Provided PID ({pid}) is active on the system", PrintType.Debug);
                     return true;
                 }
             }
-            ConsoleOutput.Print($"Unable to find process with pid {pid}", PrintType.Debug);
             return false;
         }
 
@@ -174,7 +171,6 @@ namespace WhoYouCalling.Process
             catch (Exception ex)
             {
                 processFileName = null;
-                ConsoleOutput.Print($"Error when retrieving executable filename from PID: {ex.Message}.", PrintType.Debug);
             }
             return processFileName;
         }
@@ -187,17 +183,12 @@ namespace WhoYouCalling.Process
 
                 if (!process.HasExited)
                 {
-                    ConsoleOutput.Print($"Killing the process with PID {pid}", PrintType.Debug);
                     process.Kill();
                 }
             }
-            catch (ArgumentException)
-            {
-                ConsoleOutput.Print($"Process with PID {pid} has already exited.", PrintType.Debug);
-            }
             catch (Exception ex)
             {
-                ConsoleOutput.Print($"An error occurred when stopping process when timer expired: {ex.Message}", PrintType.Debug);
+                ConsoleOutput.Print($"An error occurred when stopping process when timer expired: {ex.Message}", PrintType.Warning);
             }
         }
 
@@ -232,7 +223,6 @@ namespace WhoYouCalling.Process
                     int errorCode = Marshal.GetLastWin32Error();
                     Win32.Win32ErrorManager.ThrowDetailedWindowsError("Failed to adjust current process token privilege", errorCode);
                 }
-                ConsoleOutput.Print($"Successfully enabled the SeIncreaseQuotaPrivilege", PrintType.Debug);
             }
             catch (Exception ex)
             {

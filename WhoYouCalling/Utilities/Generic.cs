@@ -30,7 +30,7 @@ namespace WhoYouCalling.Utilities
             return milliseconds;
         }
 
-        public static string GetRunInstanceFolderName(string runInstanceName)
+        public static string GetRunInstanceName(string runInstanceName)
         {
             string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
             string folderName = $"{runInstanceName}-{timestamp}";
@@ -53,41 +53,6 @@ namespace WhoYouCalling.Utilities
             return DateTime.Now.ToString("HH:mm:ss");
         }
    
-        public static void PrintObjectProperties(object obj)
-        {
-            Type type = obj.GetType();
-
-            PropertyInfo[] properties = type.GetProperties();
-            foreach (var property in properties)
-            {
-                var value = property.GetValue(obj, null);
-
-                if (value is List<string> stringList)
-                {
-                    Console.WriteLine($"{property.Name}: {string.Join(',', stringList)}");
-                }
-                else
-                {
-                    Console.WriteLine($"{property.Name}: {value}");
-                }
-            }
-
-            FieldInfo[] fields = type.GetFields();
-            foreach (var field in fields)
-            {
-                var value = field.GetValue(obj);
-                if (value is List<string> stringList)
-                {
-                    Console.WriteLine($"{field.Name}: {string.Join(',', stringList)}");
-                }
-                else
-                {
-                    Console.WriteLine($"{field.Name}: {value}");
-                }
-                
-            }
-        }
-
         public static string GetPresentableDuration(DateTime startTime, DateTime endTime)
         {
             var duration = endTime - startTime;

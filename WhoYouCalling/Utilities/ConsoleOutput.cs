@@ -10,10 +10,6 @@ namespace WhoYouCalling.Utilities
             switch (type)
             {
                 case PrintType.Info:
-                    if (Program.Debug())
-                    {
-                        return;
-                    }
                     prefix = "[*]";
                     break;
                 case PrintType.InfoTime:
@@ -21,10 +17,6 @@ namespace WhoYouCalling.Utilities
                     prefix = $"[{currentTimestamp}]";
                     break;
                 case PrintType.RunningMetrics:
-                    if (Program.Debug())
-                    {
-                        return;
-                    }
                     if (!string.IsNullOrEmpty(spinner))
                     {
                         prefix = $"[{spinner}]";
@@ -46,16 +38,6 @@ namespace WhoYouCalling.Utilities
                     break;
                 case PrintType.Fatal:
                     prefix = "\n[!!!]";
-                    break;
-                case PrintType.Debug:
-                    if (Program.Debug())
-                    {
-                        prefix = $"[DEBUG]";
-                    }
-                    else
-                    {
-                        return;
-                    }
                     break;
                 default:
                     prefix = "";
@@ -93,7 +75,6 @@ namespace WhoYouCalling.Utilities
                 Thread.Sleep(Constants.Timeouts.ProcessMonitoringPrintPause);
             }
         }
-
         public static void PrintBPFFilterValidation(CancellationToken token)
         {
             int spinnerIndex = 0;
@@ -114,12 +95,6 @@ namespace WhoYouCalling.Utilities
             string version = Utilities.Generic.GetVersion();
             PrintHeader(version);
             Print($"Starting.. Press CTRL+C to cancel process monitoring.", PrintType.InfoTime);
-        }
-
-        public static void PrintArgumentValues(ArgumentData argumentData)
-        {
-            Print("=== Arguments ===", PrintType.Debug);
-            Generic.PrintObjectProperties(argumentData);      
         }
 
         public static void PrintHeader(string fileVersion)
