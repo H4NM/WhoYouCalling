@@ -1,5 +1,8 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using WhoYouCalling.Process;
+using WhoYouCalling.Utilities.Arguments;
 
 namespace WhoYouCalling.Utilities
 {
@@ -19,9 +22,42 @@ namespace WhoYouCalling.Utilities
             return $"v{fileVersion}";
         }
 
+        public static string GetHostname()
+        {
+            try
+            {
+                string fqdn = System.Net.Dns.GetHostEntry("").HostName;
+                return !string.IsNullOrWhiteSpace(fqdn) ? fqdn : Environment.MachineName;
+            }
+            catch
+            {
+                return Environment.MachineName;
+            }
+        }
+
+        public static string GetOS()
+        {
+            return RuntimeInformation.OSDescription;
+        }
+
         public static string NormalizePath(string path)
         {
-            return path.Replace(@"\\", @"\"); 
+            if (path.StartsWith(@"\\")) // Is Remote share
+            { 
+                string remainder = path.Substring(2);    
+                remainder = remainder.Replace(@"\\", @"\");
+                path = @"\\" + remainder;          
+            }    
+            else
+            {
+                path = path.Replace(@"\\", @"\");
+            }
+
+            if (path.EndsWith(@"\"))
+            {
+                path = path.Remove(path.LastIndexOf(@"\"));
+            }
+            return path; 
         }
         public static double ConvertToMilliseconds(double providedSeconds)
         {

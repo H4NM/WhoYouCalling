@@ -32,7 +32,7 @@ namespace WhoYouCalling.Network
         {
             foreach (DNSResponse dnsResponse in dnsResponses)
             {
-                HashSet<ConnectionRecord> domainIPAdresses = GetNetworkAdressesFromDNSResponse(dnsResponse);
+                List<ConnectionRecord> domainIPAdresses = GetNetworkAdressesFromDNSResponse(dnsResponse);
                 if (domainIPAdresses.Count > 0)
                 {
                     return true;
@@ -41,7 +41,7 @@ namespace WhoYouCalling.Network
             return false;
         }
             
-        public static Dictionary<ConnectionRecordType, HashSet<string>> FilterConnectionRecords(HashSet<ConnectionRecord> tcpIPTelemetry)
+        public static Dictionary<ConnectionRecordType, HashSet<string>> FilterConnectionRecords(List<ConnectionRecord> tcpIPTelemetry)
         {
             Dictionary<ConnectionRecordType, HashSet<string>> filteredConnectionRecords = new Dictionary<ConnectionRecordType, HashSet<string>> {
                                                     {ConnectionRecordType.IPv4TCP, new HashSet<string>()},
@@ -103,9 +103,9 @@ namespace WhoYouCalling.Network
             return actualIPAdress;
         }
 
-        public static HashSet<ConnectionRecord> GetNetworkAdressesFromDNSResponse(DNSResponse dnsResponses)
+        public static List<ConnectionRecord> GetNetworkAdressesFromDNSResponse(DNSResponse dnsResponses)
         {
-            HashSet<ConnectionRecord> domainIPAdresses = new();
+            List<ConnectionRecord> domainIPAdresses = new();
 
             foreach (string ipAdress in dnsResponses.QueryResult.IPs)
             {

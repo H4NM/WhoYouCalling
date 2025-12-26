@@ -6,37 +6,37 @@ namespace WhoYouCalling.Win32
 {
     public static class WinAPI
     {
-        [DllImport("user32.dll", SetLastError = true)]
+        [DllImport("C:\\Windows\\System32\\user32.dll", SetLastError = true)]
         public static extern IntPtr GetShellWindow();
 
-        [DllImport("user32.dll", SetLastError = true)]
+        [DllImport("C:\\Windows\\System32\\user32.dll", SetLastError = true)]
         public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
+        [DllImport("C:\\Windows\\System32\\kernel32.dll", SetLastError = true)]
         public static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
 
-        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        [DllImport("C:\\Windows\\System32\\kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         public static extern bool QueryFullProcessImageName(IntPtr hProcess, int dwFlags, StringBuilder lpExeName, ref int lpdwSize);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
+        [DllImport("C:\\Windows\\System32\\kernel32.dll", SetLastError = true)]
         public static extern bool CloseHandle(IntPtr hObject);
 
-        [DllImport("kernel32.dll")]
+        [DllImport("C:\\Windows\\System32\\kernel32.dll")]
         public static extern IntPtr GetCurrentProcess();
 
-        [DllImport("advapi32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        [DllImport("C:\\Windows\\System32\\advapi32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         public static extern bool LookupPrivilegeValue(string lpSystemName, string lpName, ref LUID lpLuid);
 
-        [DllImport("advapi32.dll", SetLastError = true)]
+        [DllImport("C:\\Windows\\System32\\advapi32.dll", SetLastError = true)]
         public static extern bool AdjustTokenPrivileges(IntPtr TokenHandle, bool DisableAllPrivileges, ref TOKEN_PRIVILEGES NewState, uint BufferLength, IntPtr PreviousState, IntPtr ReturnLength);
 
-        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        [DllImport("C:\\Windows\\System32\\advapi32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         public static extern bool OpenProcessToken(IntPtr ProcessHandle, uint DesiredAccess, out IntPtr TokenHandle);
 
-        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        [DllImport("C:\\Windows\\System32\\advapi32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         public static extern bool DuplicateTokenEx(IntPtr hExistingToken, uint dwDesiredAccess, IntPtr lpTokenAttributes, int ImpersonationLevel, int TokenType, out IntPtr phNewToken);
 
-        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        [DllImport("C:\\Windows\\System32\\advapi32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         public static extern bool CreateProcessWithTokenW(IntPtr hToken, 
                                                           uint dwLogonFlags, 
                                                           string? lpApplicationName, 

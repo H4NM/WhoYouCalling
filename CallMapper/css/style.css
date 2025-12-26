@@ -206,11 +206,53 @@ html, body {
     white-space: normal;
     font-size: 12px;
 }
+#metadata-pane p {
+    margin: 2px 0;  
+    line-height: 1.4;
+    padding: 0;
+}
+#metadata-pane p:first-child {
+    margin-top: 7px;  
+}
 
 #metadata-pane.open {
     max-height: 1000px; 
 }
-  
+
+#checkbox-list-label {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 12px;
+    border-radius: 4px;
+    z-index: 10;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+#checkbox-list-pane {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease;
+    padding: 20px 10px 10px;
+    font-size: 12px;
+}
+
+#checkbox-list-pane.open {
+    max-height: 2000px; /* big enough for all checkboxes */
+}
+
+
+#checkbox-top-controls {
+    display: flex;
+    gap: 2px;
+}
+
+#checkbox-top-controls > div {
+    display: flex;
+    align-items: center;
+}
+
 #checkbox-pane{
     padding: 10px; 
     border-right: 1px solid #ccc; 

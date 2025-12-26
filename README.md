@@ -54,26 +54,19 @@ WhoYouCalling is strictly for network based activity analysis of processes.
 
 </details>
 
-
 ## Features: 
 - Start or monitor an already running process.
 - Monitor every running process simultaneously.
 - Create a full packet capture (.pcap) file per process.
-- Monitor processes based on process name.
 - Run executables as other users and in elevated or unelevated state. 
 - Record TCPIP activities, IPv4 and IPv6.
 - Record DNS requests and responses.
 - Create Wireshark filter based on DNS responses for domains.
-- Specify pcap filtering to only record TCPIP activity being sent from the process.
 - Timer for automated monitoring.
-- Monitoring is applied to all spawned child processes by default.
-- Spawned process and its childprocesses can be killed on stop. 
 - JSON output of results.
 - Perform API lookups to get the reputation of IPs and domains.
-- Generate a Wireshark DFL filter per process.
-- Generate a BPF filter per process.
+- Generate a network filters per process (BPF & DFL).
 - Visualize the processes and their network activity with an interactive network graph.
-- Perform automatic API lookups of IPs and domains.
 
 ## Usage:
 > **Note:** Must be run as administrator - for packet capture and listening to ETW.
@@ -110,11 +103,6 @@ wyc.exe --PID 24037 --nopcap --output C:\Users\H4NM\AppData\Local\Temp
 **Run sus.exe for 60 seconds with FPC on the 8th interface. When the timer expires, kill tracked processes - including child processes**:
 ```
 wyc.exe -e C:\Users\H4NM\Desktop\sus.exe -t 60 -k -i 8 -o C:\Users\H4NM\Desktop
-```
-
-**Execute firefox.exe and monitor for other processes with an including name pattern** (*This is especially needed if the main processes calls an already running process like `explorer.exe` to start a child process, if only the PID or executable is provided at start.*)
-```
-wyc.exe -e "C:\Program Files\Mozilla Firefox\firefox.exe" --nopcap --names "firefox.exe,svchost,cmd"
 ```
 
 ## Analyze the results
@@ -189,6 +177,8 @@ bin\Release\net8.0\win-x64\wyc.exe [arguments]...
 
 ### To Do:
 - Refactor. Lots and lots to refactor and make more tidy :)
+  - Adress Pokemon catches
+  - Improve Efficiency
 
 ### Nice to have
 - Linux port

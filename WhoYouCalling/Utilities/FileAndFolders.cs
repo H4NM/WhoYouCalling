@@ -1,4 +1,7 @@
 ﻿using System.IO.Compression;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using WhoYouCalling.Constants;
 
 namespace WhoYouCalling.Utilities
 {
@@ -56,5 +59,82 @@ namespace WhoYouCalling.Utilities
                 ConsoleOutput.Print($"Unable to compress output folder to ZIP file. Error: {ex}", PrintType.Error);
             }
         }
+
+        public static string? CalculateFileMD5(string filePath)
+        {
+            try { 
+                using (var md5 = MD5.Create())
+                {
+                    using (var stream = File.OpenRead(filePath))
+                    {
+                        var hash = md5.ComputeHash(stream);
+                        return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                    }
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        public static string? CalculateFileSHA1(string filePath)
+        {
+            try
+            {
+                using (var sha1 = SHA1.Create())
+                using (var stream = File.OpenRead(filePath))
+                {
+                    var hash = sha1.ComputeHash(stream);
+                    return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public static string? CalculateFileSHA256(string filePath)
+        {
+            try
+            {
+                using (var sha256 = SHA256.Create())
+                using (var stream = File.OpenRead(filePath))
+                {
+                    var hash = sha256.ComputeHash(stream);
+                    return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                }
+            }
+            catch 
+            {
+                return null;
+            }
+        }
+
+        public static string? GetFileCreationTime(string filePath)
+        {
+            try
+            {
+                var fileInfo = new System.IO.FileInfo(filePath);
+                return fileInfo.CreationTime.ToString();
+            }
+            catch 
+            {
+                return null;
+            }
+        }
+
+        public static bool FileIsDigitallySigned(string filePath)
+        {
+            try
+            {
+                return X509Certificate.CreateFromSignedFile(filePath) != null;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
     }
 }

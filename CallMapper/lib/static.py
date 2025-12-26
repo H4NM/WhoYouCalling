@@ -24,7 +24,45 @@ REQUESTS_LIBRARY_MISSING_MSG="""The library 'requests' doesn't seem to be instal
 
         pip install requests
             """
-            
+
+SUSPICIOUS_EXECUTABLE_PATHS = [
+    'C:\Winodws\Temp'
+]
+
+IP_NODE_COLOR:str = "#2ffcf3"
+DOMAIN_NODE_COLOR:str = "#fcf62f"
+PROCESS_NODE_COLORS = [
+    "#800080",
+    "#cc00cc",
+    "#b266cc",
+    "#2e004d",
+    "#5b0066",
+    "#33001a",
+    "#6a00cc",
+    "#3f00a6",
+    "#4b0082",
+    "#7f7cff",
+    "#9a7cff",
+    "#b399ff",
+    "#ff93cd",
+    "#ffc3ff",
+    "#ff85c2",
+    "#66004d",
+    "#4d0033",
+    "#b30059",
+    "#8b495a",
+    "#945d67",
+    "#2b1f33",
+    "#6e5c7a",
+    "#b8a8c2",
+]
+
+
+
+
+DEFAULT_HTTP_HOST_ADRESS:str = "127.0.0.1"
+DEFAULT_HTTP_HOST_PORT:int = 8080
+  
 WELL_KNOWN_PORTS = {
     'TCP': {
         20: 'FTP-Data',

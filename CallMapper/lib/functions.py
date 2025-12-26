@@ -3,6 +3,8 @@ import ipaddress
 import sys
 from typing import Tuple, Optional, Union
 from datetime import datetime
+import uuid
+
 
 #=====================================
 #  CUSTOM LIBRARIES 
@@ -14,6 +16,10 @@ from lib.output import *
 NODE_COUNTER: int = 0
 PROCESS_NODE_LOOKUP_INDEX: dict = {}
 REPORTS: list = [] 
+
+
+def get_unique_id():
+    return uuid.uuid4().hex[:24]
 
 def lookup_endpoints(available_apis: dict, endpoints: dict, apis_to_use: list) -> None:  
     for api_name in apis_to_use:
@@ -94,23 +100,13 @@ def convert_to_datetime_object(date_str: str) -> datetime:
             date_str = f"{base}.{fraction}"
     return datetime.fromisoformat(date_str)
 
-def start_http_server(directory: str, host: str, port: int) -> None:
-  handler = lambda *args, **kwargs: HttpHandlerWithoutLogging(*args, directory=directory, **kwargs) 
-  httpd = HTTPServer((host, port), handler)
-  httpd.serve_forever()
-
-def get_results_file_data(results_file:str) -> list:
+def get_results_file_data(results_file:str) -> dict:
     try:
         results_file_object = open(results_file, 'rt')
-        results_json_data = json.load(results_file_object)
-        return results_json_data
+        return json.load(results_file_object)
     except Exception as error_msg:
         ConsoleOutputPrint(msg=f"Error when reading results file: {str(error_msg)}", print_type="fatal")
         sys.exit(1)
-
-def add_metadata_to_visualization_data(visualization_data: dict, metadata:dict) -> dict:
-    visualization_data['metadata'] = metadata
-    return visualization_data
 
 def output_visualization_data(data_file: str, visualization_data:dict) -> None:
     try:
@@ -141,28 +137,27 @@ def get_port_information(transport_protocol: str, port: int) -> Union[str, None]
     else:
         return None
 
-def get_visualization_data(monitored_processes: list) -> dict:
-    visualization_data = {
-        "elements": {
-            "nodes": [],
-            "edges": []
-        }
-    }
-    visualization_data = get_nodes(visualization_data, monitored_processes)
-    visualization_data = get_edges(visualization_data, monitored_processes)
+def get_visualization_data(visualization_data:dict, result_file_id:str, results_file_counter:int, monitored_processes: list) -> dict:
+
+    process_node_color: str = PROCESS_NODE_COLORS[results_file_counter-1]
+    visualization_data['elements']['nodes'] = get_nodes(nodes=visualization_data['elements']['nodes'], 
+                                                        process_node_color=process_node_color,
+                                                        result_file_id=result_file_id, 
+                                                        monitored_processes=monitored_processes)
+    visualization_data['elements']['edges'] = get_edges(edges=visualization_data['elements']['edges'], nodes=visualization_data['elements']['nodes'], monitored_processes=monitored_processes)
     return visualization_data
 
-def get_edges(visualization_data: dict, monitored_processes: list) -> dict:
+def get_edges(edges:list, nodes:list, monitored_processes: list) -> dict:
     unique_dns_resolution_edges: list = []
-
+    
     for index, process in enumerate(monitored_processes):
         current_process_node_id = PROCESS_NODE_LOOKUP_INDEX[index] 
         
         for child_process in process['ChildProcesses']:
             for index_2nd, process_2nd in enumerate(monitored_processes):
                 if process_2nd['ProcessName'] == child_process['ProcessName'] and process_2nd['PID'] == child_process['PID']:
-                    child_process_registered_etw_start_time: datetime = convert_to_datetime_object(child_process['ETWRegisteredStartTime'])
-                    process_2nd_added_to_monitoring_time: datetime = convert_to_datetime_object(process_2nd['ProcessAddedToMonitoringTime'])
+                    child_process_registered_etw_start_time: datetime = convert_to_datetime_object(child_process['StartTime'])
+                    process_2nd_added_to_monitoring_time: datetime = convert_to_datetime_object(process_2nd['AddedToMonitoringTime'])
                     if datetime_is_in_range_by_seconds(reference_time=process_2nd_added_to_monitoring_time, 
                                                        range_time=child_process_registered_etw_start_time, 
                                                        max_second_range=PROCESS_START_SECONDS_RANGE):
@@ -172,11 +167,11 @@ def get_edges(visualization_data: dict, monitored_processes: list) -> dict:
                                                       source=current_process_node_id, 
                                                       target=child_process_node_id,
                                                       type=EdgeType.PROCESS_START)
-                        visualization_data["elements"]["edges"].append(process_start_edge)
+                        edges.append(process_start_edge)
         
         unique_destination_edges: list = []
         for connection_record in process['TCPIPTelemetry']:
-            for node in visualization_data["elements"]["nodes"]:
+            for node in nodes:
                 if node["data"]["type"] == NodeType.IP and node["data"]["label"] == connection_record['DestinationIP']:
                     simple_connection_record = { 
                                                 'dest': connection_record['DestinationIP'],
@@ -197,23 +192,23 @@ def get_edges(visualization_data: dict, monitored_processes: list) -> dict:
                                           target=node['data']['id'],
                                           type=EdgeType.TCPIP_CONNECTION)     
                     
-                    visualization_data["elements"]["edges"].append(tcpip_edge)
+                    edges.append(tcpip_edge)
 
         for dns_query in process['DNSQueries']:
-            for node in visualization_data["elements"]["nodes"]:
+            for node in nodes:
                 if node["data"]["type"] == NodeType.DOMAIN and node["data"]["label"] == dns_query['DomainQueried']:
                     event_info: str = f"{dns_query['RecordTypeText']}({dns_query['RecordTypeCode']}) query"
                     domain_edge = get_edge(event=event_info,
                                            source=current_process_node_id, 
                                            target=node['data']['id'],
                                            type=EdgeType.DNS_QUERY)     
-                    visualization_data["elements"]["edges"].append(domain_edge)
+                    edges.append(domain_edge)
                     
         for dns_response in process['DNSResponses']:
-            for node in visualization_data["elements"]["nodes"]:
+            for node in nodes:
                 if node["data"]["type"] == NodeType.DOMAIN and node["data"]["label"] == dns_response['DomainQueried']:
                     for resolved_ip in dns_response['QueryResult']['IPs']:
-                        for node2 in visualization_data["elements"]["nodes"]:
+                        for node2 in nodes:
                             is_bundled_ipv4_address, mapped_ipv4 = is_bundled_ipv4(resolved_ip)
                             
                             if is_bundled_ipv4_address:
@@ -236,15 +231,16 @@ def get_edges(visualization_data: dict, monitored_processes: list) -> dict:
                                                        source=node['data']['id'], 
                                                        target=node2['data']['id'],
                                                        type=EdgeType.DNS_RESOLUTION)     
-                                visualization_data["elements"]["edges"].append(domain_edge)
+                                edges.append(domain_edge)
                         
-    return visualization_data
+    return edges
 
 def get_edge(event: str, source: int, target:int, type: EdgeType) -> dict:
     return { "data": { "source": source, "target": target, "type": type, "info": event} } 
 
-def get_node(label:str, type: NodeType, monitored_process={}) -> dict:
+def get_node(label:str, type: NodeType, monitored_process:dict={}, process_node_color:str = "", result_file_id:str = "") -> dict:
     global NODE_COUNTER
+    node: dict = { "data": { } } 
     NODE_COUNTER += 1
     node_info: list = []
     is_potentially_malicious = False
@@ -255,15 +251,15 @@ def get_node(label:str, type: NodeType, monitored_process={}) -> dict:
     
     if type == NodeType.PROCESS:
         node_info = get_process_metadata(monitored_process=monitored_process, node_id=NODE_COUNTER)
-        node_color = "#cc00cc"
+        node_color = process_node_color
         node_width = "40"
         node_height = "40"
     elif type == NodeType.IP:
         node_info, is_potentially_malicious = get_ip_or_domain_metadata(endpoint=label, type=type)
-        node_color = "#2ffcf3"
+        node_color = IP_NODE_COLOR
     elif type == NodeType.DOMAIN:
         node_info, is_potentially_malicious = get_ip_or_domain_metadata(endpoint=label, type=type)
-        node_color = "#fcf62f"
+        node_color = DOMAIN_NODE_COLOR
         
     if is_potentially_malicious:
         node_shape = "star"
@@ -271,33 +267,59 @@ def get_node(label:str, type: NodeType, monitored_process={}) -> dict:
         node_width = "60"
         node_height = "60"
         
-    node: dict = { "data": { "id": NODE_COUNTER, "type": type, "label": label, "shape": node_shape, "width": node_width, "height": node_height, "color": node_color, "info": '<br>'.join(node_info)} } 
+    node: dict = { "data": { 
+                        "id": NODE_COUNTER, 
+                        "type": type, 
+                        "result_file_id": result_file_id,
+                        "label": label, 
+                        "shape": node_shape, 
+                        "width": node_width, 
+                        "height": node_height, 
+                        "color": node_color, 
+                        "info": '<br>'.join(node_info)} 
+                  } 
         
     return node
+
+def get_process_presentable_details(title:str = "", value:str = "", metadata: list = []) -> list:
+    if value != None:
+        html_node_attribute: str = get_html_attribute_and_value(title=title, value=value)
+        metadata.append(html_node_attribute)
+    return metadata
 
 def get_html_attribute_and_value(title: str = "", value:str = "") -> str:
     return f"<b>{title}</b>: {value}"
 
 def get_process_metadata(monitored_process: dict, node_id: int) -> list:
     metadata: list = []
-    html_node_attribute: str = ""
     metadata.append(f"<h3 id='endpoint-type'>Process</h3>") 
     metadata.append(f"<p id='endpoint-value'>{monitored_process['ProcessName']}-{monitored_process['PID']}</p>") 
-    if monitored_process['ExecutableFileName'] != None:
-        html_node_attribute = get_html_attribute_and_value(title="Executable", value=monitored_process['ExecutableFileName'])
-        metadata.append(html_node_attribute)
-    if monitored_process['CommandLine'] != None:
-        html_node_attribute = get_html_attribute_and_value(title="Commandline", value=monitored_process['CommandLine'])
-        metadata.append(html_node_attribute)
-    if monitored_process['IsolatedProcess'] != None:
-        html_node_attribute = get_html_attribute_and_value(title="Protected process", value=monitored_process['IsolatedProcess'])
-        metadata.append(html_node_attribute)
-    if monitored_process['ProcessStartTime'] != None:
-        html_node_attribute = get_html_attribute_and_value(title="Started", value=monitored_process['ProcessStartTime'])
-        metadata.append(html_node_attribute)
-    if monitored_process['ProcessStopTime'] != None:
-        html_node_attribute = get_html_attribute_and_value(title="Stopped", value=monitored_process['ProcessStopTime'])
-        metadata.append(html_node_attribute)
+
+    process_attributes = {
+        'Commandline': monitored_process['CommandLine'],
+        'Protected process': monitored_process['IsolatedProcess'],
+        'Started': monitored_process['StartTime'],
+        'Stopped': monitored_process['StopTime']
+    }
+    
+    process_executable_attributes = {
+        'File path': monitored_process['Executable']['FilePath'],
+        'MD5': monitored_process['Executable']['MD5'],
+        'SHA1': monitored_process['Executable']['SHA1'],
+        'SHA256': monitored_process['Executable']['SHA256'],
+        'Is signed': monitored_process['Executable']['IsSigned'],
+        'Created': monitored_process['Executable']['CreatedTimestamp']
+    }
+    
+    for title in process_attributes:
+        metadata = get_process_presentable_details(title=title, value=process_attributes[title], metadata=metadata)
+    
+    if process_executable_attributes['File path'] != None:
+        metadata.append(f"<h4>Executable</h3>") 
+
+        for title in process_executable_attributes:
+            metadata = get_process_presentable_details(title=title, value=process_executable_attributes[title], metadata=metadata)
+    
     metadata.append(f"<button id='deselect-button' onclick=\"deselectNode({node_id})\">Hide process</button>") 
     return metadata
 
@@ -340,14 +362,18 @@ def get_ip_or_domain_metadata(endpoint: str, type: NodeType) -> Tuple[list, bool
             
     return metadata, is_potentially_malicious
 
-def get_nodes(visualization_data: dict, monitored_processes: list) -> dict:
+def get_nodes(nodes: list, process_node_color:str, result_file_id:str, monitored_processes: list) -> list:
     ips = set()
     domains = set()
     for index, process in enumerate(monitored_processes): 
-        process_node: dict = get_node(label=f"{process['ProcessName']}-{process['PID']}", type=NodeType.PROCESS, monitored_process=process)
+        process_node: dict = get_node(label=f"{process['ProcessName']}-{process['PID']}", 
+                                      type=NodeType.PROCESS, 
+                                      monitored_process=process, 
+                                      process_node_color=process_node_color, 
+                                      result_file_id=result_file_id)
         PROCESS_NODE_LOOKUP_INDEX[index] = process_node['data']['id'] # Used when establishing edges to know which correlate process to activity
         
-        visualization_data["elements"]["nodes"].append(process_node)
+        nodes.append(process_node)
         
         for connection_record in process["TCPIPTelemetry"]:
             ips.add(connection_record["DestinationIP"])
@@ -357,14 +383,26 @@ def get_nodes(visualization_data: dict, monitored_processes: list) -> dict:
             domains.add(connection_record["DomainQueried"])
      
     for ip in ips:
+        mapped_ip: bool = False
         ip_node: dict = get_node(label=ip, type=NodeType.IP)
-        visualization_data["elements"]["nodes"].append(ip_node)
+        
+        # Check if the IP has already been mapped - to avoid duplicates
+        for node in nodes:
+            if node['data']['type'] == 'ip' and node['data']['label'] == ip_node['data']['label']:
+                mapped_ip = True
+        if not mapped_ip:
+            nodes.append(ip_node)
     
     for domain in domains:
+        mapped_domain: bool = False
         domain_node: dict = get_node(label=domain, type=NodeType.DOMAIN)
-        visualization_data["elements"]["nodes"].append(domain_node)
-    
-    return visualization_data
+        # Check if the domain has already been mapped - to avoid duplicates
+        for node in nodes:
+            if node['data']['type'] == 'domain' and node['data']['label'] == ip_node['data']['label']:
+                mapped_ip = True
+        if not mapped_domain:
+            nodes.append(domain_node)
+    return nodes
 
 def get_unique_process_names_with_external_network_activity(monitored_processes: dict) -> set:
     unique_process_names = set()
@@ -399,93 +437,3 @@ def valid_data_file_exists(data_file:str ) -> bool:
             return False
     except json.JSONDecodeError:
         return False
-
-def prompt_user_for_processes_to_lookup(unique_process_names: set) -> list:
-    processes_to_lookup: list = []
-    ConsoleOutputPrint(msg="Which processes with network activity do you want to lookup IPs and domains for?", print_type="info")
-    print("enter \"all\" or nothing for every process, or enter the corresponding number for the ones you want to lookup.") 
-    print("Multiple ones can be comma separate, e.g. 3,5,7")
-    for counter, process_name in enumerate(unique_process_names):
-        print(f" {counter}) {process_name}")
-        
-    while True:
-        answer = input("Choice: ").strip().lower()
-        if answer == "all" or answer == "":
-            for process_name in unique_process_names:
-                processes_to_lookup.append(process_name)
-            break
-        elif "," in answer:
-            multiple_numbers_as_string = answer.split(",")
-            multiple_numbers_as_integer: set = set()
-            for value in multiple_numbers_as_string:
-                try:
-                    integer = int(value)
-                    if integer >= len(unique_process_names) or integer < 0:
-                        ConsoleOutputPrint(msg=f"Provided value {integer} doesn't exist. Skipping..", print_type="warning")
-                    else:
-                        multiple_numbers_as_integer.add(int(value))
-                except:
-                    ConsoleOutputPrint(msg=f"Invalid number provided in the comma separated awnser: {answer}", print_type="error")
-                    return prompt_user_for_processes_to_lookup(unique_process_names)
-
-            for integer in multiple_numbers_as_integer:
-                processes_to_lookup.append(unique_process_names[integer])
-            break
-        else:
-            try:
-                integer = int(answer)
-                processes_to_lookup.append(unique_process_names[integer])
-                break
-            except:
-                ConsoleOutputPrint(msg=f"Invalid answer provided: {answer}", print_type="warning")
-    return processes_to_lookup
-
-def prompt_user_for_apis_to_use(available_apis: dict) -> list:
-    apis_to_use: list = []
-    ConsoleOutputPrint(msg="Which APIs do you want to use to lookup IPs and domains?", print_type="info")
-    print("enter \"all\" or nothing for every API, or enter the corresponding number for the ones you want to use.") 
-    print("Multiple ones can be comma separate, e.g. 0,1,4")
-    for counter, api_name in enumerate(available_apis):
-        print(f" {counter}) {api_name}")
-        
-    while True:
-        answer = input("Choice: ").strip().lower()
-        if answer == "all" or answer == "":
-            for api in available_apis:
-                apis_to_use.append(api)
-            break
-        elif "," in answer:
-            multiple_numbers_as_string = answer.split(",")
-            multiple_numbers_as_integer: set = set()
-            for value in multiple_numbers_as_string:
-                try:
-                    integer = int(value)
-                    if integer >= len(available_apis) or integer < 0:
-                        ConsoleOutputPrint(msg=f"Provided value {integer} doesn't exist. Skipping..", print_type="warning")
-                    else:
-                        multiple_numbers_as_integer.add(int(value))
-                except Exception as e:
-                    ConsoleOutputPrint(msg=f"Invalid number provided in the comma separated awnser: {answer}", print_type="error")
-                    return prompt_user_for_apis_to_use()
-
-            for integer in multiple_numbers_as_integer:
-                apis_to_use.append(list(available_apis.keys())[integer])
-            break
-        else:
-            try:
-                integer = int(answer)
-                apis_to_use.append(list(available_apis.keys())[integer])
-                break
-            except:
-                ConsoleOutputPrint(msg=f"Invalid answer provided: {answer}", print_type="warning")
-    return apis_to_use
-
-def prompt_user_for_overwrite_of_data_file() -> bool:
-    while True:
-        answer = input("[!] An existing data.json file was found in the same directory as the script. Overwrite it? (Y/n): ").strip().lower()
-        if answer == "y" or answer == "":
-            return True
-        elif answer == "n":
-            return False
-        else:
-            ConsoleOutputPrint(msg=f"Invalid input. Please enter 'y' or 'n'.", print_type="warning")

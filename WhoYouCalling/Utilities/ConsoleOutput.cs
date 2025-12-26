@@ -91,7 +91,6 @@ namespace WhoYouCalling.Utilities
 
         public static void PrintStartMonitoringText()
         {
-            Console.Clear();
             string version = Utilities.Generic.GetVersion();
             PrintHeader(version);
             Print($"Starting.. Press CTRL+C to cancel process monitoring.", PrintType.InfoTime);

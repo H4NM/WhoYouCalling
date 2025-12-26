@@ -1,7 +1,7 @@
-from http.server import HTTPServer, SimpleHTTPRequestHandler
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Union, Tuple
+
 
 #=====================================
 #  CUSTOM LIBRARIES 
@@ -11,6 +11,7 @@ from lib.output import *
 class LookupType:
     IP = "ip"
     DOMAIN = "domain"
+    HASH = "hash"
 
 class NodeType:
     PROCESS = "process"
@@ -117,22 +118,3 @@ class APILookup:
                                     is_potentially_malicious=is_potentially_malicious)
             reports.append(report)
         return reports
- 
-class HttpHandlerWithoutLogging(SimpleHTTPRequestHandler):
-    
-    def __init__(self, *args, directory: str=None, **kwargs):
-        self.directory = Path(directory).resolve()
-        super().__init__(*args, directory=str(self.directory), **kwargs)
-        
-    def translate_path(self, path):
-        requested_path = Path(self.directory) / path.lstrip("/")
-        return str(requested_path.resolve())
-    
-    def end_headers(self):
-        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
-        self.send_header("Pragma", "no-cache")
-        self.send_header("Expires", "0")
-        super().end_headers()
-        
-    def log_message(self, format, *args): 
-        return 

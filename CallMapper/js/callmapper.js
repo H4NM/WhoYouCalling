@@ -191,12 +191,6 @@
                     metadataPane.appendChild(p);
                 }
             }
-            
-            if (data.metadata["NumberOfProcesses"] && data.metadata["NumberOfProcessesWithNetworkActivity"]) {
-                const p = document.createElement("p");
-                p.innerHTML = `${data.metadata["NumberOfProcessesWithNetworkActivity"]}/${data.metadata["NumberOfProcesses"]} processes had recorded TCPIP/DNS activity`;
-                metadataPane.appendChild(p);
-            }
 
         }else{
             const p = document.createElement("p");
@@ -218,6 +212,7 @@
         |
         ===================================
         */ 
+        const checkboxButtonPane = document.getElementById('checkbox-buttons');
         const checkboxPane = document.getElementById('checkbox-list');
 
         const selectAllCheckbox = document.createElement('input');
@@ -264,14 +259,12 @@
         const hideOrphanedLabel = document.createElement('label');
         hideOrphanedLabel.id = 'label-hide-orphaned'
         hideOrphanedLabel.htmlFor = 'checkbox-hide-orphaned';
-        hideOrphanedLabel.textContent = 'Processes without DNS or TCPIP activity';
+        hideOrphanedLabel.textContent = 'DNS or TCPIP';
 
         const hideOrphanedContainer = document.createElement('div');
         hideOrphanedContainer.id = 'container-hide-orphaned';
         hideOrphanedContainer.appendChild(hideOrphanedCheckbox);
         hideOrphanedContainer.appendChild(hideOrphanedLabel);
-
-        checkboxPane.insertBefore(hideOrphanedContainer, checkboxPane.firstChild);
 
         hideOrphanedCheckbox.addEventListener('change', () => {
         const isChecked = hideOrphanedCheckbox.checked;
@@ -293,8 +286,14 @@
         updateTargetNodeVisibility();
     });
 
-        checkboxPane.appendChild(hideOrphanedContainer);
-        checkboxPane.appendChild(selectAllContainer);
+        checkboxButtonPane.appendChild(hideOrphanedContainer);
+        const topControls = document.createElement('div');
+        topControls.id = 'checkbox-top-controls';
+
+        topControls.appendChild(hideOrphanedContainer);
+        topControls.appendChild(selectAllContainer);
+
+        checkboxButtonPane.insertBefore(topControls, checkboxPane.firstChild);
 
         const processNodes = cy.nodes()
         .filter(node => node.data('type') === 'process')

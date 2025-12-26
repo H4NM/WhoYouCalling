@@ -17,6 +17,7 @@ namespace WhoYouCalling.Network.FPC
             }
             catch (Exception e)
             {
+                ConsoleOutput.Print($"Caught exception trying to read {fullPcapFile}. Error: {e}", PrintType.Error);
                 return;
             }
 
@@ -27,7 +28,7 @@ namespace WhoYouCalling.Network.FPC
             }
             catch (Exception e)
             {
-                ConsoleOutput.Print("Caught exception when writing to file" + e.ToString(), PrintType.Error);
+                ConsoleOutput.Print($"Caught exception when writing to file. Error: {e}", PrintType.Error);
                 return;
             }
             capturedDevice.Filter = BPFFilter;

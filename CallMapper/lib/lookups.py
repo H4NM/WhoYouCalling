@@ -13,10 +13,18 @@ class VirusTotal(APILookup):
     def __init__(self, api_source:str, api_key:str = ""):
         super().__init__(api_source, api_key)
         self.headers = {"x-apikey": self.api_key}
-        self.lookup_types = [LookupType.IP, LookupType.DOMAIN]
+        self.lookup_types = [LookupType.IP, LookupType.DOMAIN, LookupType.HASH]
 
     def get_data(self, endpoint: str, lookup_type) -> Union[dict, APIErrorType]:
-        api_adapted_lookup_type: str = "ip_addresses" if lookup_type == LookupType.IP else "domains"
+        
+        api_adapted_lookup_type: str = '' 
+        if lookup_type == LookupType.IP:
+            api_adapted_lookup_type = 'ip_addresses'
+        elif lookup_type == LookupType.DOMAIN:
+            api_adapted_lookup_type = 'domains'
+        elif lookup_type == LookupType.HASH: # Redundant but used for clarification
+            api_adapted_lookup_type = 'file'
+            
         url = f"https://www.virustotal.com/api/v3/{api_adapted_lookup_type}/{endpoint}"
         try:
             response = self.requests.get(url, headers=self.headers)
@@ -74,6 +82,7 @@ class VirusTotal(APILookup):
             status = 'Suspicious'
         else:
             status = 'Harmless or undetected'
+            
         presentable_data['Status'] = status
         presentable_data['Community votes harmless'] = returned_data['data']['attributes']['total_votes']['harmless']
         presentable_data['Community votes malicious'] = returned_data['data']['attributes']['total_votes']['malicious']
@@ -137,16 +146,3 @@ class AbuseIPDB(APILookup):
         presentable_data['Type'] = returned_data['data']['usageType']
 
         return presentable_data, is_potentially_malicious
-
-    
-    """
-if __name__ == '__main__':
-    endpoints: dict = {
-        'domains': set(),
-        'ips': set()
-    }
-    endpoints['ips'].add("92.255.85.37")
-
-    abuseipdb = VirusTotal("VirusTotal", "")
-    print(abuseipdb.lookup(endpoints))
-    """

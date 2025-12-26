@@ -4,7 +4,7 @@ namespace WhoYouCalling.Network
     internal class NetworkFilter
     {
 
-        public static string GetCombinedNetworkFilter(HashSet<ConnectionRecord> connectionRecords, FilterType filter, bool strictComsEnabled = false, bool filterPorts = true, bool onlyDestIP = false)
+        public static string GetCombinedNetworkFilter(List<ConnectionRecord> connectionRecords, FilterType filter, bool strictComsEnabled = false, bool filterPorts = true, bool onlyDestIP = false)
         {
             HashSet<string> collectedFilterParts = new();
             foreach (ConnectionRecord connectionRecord in connectionRecords) //For each recorded unique network activity

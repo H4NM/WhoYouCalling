@@ -37,9 +37,6 @@ namespace WhoYouCalling.Utilities.Arguments
         public const string KillChildProcessesFlagShort = "-k";
         public const string KillChildProcessesFlagLong = "--killprocesses";
 
-        public const string NoPcapFlagShort = "-n";
-        public const string NoPcapFlagLong = "--nopcap";
-
         public const string StrictFilterFlagShort = "-S";
         public const string StrictFilterFlagLong = "--strictfilter";
 
@@ -89,7 +86,6 @@ Options:
                         The monitoring duration may be longer when executing a binary which is due to ETW subscription timing.
   {KillChildProcessesFlagShort}, {KillChildProcessesFlagLong} : Used in conjunction with the timer in which the main process is killed. 
                         If full tracking flag is set, childprocesses are also killed.
-  {NoPcapFlagShort}, {NoPcapFlagLong}        : Skips collecting packets from interface.
   {StrictFilterFlagShort}, {StrictFilterFlagLong}  : Only generates a BPF filter based of recorded traffic that was sent by processes. 
                         This excludes received traffic in the .pcap files.
   {SaveFullPcapFlagShort}, {SaveFullPcapFlagLong}  : Does not delete the full pcap thats not filtered.
@@ -102,8 +98,8 @@ Options:
 
 Examples:
   wyc.exe {ExecutableFlagShort} C:\Windows\System32\cmd.exe -t 10.5 -k -i 8 -o C:\Users\H4NM\Desktop 
-  wyc.exe {ProcessIDFlagLong} 4351 {NoPcapFlagLong} {OutputDFLFlagLong} {OutputFolderFlagLong} C:\Windows\Temp 
-  wyc.exe {MonitorEverythingFlagLong} {NoPcapFlagLong}
+  wyc.exe {ProcessIDFlagLong} 4351 {OutputDFLFlagLong} {OutputFolderFlagLong} C:\Windows\Temp 
+  wyc.exe {MonitorEverythingFlagLong} 
 ";
         }
     }

@@ -46,7 +46,8 @@ namespace WhoYouCalling.ETW
                 SourceIP = data.saddr.ToString(),
                 SourcePort = data.sport,
                 DestinationIP = data.daddr.ToString(),
-                DestinationPort = data.dport
+                DestinationPort = data.dport,
+                TimeStamp = data.TimeStamp
             };
 
             string processName = data.ProcessName;
@@ -150,7 +151,7 @@ namespace WhoYouCalling.ETW
                 {
                     PID = data.ProcessID,
                     ProcessName = data.ProcessName,
-                    ETWRegisteredStartTime = DateTime.Now
+                    StartTime = data.TimeStamp
                 });
 
                 Program.CatalogETWActivity(eventType: EventType.StartedChildProcess,

@@ -5,6 +5,6 @@ namespace WhoYouCalling.Process
     {
         public int PID { get; set; }
         public string ProcessName { get; set; } = string.Empty;
-        public DateTime ETWRegisteredStartTime { get; set; } = new();
+        public DateTime StartTime { get; set; } = new();
     }
 }

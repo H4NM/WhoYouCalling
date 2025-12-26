@@ -103,22 +103,31 @@ namespace WhoYouCalling.Utilities.Arguments
                         if (i + 1 < args.Length)
                         {
                             string path = args[i + 1];
+                            string? parentDir = Path.GetDirectoryName(path);
 
-                            if (Path.IsPathRooted(path) && Directory.Exists(path))
+                            if (Path.IsPathRooted(path))
                             {
-                                if (path.Substring(path.Length - 1) == @"\")
+                                argumentData.OutputDirectoryFlagSet = true;
+                                argumentData.OutputDirectory = path;
+
+                                if (Directory.Exists(path))
                                 {
-                                    argumentData.OutputDirectory = path;
+                                    argumentData.OutputDirectoryCustomNameSet = false; // Redudant but for clarification
+                                }
+                                else if (parentDir is not null && Directory.Exists(parentDir))
+                                {
+                                    argumentData.OutputDirectoryCustomNameSet = true;
                                 }
                                 else
                                 {
-                                    argumentData.OutputDirectory = path + @"\";
+                                    ConsoleOutput.Print("Invalid path provided.", PrintType.Warning);
+                                    argumentData.InvalidArgumentValueProvided = true;
+                                    return argumentData;
                                 }
-                                argumentData.OutputDirectoryFlagSet = true;
                             }
                             else
                             {
-                                ConsoleOutput.Print("Provide full path to an existing catalog.", PrintType.Warning);
+                                ConsoleOutput.Print("Provide full path to an existing catalog. Relative paths are not supported.", PrintType.Warning);
                                 argumentData.InvalidArgumentValueProvided = true;
                                 return argumentData;
                             }
@@ -135,11 +144,6 @@ namespace WhoYouCalling.Utilities.Arguments
                     {
                         argumentData.CompressOutputFolder = true;
                         argumentData.CompressOutputFolderFlagSet = true;
-                    }
-                    else if (args[i] == ArgumentFlags.NoPcapFlagShort || args[i] == ArgumentFlags.NoPcapFlagLong) 
-                    {
-                        argumentData.NoPacketCapture = true;
-                        argumentData.NoPCAPFlagSet = true;
                     }
                     else if (args[i] == ArgumentFlags.ProcessIDFlagShort || args[i] == ArgumentFlags.ProcessIDFlagLong) 
                     {
@@ -192,21 +196,56 @@ namespace WhoYouCalling.Utilities.Arguments
                         if (!NetworkCaptureManagement.NpcapDriverExists())
                         {
                             ConsoleOutput.Print("Npcap does not seem to be installed. It's required to capture network packets", PrintType.Warning);
-                            Environment.Exit(1);
+                            argumentData.InvalidArgumentValueProvided = true;
+                            return argumentData;
+                        }
+                        var networkDevices = NetworkCaptureManagement.GetNetworkInterfaces();
+                        if (networkDevices.Count < 1)
+                        {
+                            ConsoleOutput.Print("No network interfaces were found on this machine.", PrintType.Error);
+                            argumentData.InvalidArgumentValueProvided = true;
+                            return argumentData;
                         }
 
                         if (i + 1 < args.Length)
                         {
-                            if (int.TryParse(args[i + 1], out int networkInterfaceChoice))
+                            string interfaceChoice = args[i + 1];
+
+                            if (interfaceChoice.Contains(".") || interfaceChoice.Contains(":"))
                             {
-                                argumentData.NetworkInterfaceChoice = networkInterfaceChoice;
+                                string providedIPPart = interfaceChoice;
+                                int? networkInterfaceChoice = NetworkCaptureManagement.MatchIPToNetworkInterface(networkDevices, providedIPPart);
+                                if (!networkInterfaceChoice.HasValue){
+                                    ConsoleOutput.Print($"Unable to find an interface with an IP set that starts with {providedIPPart}.", PrintType.Error);
+                                    argumentData.InvalidArgumentValueProvided = true;
+                                    return argumentData;
+                                }
+                                argumentData.NetworkInterfaceChoice = networkInterfaceChoice.Value;
                                 argumentData.NetworkInterfaceDeviceFlagSet = true;
+                                argumentData.CollectFullPacketCapture = true;
                             }
                             else
                             {
-                                ConsoleOutput.Print($"The provided value for network device ({networkInterfaceChoice}) is not a valid integer", PrintType.Warning);
-                                argumentData.InvalidArgumentValueProvided = true;
-                                return argumentData;
+                                if (int.TryParse(args[i + 1], out int networkInterfaceChoice))
+                                {
+
+                                    if (!(0 <= networkInterfaceChoice && networkInterfaceChoice <= networkDevices.Count - 1))
+                                    {
+                                        ConsoleOutput.Print("Invalid interface number provided.", PrintType.Error);
+                                        argumentData.InvalidArgumentValueProvided = true;
+                                        return argumentData;
+                                    }
+
+                                    argumentData.NetworkInterfaceChoice = networkInterfaceChoice;
+                                    argumentData.NetworkInterfaceDeviceFlagSet = true;
+                                    argumentData.CollectFullPacketCapture = true;
+                                }
+                                else
+                                {
+                                    ConsoleOutput.Print($"The provided value for network device ({networkInterfaceChoice}) is not a valid integer", PrintType.Warning);
+                                    argumentData.InvalidArgumentValueProvided = true;
+                                    return argumentData;
+                                }
                             }
                         }
                         else
@@ -220,13 +259,19 @@ namespace WhoYouCalling.Utilities.Arguments
                     {
                         if (NetworkCaptureManagement.NpcapDriverExists())
                         {
-                            NetworkCaptureManagement.PrintNetworkInterfaces();
+                            var networkDevices = NetworkCaptureManagement.GetNetworkInterfaces();
+                            if (networkDevices.Count < 1)
+                            {
+                                ConsoleOutput.Print("No network interfaces were found on this machine.", PrintType.Error);
+                            }
+                            NetworkCaptureManagement.PrintNetworkInterfaces(networkDevices);
+                            Environment.Exit(0);
                         }
                         else
                         {
                             ConsoleOutput.Print("Npcap does not seem to be installed. It's required to capture network packets", PrintType.Warning);
+                            Environment.Exit(1);
                         }
-                        Environment.Exit(1);
                     }
                     else if (args[i] == ArgumentFlags.HelpFlagShort || args[i] == ArgumentFlags.HelpFlagLong) 
                     {
@@ -264,11 +309,6 @@ namespace WhoYouCalling.Utilities.Arguments
             else if (argumentData.KillProcessesFlagSet && (argumentData.PIDFlagSet || argumentData.MonitorEverythingFlagSet))
             {
                 ConsoleOutput.Print($"You can only specify {ArgumentFlags.KillChildProcessesFlagShort}/{ArgumentFlags.KillChildProcessesFlagLong} for killing process that's been executed with {ArgumentFlags.ExecutableFlagShort}/{ArgumentFlags.ExecutableFlagLong}", PrintType.Error);
-                return false;
-            }
-            else if (argumentData.NetworkInterfaceDeviceFlagSet == argumentData.NoPCAPFlagSet)
-            {
-                ConsoleOutput.Print($"You need to specify a network device interface or specify {ArgumentFlags.NoPcapFlagShort}/{ArgumentFlags.NoPcapFlagLong} to skip packet capture. Run again with {ArgumentFlags.GetInterfacesFlagShort}/{ArgumentFlags.GetInterfacesFlagLong} to view available network devices", PrintType.Error);
                 return false;
             }
             else if (argumentData.UserNameFlagSet != argumentData.UserPasswordFlagSet)

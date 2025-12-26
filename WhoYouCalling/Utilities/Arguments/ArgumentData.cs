@@ -17,6 +17,7 @@
         public bool UserNameFlagSet;
         public bool UserPasswordFlagSet;
         public bool OutputDirectoryFlagSet;
+        public bool OutputDirectoryCustomNameSet;
         public bool MonitorEverythingFlagSet;
         public bool CompressOutputFolderFlagSet;
 
@@ -33,8 +34,8 @@
         public string OutputDirectory;
         public bool KillProcesses;
         public bool SaveFullPcap;
-        public bool NoPacketCapture;
         public bool StrictCommunicationEnabled;
+        public bool CollectFullPacketCapture;
         public bool OutputBPFFilter;
         public bool OutputWiresharkFilter;
         public bool CompressOutputFolder;
@@ -54,9 +55,10 @@
             UserNameFlagSet = false;
             UserPasswordFlagSet = false;
             OutputDirectoryFlagSet = false;
+            OutputDirectoryCustomNameSet = false;
             MonitorEverythingFlagSet = false;
             CompressOutputFolderFlagSet = false;
-
+            CollectFullPacketCapture = false;
             ProcessesNamesToMonitor = new List<string>();
             TrackedProcessId = 0;
             ProcessRunTimer = 0;
@@ -69,7 +71,6 @@
             OutputDirectory = string.Empty;
             KillProcesses = false;
             SaveFullPcap = false;
-            NoPacketCapture = false;
             StrictCommunicationEnabled = false;
             OutputBPFFilter = false;
             OutputWiresharkFilter = false;

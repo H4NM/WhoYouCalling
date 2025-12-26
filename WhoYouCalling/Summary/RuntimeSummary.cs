@@ -2,6 +2,7 @@
 using WhoYouCalling.Network;
 using WhoYouCalling.Network.DNS;
 using WhoYouCalling.Process;
+using WhoYouCalling.Utilities;
 
 namespace WhoYouCalling.Summary
 {
@@ -10,7 +11,9 @@ namespace WhoYouCalling.Summary
         public string WYCCommandline { get; set; }
         public string WYCVersion { get; set; }
         public string Hostname { get; set; }
+        public string HostOS { get; set; }
         public DateTime StartTime { get; set; }
+        public DateTime StopTime { get; set; }
         public string PresentableDuration { get; set; }
         public int NumberOfProcesses { get; set; }
         public int NumberOfProcessesWithNetworkActivity { get; set; }
@@ -42,30 +45,15 @@ namespace WhoYouCalling.Summary
                 }
             }
 
-            WYCCommandline = GetFullWYCCommandLine();
-            WYCVersion= Utilities.Generic.GetVersion();
-            Hostname = GetHostname();
+            WYCCommandline = Program.GetFullProgramCommandLine();
+            WYCVersion= Generic.GetVersion();
+            Hostname = Generic.GetHostname();
+            HostOS = Generic.GetOS();
             StartTime = Program.GetStartTime();
-            PresentableDuration = Program.GetPresentableMonitorDuration();
+            StopTime = Program.GetStopTime();
+            PresentableDuration = Generic.GetPresentableDuration(startTime: Program.GetStartTime(), endTime: Program.GetStopTime());
             NumberOfProcesses = monitoredProcesses.Count;
             NumberOfProcessesWithNetworkActivity = ProcessManager.GetNumberOfProcessesWithNetworkTraffic(monitoredProcesses);
-        }
-        private static string GetHostname()
-        {
-            try
-            {
-                string fqdn = System.Net.Dns.GetHostEntry("").HostName;
-                return !string.IsNullOrWhiteSpace(fqdn) ? fqdn : Environment.MachineName;
-            }
-            catch
-            {
-                return Environment.MachineName;
-            }
-        }
-        private static string GetFullWYCCommandLine()
-        {
-            string[] commandLineArgs = Environment.GetCommandLineArgs();
-            return $"wyc.exe {string.Join(" ", commandLineArgs, 1, commandLineArgs.Length - 1)}"; 
         }
     }
 }

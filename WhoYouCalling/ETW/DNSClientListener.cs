@@ -88,7 +88,7 @@ namespace WhoYouCalling.ETW
         {
             switch (data.EventName)
             {
-                case "EventID(3006)":
+                case "EventID(3006)": // DNS Query
                     {
                         
                         if (Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName))
@@ -109,7 +109,7 @@ namespace WhoYouCalling.ETW
                         }
                         break;
                     }
-                case "EventID(3008)":
+                case "EventID(3008)": // DNS Response
                     {
 
                         if (Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName))
@@ -130,11 +130,17 @@ namespace WhoYouCalling.ETW
                         }
                         break;
                 }
-                default:
-                    {
-                        break;
-                    }
             }
+            /*
+            == Other Events for when eventuelly enriching if responses were cached or remote == 
+            EventID(3009) - Initial event requesting DNS lookup
+            EventID(3010) - DNS query sent to specific DNS server for provided domain name
+            EventID(3011) - A DNS response was received from DNS server for requested domain name 
+            EventID(3016) - DNS Cache query was requested for domain 
+            EventID(3018) - DNS Cache query for domain was made
+            EventID(3019) - DNS Query hread was called for domain 
+            EventID(3020) - DNS Query response for domain returned with result 
+            */
         }
     }
 }

@@ -1,12 +1,10 @@
 ﻿
 using System.Runtime.InteropServices;
-using System.Text;
 using WhoYouCalling.Utilities;
 using WhoYouCalling.Win32;
 using System.Security;
 using WhoYouCalling.Network;
 using WhoYouCalling.Network.DNS;
-using Microsoft.Diagnostics.Tracing.StackSources;
 
 
 namespace WhoYouCalling.Process
@@ -113,17 +111,17 @@ namespace WhoYouCalling.Process
 
         public static void MergeMonitoredProcesses(MonitoredProcess target, MonitoredProcess source)
         {
-            if (target.ExecutableFileName == null && source.ExecutableFileName != null)
+            if (target.Executable.FilePath == null && source.Executable.FilePath != null)
             {
-                target.ExecutableFileName = source.ExecutableFileName;
+                target.Executable.FilePath = source.Executable.FilePath;
             }
-            if (target.ProcessStartTime == null && source.ProcessStartTime != null)
+            if (target.StartTime == null && source.StartTime != null)
             {
-                target.ProcessStartTime = source.ProcessStartTime;
+                target.StartTime = source.StartTime;
             }
-            if (target.ProcessStopTime == null && source.ProcessStopTime != null)
+            if (target.StopTime == null && source.StopTime != null)
             {
-                target.ProcessStopTime = source.ProcessStopTime;
+                target.StopTime = source.StopTime;
             }
             if (source.ChildProcesses.Count > 0)
             {
@@ -154,27 +152,6 @@ namespace WhoYouCalling.Process
                 }
             }
         }
-        public static string? GetProcessFileName(int pid)
-        {
-            string? processFileName = "";
-            try
-            {
-                System.Diagnostics.Process process = System.Diagnostics.Process.GetProcessById(pid);
-                StringBuilder buffer = new StringBuilder(1024);
-                int size = buffer.Capacity;
-                if (Win32.WinAPI.QueryFullProcessImageName(process.Handle, 0, buffer, ref size))
-                {
-                    string executableFullPath = buffer.ToString();
-                    processFileName = Path.GetFileName(executableFullPath);
-                }
-            }
-            catch (Exception ex)
-            {
-                processFileName = null;
-            }
-            return processFileName;
-        }
-      
         public static void KillProcess(int pid)
         {
             try
@@ -190,6 +167,50 @@ namespace WhoYouCalling.Process
             {
                 ConsoleOutput.Print($"An error occurred when stopping process when timer expired: {ex.Message}", PrintType.Warning);
             }
+        }
+
+        public static MonitoredProcess EnrichMonitoredProcessData(MonitoredProcess monitoredProcess, int pid, string processName)
+        {
+            try
+            {
+                System.Diagnostics.Process process = System.Diagnostics.Process.GetProcessById(pid);
+                if (monitoredProcess.ProcessName == Constants.Miscellaneous.UnmappedProcessDefaultName || String.IsNullOrEmpty(monitoredProcess.ProcessName))
+                {
+                    monitoredProcess.ProcessName = process.ProcessName;
+                }
+
+                if (ProcessManager.IsCorrectlyMatchingProcess(retrievedProcessName: process.ProcessName, providedProcessName: monitoredProcess.ProcessName)) // IF the passed process name is the same as the one that's been retrieved
+                {
+                    if (process.SessionId == 0)
+                    {
+                        monitoredProcess.IsolatedProcess = true;
+                    }
+                    else
+                    {
+                        monitoredProcess.IsolatedProcess = false;
+                        monitoredProcess.StartTime = process.StartTime;
+                    }
+                    if (process.MainModule != null)
+                    {
+                        monitoredProcess.Executable.FilePath = process.MainModule.FileName;
+                    }
+                }
+            }
+            catch
+            {
+                if (string.IsNullOrEmpty(monitoredProcess.ProcessName)) // In case the try catch when retrieving the process details fails it resorts to setting the ProcessName value to unmapped default name
+                {
+                    monitoredProcess.ProcessName = Constants.Miscellaneous.UnmappedProcessDefaultName;
+                }
+            }
+
+
+            if (monitoredProcess.ProcessName == Constants.Miscellaneous.UnmappedProcessDefaultName) // Ensuring that if it's still unmapped name it's defined as not Unmapped
+            {
+                monitoredProcess.MappedProcess = false;
+            }
+
+            return monitoredProcess;
         }
 
         private static void EnableSeIncreaseQuotaPrivilege()
