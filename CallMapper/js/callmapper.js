@@ -162,198 +162,37 @@
         ],
         
         });
-        /*
-        ==================================
-        |
-        |   Metadata management 
-        |
-        ===================================
-        */ 
-        const metadataPane = document.getElementById("metadata-pane");
-        const metadataLabel = document.getElementById("metadata-label");
-    
-        metadataPane.innerHTML = ''; 
 
-        if (data.metadata) {
-        
-            const keyMap = {
-                "WYCVersion": "Version",
-                "WYCCommandline": "Commandline",
-                "Hostname": "Hostname",
-                "StartTime": "Started",
-                "PresentableDuration": "Duration"
-            };
-        
-            for (const key in keyMap) {
-                if (data.metadata[key]) {
-                    const p = document.createElement("p");
-                    p.innerHTML = `<b>${keyMap[key]}</b>: ${data.metadata[key]}`;
-                    metadataPane.appendChild(p);
-                }
-            }
 
-        }else{
-            const p = document.createElement("p");
-            p.innerHTML = `Nothing to display`;
-            metadataPane.appendChild(p);
+    /*
+    ==================================
+    |
+    |   Zooming - To end up on a non-bad zoom value that causes jitter
+    |
+    ===================================
+    */   
+
+    cy.on('zoom', () => {
+        const z = cy.zoom();
+        const snapped = Math.round(z * 8) / 8; 
+        if (Math.abs(z - snapped) > 0.001) {
+            cy.zoom(snapped);
         }
-        metadataLabel.addEventListener("click", () => {
-            metadataPane.classList.toggle("open");
-        });
-    
-        metadataPane.addEventListener("click", () => {
-            metadataPane.classList.toggle("open");
-        });
-    
-        /*
-        ==================================
-        |
-        |   Checkbox management 
-        |
-        ===================================
-        */ 
-        const checkboxButtonPane = document.getElementById('checkbox-buttons');
-        const checkboxPane = document.getElementById('checkbox-list');
-
-        const selectAllCheckbox = document.createElement('input');
-        selectAllCheckbox.type = 'checkbox';
-        selectAllCheckbox.id = 'checkbox-select-all';
-        selectAllCheckbox.checked = true;
-
-        const selectAllLabel = document.createElement('label');
-        selectAllLabel.htmlFor = 'checkbox-select-all';
-        selectAllLabel.id = 'label-select-all'
-        selectAllLabel.textContent = 'Every process';
-
-        selectAllCheckbox.addEventListener('change', () => {
-        const isChecked = selectAllCheckbox.checked;
-
-        hideOrphanedCheckbox.checked = isChecked;
-        checkboxes.forEach(({ node, checkbox }) => {
-            checkbox.checked = isChecked;
-            toggleNodeVisibility(node, isChecked);
-        });
-
-        updateTargetNodeVisibility();
-        hideTooltip();
-        cy.nodes().removeClass('highlighted'); 
-        });
-
-        const selectAllContainer = document.createElement('div');
-        selectAllContainer.appendChild(selectAllCheckbox);
-        selectAllContainer.appendChild(selectAllLabel);
-
-        /*
-        ==================================
-        |
-        |   Checkbox management - Processes without network activity
-        |
-        ===================================
-        */ 
-
-        const hideOrphanedCheckbox = document.createElement('input');
-        hideOrphanedCheckbox.type = 'checkbox';
-        hideOrphanedCheckbox.id = 'checkbox-hide-orphaned';
-        hideOrphanedCheckbox.checked = true; 
-
-        const hideOrphanedLabel = document.createElement('label');
-        hideOrphanedLabel.id = 'label-hide-orphaned'
-        hideOrphanedLabel.htmlFor = 'checkbox-hide-orphaned';
-        hideOrphanedLabel.textContent = 'DNS or TCPIP';
-
-        const hideOrphanedContainer = document.createElement('div');
-        hideOrphanedContainer.id = 'container-hide-orphaned';
-        hideOrphanedContainer.appendChild(hideOrphanedCheckbox);
-        hideOrphanedContainer.appendChild(hideOrphanedLabel);
-
-        hideOrphanedCheckbox.addEventListener('change', () => {
-        const isChecked = hideOrphanedCheckbox.checked;
-
-        processNodes.forEach((node) => {
-            const hasTargetEdges = node.connectedEdges().some((edge) => {
-            const targetNode = edge.target();
-            return targetNode.data('type') === 'domain' || targetNode.data('type') === 'ip';
-            });
-
-            const orphanedNodeId = node.data('id');
-            if (!hasTargetEdges) {
-            toggleNodeVisibility(node, isChecked); 
-            const checkbox = document.getElementById(`checkbox-${orphanedNodeId}`);
-            checkbox.checked = isChecked;
-            }
-        });
-
-        updateTargetNodeVisibility();
     });
 
-        checkboxButtonPane.appendChild(hideOrphanedContainer);
-        const topControls = document.createElement('div');
-        topControls.id = 'checkbox-top-controls';
 
-        topControls.appendChild(hideOrphanedContainer);
-        topControls.appendChild(selectAllContainer);
 
-        checkboxButtonPane.insertBefore(topControls, checkboxPane.firstChild);
+    /*
+    ==================================
+    |
+    |   Panning
+    |
+    ===================================
+    */     
+    let isPanning = false;
 
-        const processNodes = cy.nodes()
-        .filter(node => node.data('type') === 'process')
-        .sort((a, b) => a.data('label').localeCompare(b.data('label')));
-
-        const checkboxes = [];
-
-        processNodes.forEach((node) => {
-        const nodeLabel = node.data('label');
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = `checkbox-${node.id()}`;
-        checkbox.checked = true;
-
-        checkbox.addEventListener('change', () => {
-            toggleNodeVisibility(node, checkbox.checked);
-            updateTargetNodeVisibility();
-
-            const allChecked = checkboxes.every(({ checkbox }) => checkbox.checked);
-            const noneChecked = checkboxes.every(({ checkbox }) => !checkbox.checked);
-            selectAllCheckbox.checked = allChecked;
-            hideOrphanedCheckbox.checked = allChecked;
-            selectAllCheckbox.indeterminate = !allChecked && !noneChecked;
-        });
-
-        const label = document.createElement('label');
-        label.htmlFor = `checkbox-${node.id()}`;
-        label.textContent = nodeLabel;
-
-        const container = document.createElement('div');
-        container.appendChild(checkbox);
-        container.appendChild(label);
-
-        checkboxPane.appendChild(container);
-
-        checkboxes.push({ node, checkbox });
-        });
-
-        function toggleNodeVisibility(node, isVisible) {
-        node.style('display', isVisible ? 'element' : 'none');
-        }
-
-        function updateTargetNodeVisibility() {
-        cy.nodes().forEach((targetNode) => {
-            const targetType = targetNode.data('type');
-            if (targetType === 'domain' || targetType === 'ip') {
-            const connectedProcesses = targetNode.connectedEdges().filter(edge => {
-                const sourceNode = edge.source();
-                return sourceNode.data('type') === 'process' && sourceNode.style('display') !== 'none';
-            });
-
-            if (connectedProcesses.length === 0) {
-                targetNode.style('display', 'none');
-            } else {
-                targetNode.style('display', 'element');
-            }
-            }
-        });
-        }
+    cy.on('panstart', () => isPanning = true);
+    cy.on('panend', () => isPanning = false);
 
     /*
     ==================================
@@ -366,6 +205,7 @@
         let isTooltipVisible = false;
 
         cy.on('click', 'node', function(event) {
+        if (isPanning) return;
         cy.nodes().removeClass('highlighted'); 
         const node = event.target;
         const position = node.renderedPosition();

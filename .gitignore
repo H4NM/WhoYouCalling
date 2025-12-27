@@ -3,6 +3,7 @@
 venv/
 dist/
 Caps/
+CallMapperTestFolder/
 TestApplication*
 args.txt
 release_text.txt

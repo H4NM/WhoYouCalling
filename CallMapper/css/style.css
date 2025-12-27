@@ -5,10 +5,111 @@ html, body {
     font-family: Verdana;
 }
 
+/* 
+================ TOP BAR AND TABS ================================
+*/
+
+.mainDiv {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.topBar {
+    display: flex;
+    align-items: stretch; /* <-- was center, now stretch */
+    height: 32px;
+    background: #f2f2f2;
+    border-bottom: 1px solid #ccc;
+}
+
+.topLeftInBar,
+.centerInBar,
+.topRightInBar {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.topLeftInBar {
+    padding-left: 10px;
+    gap: 8px;
+}
+
+.logo {
+    height: 18px;         
+    width: auto;
+}
+
+.title {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.slogan {
+    font-size: 11px;
+    font-style: italic;
+    color: #666;
+    font-family: cursive;
+}
+
+.centerInBar {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: stretch;  
+}
+
+.tab {
+    padding: 0 14px;   
+    height: 100%;      
+    display: flex;
+    align-items: center; 
+    cursor: pointer;
+    font-size: 13px;
+    border-right: 1px solid #ddd;
+    user-select: none;
+    box-sizing: border-box;
+}
+.tab:last-child {
+    border-right: none;
+}
+
+.tab.active {
+    background: #fff;
+    border-bottom: 2px solid #007acc;
+}
+
+.content {
+    flex: 1;
+    position: relative;
+}
+
+.view {
+    display: none;
+    position: absolute;
+    inset: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.view.active {
+    display: block;
+}
+
+/* 
+================ Cytoscape ================================
+*/
+
 #cy {
     position: relative; 
     width: 100%;
     height: 100%;
+}
+
+#cytoscape-view {
+    display: flex; 
+    height: 100vh;
 }
 
 #label-hide-orphaned, #label-select-all {
@@ -19,6 +120,41 @@ html, body {
     text-align: center !important;
 }
 
+/* 
+================ Left pane - Filtering ================================
+*/
+#cytoscape-left-pane{
+    padding: 10px; 
+    border-right: 1px solid #ccc; 
+    width: 12%; 
+    overflow-y: auto;
+}
+
+/* 
+================ Right pane - Node info ================================
+*/
+#tooltip {
+    display: none;
+    position: absolute;
+    right: 0; 
+    border: 1px solid #ccc;
+    height: 100%;
+    width: 300px;
+    padding: 10px;
+    border-left: 1px solid #929292; 
+    box-shadow: 0px 4px 8px rgba(255, 110, 110, 0.1);
+    z-index: 100;
+    pointer-events: auto;
+
+    font-size: 14px;
+    color: #000000;
+    background-color: rgb(255, 255, 255);
+    word-wrap: break-word; 
+    overflow-wrap: break-word; 
+
+    white-space: normal;
+    overflow: hidden;
+}
 
 /* 
 ================ Right pane endpoint details ================================
@@ -147,143 +283,15 @@ html, body {
     background-color: #fcf52f3b; 
     transform: translateY(0); 
 }
+
 /* 
-================ Right pane tooltip ================================
-*/
-#tooltip {
-    display: none;
-    position: absolute;
-    right: 0; 
-    border: 1px solid #ccc;
-    height: 100%;
-    width: 300px;
-    padding: 10px;
-    border-left: 1px solid #929292; 
-    box-shadow: 0px 4px 8px rgba(255, 110, 110, 0.1);
-    z-index: 100;
-    pointer-events: auto;
 
-    font-size: 14px;
-    color: #000000;
-    background-color: rgb(255, 255, 255);
-    word-wrap: break-word; 
-    overflow-wrap: break-word; 
-
-    white-space: normal;
-    overflow: hidden;
-}
-/* 
-================ Left pane checkboxes ================================
-*/
-#metadata-container {
-    position: relative;
-    width: calc(100% - 10px); 
-    border: 1px solid #4b4b4b;
-    border-radius: 5px;
-    background-color: #f0f0f0;
-    cursor: pointer;
-}
-
-#metadata-label {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 6px 12px;
-    border-radius: 4px;
-    z-index: 10;
-    font-size: 14px;
-}
-
-#metadata-pane {
-    position: relative;
-    overflow: hidden;
-    max-height: 0;
-    transition: max-height 0.3s ease;
-    padding: 20px 10px 10px; 
-    border-radius: 6px;
-    text-align: left;
-    word-wrap: break-word;
-    white-space: normal;
-    font-size: 12px;
-}
-#metadata-pane p {
-    margin: 2px 0;  
-    line-height: 1.4;
-    padding: 0;
-}
-#metadata-pane p:first-child {
-    margin-top: 7px;  
-}
-
-#metadata-pane.open {
-    max-height: 1000px; 
-}
-
-#checkbox-list-label {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 6px 12px;
-    border-radius: 4px;
-    z-index: 10;
-    font-size: 14px;
-    font-weight: bold;
-}
-
-#checkbox-list-pane {
-    overflow: hidden;
-    max-height: 0;
-    transition: max-height 0.3s ease;
-    padding: 20px 10px 10px;
-    font-size: 12px;
-}
-
-#checkbox-list-pane.open {
-    max-height: 2000px; /* big enough for all checkboxes */
-}
-
-
-#checkbox-top-controls {
-    display: flex;
-    gap: 2px;
-}
-
-#checkbox-top-controls > div {
-    display: flex;
-    align-items: center;
-}
-
-#checkbox-pane{
-    padding: 10px; 
-    border-right: 1px solid #ccc; 
-    width: 12%; 
-    overflow-y: auto;
-}
-
-#checkbox-pane input[type="checkbox"] {
+#cytoscape-left-pane input[type="checkbox"] {
     display: none;  
 }
 
-#checkbox-header{
-    display: block;
-    width: calc(100% - 13px); 
-    margin: 40px 0;
-    text-align: center;
-}
 
-#checkbox-title{
-    font-size: 20px;
-    color: #000000;
-}
-
-#checkbox-title-subtext{
-    font-size: 9px;
-    color: #a0a0a0;
-    margin-top: -12px;
-    margin-bottom: -16px;
-}
-
-#checkbox-pane label {
+#cytoscape-left-pane label {
     display: block;
     width: calc(100% - 10px); 
     box-sizing: border-box;
@@ -301,12 +309,10 @@ html, body {
     word-wrap: break-word; 
 }
 
-#checkbox-pane input[type="checkbox"]:checked + label {
+#cytoscape-left-pane input[type="checkbox"]:checked + label {
     background-color: #cc00cc;
     color: white;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-#checkbox-pane label:hover {
-    background-color: #cc00cc33;
-}
+*/
