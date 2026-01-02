@@ -22,6 +22,11 @@ namespace WhoYouCalling.Utilities
             return $"v{fileVersion}";
         }
 
+        public static string GetMachineTimeZone()
+        {
+            return TimeZoneInfo.Local.DisplayName.ToString();
+        }
+
         public static string GetHostname()
         {
             try

@@ -14,9 +14,9 @@ from lib.output import *
 from lib.prompts import prompt_user_for_continue_with_faulty_results_file
 from lib.functions import has_prerequisites, file_exists_in_same_script_folder, valid_data_file_exists, requests_is_installed
 
-def valid_arguments_were_passed(args: object, script_directory:str, data_file:str) -> bool:
+def valid_arguments_were_passed(args: object, web_directory:str, data_file:str) -> bool:
     if not args.results:
-        if not file_exists_in_same_script_folder(script_directory, "data.json"):
+        if not file_exists_in_same_script_folder(web_directory, "data.json"):
             ConsoleOutputPrint(msg=f"Unable to find data.json in the same directory as the script. Please supply a Results.json or directory with them or move data.json to the same path as the script", print_type="fatal")
             return False
         
@@ -34,12 +34,12 @@ def valid_arguments_were_passed(args: object, script_directory:str, data_file:st
     
     return True
     
-def validate_prerequisites(script_directory:str) -> None:
+def validate_prerequisites(web_directory:str) -> None:
     if not has_prerequisites():
         ConsoleOutputPrint(msg=f"Invalid python version. You need atleast python version {MINIMUM_PYTHON_VERSION}. You have {sys.version}", print_type="fatal")
         sys.exit(1) 
 
-    if not file_exists_in_same_script_folder(script_directory, "index.html"):
+    if not file_exists_in_same_script_folder(web_directory, "index.html"):
         ConsoleOutputPrint(msg=f"Unable to find index.html in the same directory as the script", print_type="fatal")
         sys.exit(1)
 
@@ -56,7 +56,7 @@ def validate_result_files(wyc_result_files:list) -> list:
     final_wyc_result_files: list = []
     for result_file in wyc_result_files:
         if not is_valid_results_file(results_file=result_file):
-            if not prompt_user_for_continue_with_faulty_results_file():
+            if not prompt_user_for_continue_with_faulty_results_file(results_file=result_file):
                 ConsoleOutputPrint(msg=f"Stopping...", print_type="fatal")
                 sys.exit(1)
         final_wyc_result_files.append(result_file)

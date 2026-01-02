@@ -116,7 +116,7 @@ namespace WhoYouCalling
 
             switch (RunningMode)
             {
-                case WYCMainMode.Execute:
+                case WYCMainMode.Executable:
                     {
                         ExecuteApplication(executablePath: arguments.ExecutablePath,
                                            executableArguments: arguments.ExecutableArguments,
@@ -127,14 +127,14 @@ namespace WhoYouCalling
                                            userPassword: arguments.UserPassword);
                         break;
                     }
-                case WYCMainMode.Listen:
+                case WYCMainMode.PID:
                     {
                         MonitorRunningProcess(pid: arguments.TrackedProcessId);
                         break;
                     }
-                case WYCMainMode.Illuminate:
+                case WYCMainMode.Everything:
                     {
-                        ConsoleOutput.Print($"Turning on the lights", PrintType.Info);
+                        ConsoleOutput.Print($"Monitoring everything", PrintType.Info);
                         break;
                     }
             }
@@ -237,7 +237,7 @@ namespace WhoYouCalling
         private static string GetResultsFolderName(WYCMainMode runningMode, int trackedProcessID, string executablePath)
         {
             string outputDirectory = "";
-            if (runningMode == WYCMainMode.Execute || runningMode == WYCMainMode.Listen)
+            if (runningMode == WYCMainMode.Executable || runningMode == WYCMainMode.PID)
             {
                 string mainInstanceFolderName = GetMainInstanceNameWithPIDOrPath(trackedProcessID, executablePath);
                 outputDirectory = Generic.NormalizePath(Generic.GetRunInstanceName(mainInstanceFolderName));
@@ -1064,15 +1064,15 @@ namespace WhoYouCalling
         {
             if (argumentData.ExecutableFlagSet)
             {
-                return WYCMainMode.Execute;
+                return WYCMainMode.Executable;
             }
             else if (argumentData.PIDFlagSet)
             {
-                return WYCMainMode.Listen;
+                return WYCMainMode.PID;
             }
             else // Illuminate 
             {
-                return WYCMainMode.Illuminate;
+                return WYCMainMode.Everything;
             }
         }
 

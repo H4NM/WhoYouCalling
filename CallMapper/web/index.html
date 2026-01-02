@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CallMapper</title>
+  <link rel="icon" type="image/x-icon" href="/static/img/icon.png">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="/static/js/cytoscape.min.js"></script>
+</head>
+<body>
+
+<div class="mainDiv">
+  <div class="topBar">
+
+      <!-- Title and text -->
+      <div class="topLeftInBar"> 
+          <img src="/static/img/icon.png" alt="CallMapper logo" class="logo">
+          <span class="title">CallMapper</span>
+          <span class="slogan">Visualizing results from WhoYouCalling</span>
+      </div>
+
+      <!-- Tabs in the center -->
+      <div class="centerInBar">
+          <div class="tab active" data-view="view1">Summary</div>
+          <div class="tab" data-view="view2">Calls</div>
+          <div class="tab" data-view="view3">Sequence</div>
+          <div class="tab" data-view="view4">IoCs</div>
+          <div class="tab" data-view="view5">Alerts</div>
+      </div>
+
+      <div class="topRightInBar">
+          <div class="tab" data-view="view10">Supporters ❤️</div>
+      </div>
+  </div>
+
+  <div class="content">
+
+      <!-- ============================  SUMMARY ============================  -->
+      <div id="view1" class="view active">
+
+                <!-- wasd -->
+
+      </div>
+
+
+      <!-- ============================  CYTOSCAPE ============================  -->
+      <div id="view2" class="view">
+          <div id="cytoscape-view">
+            <div id="cytoscape-left-pane">
+
+                  <h1>Nodes</h1>
+                  <h2 id="count-processes">Processes:</h2>  
+                  <h2 id="count-ips">IPs:</h2>  
+                  <h2 id="count-domains">Domains:</h2>  
+ 
+
+                  <!-- ================= FILTER ACTION BUTTONS ================= -->
+                  <div class="filter-actions-row">
+                    <label class="filter-toggle">
+                      <input type="checkbox" id="auto-filter-checkbox" checked>
+                      <span class="toggle-label">Auto</span>
+                    </label>
+
+                    <button id="btn-reset-filters" class="filter-btn danger"">
+                      Reset
+                    </button>
+
+                    <button id="btn-apply-filters" class="filter-btn primary apply">
+                      Filter
+                    </button>
+                  </div>
+
+
+
+                  <!-- ================= CAPTURES FILTERS ================= -->
+                  <section class="filter-section">
+                    <h3>WYC Captures</h3>
+
+                  </section>
+                
+                  <!-- ================= IP FILTERS ================= -->
+                  <section class="filter-section">
+                    <h3>TCPIP</h3>
+                    
+                    <div class="filter-item">
+                      <label for="filter-no-loopback">No loopback</label>
+                      <input type="checkbox" id="filter-no-loopback" checked>
+                    </div>
+
+                    <div class="filter-item">
+                      <label for="filter-ip-zone">External or local IPs</label>
+                      <select name="ip_zone" id="filter-ip-zone">
+                        <option value="ANYTHING">Any</option>
+                        <option value="External">External</option>
+                        <option value="Local">Local</option>
+                      </select>
+                    </div>
+
+                    <div class="filter-item">
+                      <label for="filter-ip-version">IP Version</label>
+                      <select name="ip_version" id="filter-ip-version">
+                        <option value="ANYTHING">Any</option>
+                        <option value="V4">v4</option>
+                        <option value="V6">v6</option>
+                      </select>
+                    </div>
+
+                    <div class="filter-item">
+                      <label for="filter-ip">IP</label>
+                      <input type="text" id="filter-ip">
+                    </div>
+
+                    <div class="filter-item">
+                      <label for="filter-transport-protocol">Transport protocol</label>
+                      <select name="transport_protocol" id="filter-transport-protocol">
+                        <option value="ANYTHING">Any</option>
+                        <option value="TCP">TCP</option>
+                        <option value="UDP">UDP</option>
+                      </select>
+                    </div>
+                    
+                    <div class="filter-item">
+                      <label for="filter-dest-port">Destination port</label>
+                      <input type="text" id="filter-dest-port">
+                    </div>
+
+                  </section>
+
+
+                  <!-- ================= DOMAIN FILTERS ================= -->
+                  <section class="filter-section">
+                    <h3>DNS</h3>
+
+
+                    <div class="filter-item">
+                      <label for="filter-domain">Domain</label>
+                      <input type="text" id="filter-domain">
+                    </div>
+
+                    <div class="filter-item">
+                      <label for="filter-domain-query-text">Query Type</label>
+
+                      <select name="domain_query" id="filter-domain-query-text">
+                        <option value="ANYTHING">Any</option>
+                        <option value="A">A</option>
+                        <option value="AAAA">AAAA</option>
+                        <option value="HTTPS">HTTPS</option>
+                        <option value="NS">NS</option>
+                        <option value="CNAME">CNAME</option>
+                        <option value="SOA">SOA</option>
+                        <option value="PTR">PTR</option>
+                        <option value="MX">MX</option>
+                        <option value="TXT">TXT</option>
+                        <option value="SRV">SRV</option>
+                        <option value="RP">RP</option>
+                        <option value="AFSDB">AFSDB</option>
+                        <option value="LOC">LOC</option>
+                        <option value="NAPTR">NAPTR</option>
+                        <option value="KX">KX</option>
+                        <option value="CERT">CERT</option>
+                        <option value="DNAME">DNAME</option>
+                        <option value="OPT">OPT</option>
+                        <option value="APL">APL</option>
+                        <option value="DS">DS</option>
+                        <option value="SSHFP">SSHFP</option>
+                        <option value="IPSECKEY">IPSECKEY</option>
+                        <option value="RRSIG">RRSIG</option>
+                        <option value="NSEC">NSEC</option>
+                        <option value="ANY">ANY</option>
+                        <option value="DNSKEY">DNSKEY</option>
+                        <option value="DHCID">DHCID</option>
+                        <option value="NSEC3">NSEC3</option>
+                        <option value="NSEC3PARAM">NSEC3PARAM</option>
+                        <option value="TLSA">TLSA</option>
+                        <option value="SMIMEA">SMIMEA</option>
+                        <option value="HIP">HIP</option>
+                        <option value="CDS">CDS</option>
+                        <option value="CDNSKEY">CDNSKEY</option>
+                        <option value="OPENPGPKEY">OPENPGPKEY</option>
+                        <option value="CSYNC">CSYNC</option>
+                        <option value="ZONEMD">ZONEMD</option>
+                        <option value="SVCB">SVCB</option>
+                        <option value="TKEY">TKEY</option>
+                        <option value="TSIG">TSIG</option>
+                        <option value="IXFR">IXFR</option>
+                        <option value="AXFR">AXFR</option>
+                        <option value="URI">URI</option>
+                        <option value="CAA">CAA</option>
+                        <option value="AVC">AVC</option>
+                        <option value="AMTRELAY">AMTRELAY</option>
+                        <option value="TA">TA</option>
+                        <option value="DLV">DLV</option>
+                      </select>
+                    </div>
+
+                  </section>
+
+
+                <!-- ================= PROCESS FILTERS ================= -->
+                <section class="filter-section">
+                  <h3>Process</h3>
+
+                  <div class="filter-item">
+                    <label for="filter-process-has-tcpip-activity">TCPIP activity</label>
+                    <input type="checkbox" id="filter-process-has-tcpip-activity">
+                  </div>
+
+                  <div class="filter-item">
+                    <label for="filter-process-name">Process name</label>
+                    <input type="text" id="filter-process-name" placeholder="e.g. chrome" >
+                  </div>
+
+                  <div class="filter-item">
+                    <label for="filter-process-pid">PID</label>
+                    <input type="text" id="filter-process-pid" placeholder="e.g. 1234">
+                  </div>
+
+                  <div class="filter-item">
+                    <label for="filter-process-start">Started after</label>
+                    <input type="text" id="filter-process-start" placeholder="2026-01-01 12:32:05">
+                  </div>
+
+                  <div class="filter-item">
+                    <label for="filter-process-stop">Ended before</label>
+                    <input type="text" id="filter-process-stop" placeholder="2026-01-01 13:37:00">
+                  </div>
+
+                  <div class="filter-item">
+                    <label for="filter-process-protected">Protected process</label>
+                    <select name="protected_process" id="filter-process-protected">
+                      <option value="ANY">Any</option>
+                      <option value="YES">Yes</option>
+                      <option value="NO">No</option>
+                    </select>
+                  </div>
+
+                  <!-- ================= EXECUTABLE FILTERS ================= -->
+                  <section class="filter-section">
+                    <h3>Executable</h3>
+
+                    <div class="filter-item">
+                      <label for="filter-executable-path">Path</label>
+                      <input type="text" id="filter-executable-path" placeholder="C:\Windows\Temp" >
+                    </div>
+
+                    <div class="filter-item">
+                      <label for="filter-executable-is-signed">Is signed</label>
+                      <select name="protected_process" id="filter-executable-is-signed">
+                        <option value="ANY">Any</option>
+                        <option value="YES">Yes</option>
+                        <option value="NO">No</option>
+                      </select>
+                    </div>
+
+                    <div class="filter-item">
+                      <label for="filter-executable-created">Created after</label>
+                      <input type="text" id="filter-executable-created" placeholder="2025-12-24 03:04:22">
+                    </div>
+
+                    <div class="filter-item">
+                      <label for="filter-executable-md5">MD5</label>
+                      <input type="text" id="filter-executable-md5">
+                    </div>
+
+                    <div class="filter-item">
+                      <label for="filter-executable-sha1">SHA1</label>
+                      <input type="text" id="filter-executable-sha1">
+                    </div>
+
+                    <div class="filter-item">
+                      <label for="filter-executable-sha256">SHA256</label>
+                      <input type="text" id="filter-executable-sha256">
+                    </div>
+
+                  </section>
+
+
+
+                </section>
+              </div>
+              <div id="cy"></div>
+              <div id="tooltip"></div>
+            </div>
+
+      </div>
+
+
+      <!-- ============================  SEQUENCE ============================  -->
+      <div id="view3" class="view">
+
+        <!-- wasd -->
+
+      </div>
+
+      <!-- ============================  IoCs ============================  -->
+      <div id="view4" class="view">
+
+        <!-- wasd -->
+
+      </div>
+
+
+      <!-- ============================  ALERTS ============================  -->
+      <div id="view5" class="view">
+
+        <!-- wasd -->
+
+      </div>
+
+
+
+
+
+
+            <!-- ============================  SUPPORTERS  ============================  -->
+      <div id="view10" class="view">
+
+                My broes <3
+
+      </div>
+  </div>
+</div>
+
+  <script type="module" src="/static/js/ui.js"></script>
+  <script type="module" src="/static/js/dataLoader.js"></script>
+  <script type="module" src="/static/js/initCytoscape.js"></script>
+
+</body>
+</html>

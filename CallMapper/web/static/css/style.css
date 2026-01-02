@@ -77,7 +77,9 @@ html, body {
 
 .tab.active {
     background: #fff;
-    border-bottom: 2px solid #007acc;
+    border-top: 2px solid #cc00cc;
+    border-left: 2px solid #cc00cc;
+    border-right: 2px solid #cc00cc;
 }
 
 .content {
@@ -129,6 +131,146 @@ html, body {
     width: 12%; 
     overflow-y: auto;
 }
+
+.filter-section {
+  margin-bottom: 20px;
+}
+
+.filter-section h3 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #9cdcfe;
+  border-bottom: 1px solid #333;
+  padding-bottom: 4px;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.filter-item label {
+  margin-bottom: 4px;
+  color: #bbb;
+}
+
+.filter-item input[type="text"],
+.filter-item input[type="number"]{
+  background: #1e1e1e;
+  border: 1px solid #333;
+  color: #eee;
+  padding: 5px 6px;
+  border-radius: 4px;
+}
+
+.filter-item span {
+  display: inline-block;
+}
+
+.filter-item select {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  color: #eee;
+  padding: 5px 6px;
+  border-radius: 2px;
+  font-size: 13px;
+  font-family: inherit;
+  appearance: none;
+  cursor: pointer;
+}
+
+.filter-item select:hover {
+  border-color: #555;
+}
+
+.filter-item select:focus {
+  outline: none;
+  border-color: #9cdcfe;
+}
+
+/* ================= FILTER ACTION BUTTON ROW ================= */
+
+.filter-actions-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+/* Base button */
+.filter-actions-row .filter-btn {
+  padding: 7px 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 5px;
+  border: 1px solid #333;
+  background: #2a2a2a;
+  color: #eee;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Widths */
+.filter-btn.danger {
+  flex: 1;   /* 25% */
+}
+
+.filter-btn.apply {
+  flex: 2;   /* 50% */
+}
+
+/* Primary (Filter) */
+.filter-btn.primary {
+  background: #cc00cc;
+  border-color: #990099;
+  color: #fff;
+}
+
+/* Reset */
+.filter-btn.danger {
+  background: #2a2a2a;
+  border-color: #333;
+  color: #ccc;
+}
+
+/* Minimal interaction feedback */
+.filter-btn:hover {
+  background: #333;
+}
+
+.filter-btn:active {
+  background: #222;
+}
+
+
+/* ================= AUTO FILTER TOGGLE ================= */
+
+.filter-toggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #333;
+  border-radius: 5px;
+  background: #2a2a2a;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #eee;
+  cursor: pointer;
+}
+
+.filter-toggle input {
+  margin-right: 6px;
+  cursor: pointer;
+}
+
+.filter-toggle input:checked {
+  accent-color: #cc00cc; /* modern browsers */
+}
+
+
 
 /* 
 ================ Right pane - Node info ================================

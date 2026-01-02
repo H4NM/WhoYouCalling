@@ -22,8 +22,8 @@ namespace WhoYouCalling.Utilities.Arguments
         public const string ProcessIDFlagShort = "-P";
         public const string ProcessIDFlagLong = "--PID";
 
-        public const string MonitorEverythingFlagShort = "-I";
-        public const string MonitorEverythingFlagLong = "--illuminate";
+        public const string MonitorEverythingFlagShort = "-E";
+        public const string MonitorEverythingFlagLong = "--everything";
 
         public const string InterfaceFlagShort = "-i";
         public const string InterfaceFlagLong = "--interface";

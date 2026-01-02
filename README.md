@@ -87,7 +87,7 @@ wyc.exe --getinterfaces
 
 **Capture every network and process activity from everything**:
 ```
-wyc.exe --illuminate --interface 8
+wyc.exe --everything --interface 8
 ```
 
 **Execute a binary with arguments. Output the results to a folder on the user desktop**:

@@ -32,32 +32,33 @@ SUSPICIOUS_EXECUTABLE_PATHS = [
 IP_NODE_COLOR:str = "#2ffcf3"
 DOMAIN_NODE_COLOR:str = "#fcf62f"
 PROCESS_NODE_COLORS = [
-    "#800080",
     "#cc00cc",
-    "#b266cc",
-    "#2e004d",
-    "#5b0066",
+    "#6900cc",
+    "#1f00cc",
+    "#005fcc",
+    "#00cc7e",
+    "#7ecc00",
+    "#cc9c00",
     "#33001a",
-    "#6a00cc",
     "#3f00a6",
     "#4b0082",
-    "#7f7cff",
-    "#9a7cff",
     "#b399ff",
     "#ff93cd",
     "#ffc3ff",
-    "#ff85c2",
-    "#66004d",
-    "#4d0033",
-    "#b30059",
     "#8b495a",
     "#945d67",
     "#2b1f33",
     "#6e5c7a",
     "#b8a8c2",
 ]
+NODE_SHAPE: str = "ellipse"
+NODE_WIDTH: str = "30"
+NODE_HEIGHT: str = "30"
+NODE_PROCESS_WIDTH: str = "40"
+NODE_PROCESS_HEIGHT: str = "40" 
 
 
+WYC_RESULT_FILE: str = "Result.json"
 
 
 DEFAULT_HTTP_HOST_ADRESS:str = "127.0.0.1"

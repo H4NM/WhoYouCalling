@@ -3,8 +3,8 @@ namespace WhoYouCalling.Network
 {
     public enum WYCMainMode
     {
-        Execute,
-        Listen,
-        Illuminate
+        Executable,
+        PID,
+        Everything
     }
 }

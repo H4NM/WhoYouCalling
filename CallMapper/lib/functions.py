@@ -18,9 +18,6 @@ PROCESS_NODE_LOOKUP_INDEX: dict = {}
 REPORTS: list = [] 
 
 
-def get_unique_id():
-    return uuid.uuid4().hex[:24]
-
 def lookup_endpoints(available_apis: dict, endpoints: dict, apis_to_use: list) -> None:  
     for api_name in apis_to_use:
         ConsoleOutputPrint(msg=f"Performing {api_name} API lookups...", print_type="info")
@@ -32,11 +29,24 @@ def lookup_endpoints(available_apis: dict, endpoints: dict, apis_to_use: list) -
             continue
         REPORTS.extend(instance.lookup(endpoints)) 
 
-def is_private_ip_or_localhost(ip):
+def is_ip_localhost(ip):
     ip_obj = ipaddress.ip_address(ip)
-    if ip_obj.is_private or ip_obj.is_loopback:
+    if ip_obj.is_loopback:
         return True
     else:
+        return False
+
+def is_ip_private(ip):
+    ip_obj = ipaddress.ip_address(ip)
+    if ip_obj.is_private:
+        return True
+    else:
+        return False
+
+def is_ip_ipv4(ip: str) -> bool:
+    try:
+        return ipaddress.ip_address(ip).version == 4
+    except ValueError:
         return False
 
 def is_valid_domain_name(domain):
@@ -190,7 +200,10 @@ def get_edges(edges:list, nodes:list, monitored_processes: list) -> dict:
                     tcpip_edge = get_edge(event=event_info, 
                                           source=current_process_node_id, 
                                           target=node['data']['id'],
-                                          type=EdgeType.TCPIP_CONNECTION)     
+                                          type=EdgeType.TCPIP_PACKET_SENT,
+                                          source_port=connection_record['SourcePort'],
+                                          dest_port=connection_record['DestinationPort'],
+                                          protocol=connection_record['TransportProtocol'])     
                     
                     edges.append(tcpip_edge)
 
@@ -230,98 +243,99 @@ def get_edges(edges:list, nodes:list, monitored_processes: list) -> dict:
                                 domain_edge = get_edge(event=event_info,
                                                        source=node['data']['id'], 
                                                        target=node2['data']['id'],
-                                                       type=EdgeType.DNS_RESOLUTION)     
+                                                       type=EdgeType.DNS_RESOLUTION,
+                                                       dns_query_record_type_text=dns_response['RecordTypeText'],
+                                                       dns_query_record_type_code=dns_response['RecordTypeCode'])     
                                 edges.append(domain_edge)
                         
     return edges
 
-def get_edge(event: str, source: int, target:int, type: EdgeType) -> dict:
-    return { "data": { "source": source, "target": target, "type": type, "info": event} } 
-
-def get_node(label:str, type: NodeType, monitored_process:dict={}, process_node_color:str = "", result_file_id:str = "") -> dict:
-    global NODE_COUNTER
-    node: dict = { "data": { } } 
-    NODE_COUNTER += 1
-    node_info: list = []
-    is_potentially_malicious = False
-    node_color: str = ""
-    node_shape: str = "ellipse"
-    node_width: str = "30"
-    node_height: str = "30"
+def get_edge(event: str, source: int, target:int, type: EdgeType, 
+             source_port: int = 0, 
+             dest_port: int = 0, 
+             protocol: str = "TCP", 
+             dns_query_record_type_text:str = "A",
+             dns_query_record_type_code:str = "1") -> dict:
     
+    edge = { 
+            "data": { 
+                "source": source, 
+                "target": target, 
+                "type": type, 
+                "info": event
+          } 
+    }
+    
+    if type == EdgeType.TCPIP_PACKET_SENT:
+        edge['data']['source_port'] = source_port
+        edge['data']['dest_port'] = dest_port
+        edge['data']['protocol'] = protocol
+    elif type == EdgeType.DNS_QUERY or type == EdgeType.DNS_RESOLUTION:
+        edge['data']['record_type_text'] = dns_query_record_type_text
+        edge['data']['record_type_code'] = dns_query_record_type_code
+    return edge
+
+def get_node(label:str, type: NodeType, monitored_process:dict={}, process_node_color:str = "") -> dict:
+    global NODE_COUNTER
+    NODE_COUNTER += 1
+    node_shape: str = NODE_SHAPE
+    node_width: str = NODE_WIDTH
+    node_height: str = NODE_HEIGHT
+    node_color: str = ""
+    
+    ### Visual characteristics of the different node types
     if type == NodeType.PROCESS:
-        node_info = get_process_metadata(monitored_process=monitored_process, node_id=NODE_COUNTER)
         node_color = process_node_color
-        node_width = "40"
-        node_height = "40"
+        node_width = NODE_PROCESS_WIDTH
+        node_height = NODE_PROCESS_HEIGHT
     elif type == NodeType.IP:
-        node_info, is_potentially_malicious = get_ip_or_domain_metadata(endpoint=label, type=type)
         node_color = IP_NODE_COLOR
     elif type == NodeType.DOMAIN:
-        node_info, is_potentially_malicious = get_ip_or_domain_metadata(endpoint=label, type=type)
         node_color = DOMAIN_NODE_COLOR
-        
-    if is_potentially_malicious:
-        node_shape = "star"
-        node_color = "#ff0000"
-        node_width = "60"
-        node_height = "60"
-        
+
     node: dict = { "data": { 
                         "id": NODE_COUNTER, 
                         "type": type, 
-                        "result_file_id": result_file_id,
+                        "result_file_id": [],
                         "label": label, 
                         "shape": node_shape, 
                         "width": node_width, 
                         "height": node_height, 
-                        "color": node_color, 
-                        "info": '<br>'.join(node_info)} 
+                        "color": node_color 
+                        } 
                   } 
+    
+    ### Unique values regarding the nodes
+    if type == NodeType.PROCESS:
+
+        ### Process details
+        node['data']['Name'] = monitored_process['ProcessName']
+        node['data']['PID'] = monitored_process['PID']
+        node['data']['Commandline'] = monitored_process['CommandLine']
+        node['data']['Protected process'] = monitored_process['IsolatedProcess']
+        node['data']['Started'] = monitored_process['StartTime']
+        node['data']['Stopped'] = monitored_process['StopTime']
+        node['data']['DNS activty'] = True if len(monitored_process['DNSQueries']) > 0 or len(monitored_process['DNSResponses']) > 0 else False
+        node['data']['TCPIP activty'] = True if len(monitored_process['TCPIPTelemetry']) > 0 else False
+
+        ### Executable details
+        node['data']['File path'] = monitored_process['Executable']['FilePath']
+        node['data']['Is signed'] = monitored_process['Executable']['IsSigned']
+        node['data']['Created'] = monitored_process['Executable']['CreatedTimestamp']
+        node['data']['MD5'] = monitored_process['Executable']['MD5']
+        node['data']['SHA1'] = monitored_process['Executable']['SHA1']
+        node['data']['SHA256'] = monitored_process['Executable']['SHA256']
+
+    elif type == NodeType.IP:
+        node['data']['IP'] = label
+        node['data']['Localhost'] = is_ip_localhost(label)
+        node['data']['Private'] = is_ip_private(label)
+        node['data']['IPv4'] = is_ip_ipv4(label)
+
+    elif type == NodeType.DOMAIN:
+        node['data']['Domain'] = label
         
     return node
-
-def get_process_presentable_details(title:str = "", value:str = "", metadata: list = []) -> list:
-    if value != None:
-        html_node_attribute: str = get_html_attribute_and_value(title=title, value=value)
-        metadata.append(html_node_attribute)
-    return metadata
-
-def get_html_attribute_and_value(title: str = "", value:str = "") -> str:
-    return f"<b>{title}</b>: {value}"
-
-def get_process_metadata(monitored_process: dict, node_id: int) -> list:
-    metadata: list = []
-    metadata.append(f"<h3 id='endpoint-type'>Process</h3>") 
-    metadata.append(f"<p id='endpoint-value'>{monitored_process['ProcessName']}-{monitored_process['PID']}</p>") 
-
-    process_attributes = {
-        'Commandline': monitored_process['CommandLine'],
-        'Protected process': monitored_process['IsolatedProcess'],
-        'Started': monitored_process['StartTime'],
-        'Stopped': monitored_process['StopTime']
-    }
-    
-    process_executable_attributes = {
-        'File path': monitored_process['Executable']['FilePath'],
-        'MD5': monitored_process['Executable']['MD5'],
-        'SHA1': monitored_process['Executable']['SHA1'],
-        'SHA256': monitored_process['Executable']['SHA256'],
-        'Is signed': monitored_process['Executable']['IsSigned'],
-        'Created': monitored_process['Executable']['CreatedTimestamp']
-    }
-    
-    for title in process_attributes:
-        metadata = get_process_presentable_details(title=title, value=process_attributes[title], metadata=metadata)
-    
-    if process_executable_attributes['File path'] != None:
-        metadata.append(f"<h4>Executable</h3>") 
-
-        for title in process_executable_attributes:
-            metadata = get_process_presentable_details(title=title, value=process_executable_attributes[title], metadata=metadata)
-    
-    metadata.append(f"<button id='deselect-button' onclick=\"deselectNode({node_id})\">Hide process</button>") 
-    return metadata
 
 def has_prerequisites() -> bool:
     versions = MINIMUM_PYTHON_VERSION.split(".")
@@ -331,36 +345,6 @@ def has_prerequisites() -> bool:
         return True
     else:
         return False    
-    
-def get_ip_or_domain_metadata(endpoint: str, type: NodeType) -> Tuple[list, bool]:
-    metadata: list = []
-    is_potentially_malicious: bool = False
-    metadata.append(f"<h3 id='endpoint-type'>{type.title()}</h3>") 
-    metadata.append(f"<p id='endpoint-value'>{endpoint}</p>") 
-    for report in REPORTS:
-        if endpoint == report.endpoint and report.endpoint_type == type:
-            metadata.append(f"<p id='api-source-title'>{report.api_source}</p>")
-            for presentable_title in report.presentable_data:
-                metadata.append(get_html_attribute_and_value(title=presentable_title, value=report.presentable_data[presentable_title]))
-            if report.is_potentially_malicious:
-                is_potentially_malicious = True
-
-    if type == NodeType.IP:
-        if not is_private_ip_or_localhost(endpoint):
-            metadata.append(f"<a id='ip-lookup-link' href='https://ipinfo.io/{endpoint}' target='_blank'>ipinfo.io</a>") 
-            metadata.append(f"<a id='ip-lookup-link' href='https://www.virustotal.com/gui/ip-address/{endpoint}' target='_blank'>virustotal.com</a>")
-            metadata.append(f"<a id='ip-lookup-link' href='https://www.abuseipdb.com/check/{endpoint}' target='_blank'>abuseipdb.com</a>")
-        else:
-            metadata.append(f"<p id='invalid-endpoint-title'>Private or localhost IP</p>")
-
-    elif type == NodeType.DOMAIN:
-        if is_valid_domain_name(endpoint):
-            metadata.append(f"<a id='domain-lookup-link' href='https://www.whois.com/whois/{endpoint}' target='_blank'>whois.com</a>")
-            metadata.append(f"<a id='domain-lookup-link' href='https://www.virustotal.com/gui/domain/{endpoint}' target='_blank'>virustotal.com</a>")
-        else:
-            metadata.append(f"<p id='invalid-endpoint-title'>Single-label domain</p>")
-            
-    return metadata, is_potentially_malicious
 
 def get_nodes(nodes: list, process_node_color:str, result_file_id:str, monitored_processes: list) -> list:
     ips = set()
@@ -369,10 +353,9 @@ def get_nodes(nodes: list, process_node_color:str, result_file_id:str, monitored
         process_node: dict = get_node(label=f"{process['ProcessName']}-{process['PID']}", 
                                       type=NodeType.PROCESS, 
                                       monitored_process=process, 
-                                      process_node_color=process_node_color, 
-                                      result_file_id=result_file_id)
+                                      process_node_color=process_node_color)
         PROCESS_NODE_LOOKUP_INDEX[index] = process_node['data']['id'] # Used when establishing edges to know which correlate process to activity
-        
+        process_node["data"]["result_file_id"].append(result_file_id)
         nodes.append(process_node)
         
         for connection_record in process["TCPIPTelemetry"]:
@@ -390,7 +373,11 @@ def get_nodes(nodes: list, process_node_color:str, result_file_id:str, monitored
         for node in nodes:
             if node['data']['type'] == 'ip' and node['data']['label'] == ip_node['data']['label']:
                 mapped_ip = True
+                if not result_file_id in node["data"]["result_file_id"]:
+                    node["data"]["result_file_id"].append(result_file_id)
+
         if not mapped_ip:
+            ip_node["data"]["result_file_id"].append(result_file_id)
             nodes.append(ip_node)
     
     for domain in domains:
@@ -400,8 +387,13 @@ def get_nodes(nodes: list, process_node_color:str, result_file_id:str, monitored
         for node in nodes:
             if node['data']['type'] == 'domain' and node['data']['label'] == ip_node['data']['label']:
                 mapped_ip = True
+                if not result_file_id in node["data"]["result_file_id"]:
+                    node["data"]["result_file_id"].append(result_file_id)
+        
         if not mapped_domain:
+            domain_node["data"]["result_file_id"].append(result_file_id)
             nodes.append(domain_node)
+            
     return nodes
 
 def get_unique_process_names_with_external_network_activity(monitored_processes: dict) -> set:

@@ -22,7 +22,7 @@ class EdgeType:
     PROCESS_START = "processStart"
     DNS_QUERY = "dnsQuery"
     DNS_RESOLUTION = "dnsResolution"
-    TCPIP_CONNECTION = "tcpipConnection"
+    TCPIP_PACKET_SENT = "tcpipPacketSent"
 
 class APIErrorType:
     #Will skip processing the endpoint, e.g. if this type of error occurs for lookup on IP 'x.x.x.x' it will continue to the next IP

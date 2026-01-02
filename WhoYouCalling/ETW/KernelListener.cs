@@ -50,6 +50,7 @@ namespace WhoYouCalling.ETW
                 TimeStamp = data.TimeStamp
             };
 
+
             string processName = data.ProcessName;
             if (string.IsNullOrEmpty(data.ProcessName))
             {
@@ -63,6 +64,7 @@ namespace WhoYouCalling.ETW
 
         private void IPv4TCPSend(TcpIpSendTraceData data)
         {
+
             if (Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName))
             {
                 ProcessNetworkPacket(data, ipVersion: Network.IPVersion.IPv4, transportProto: Network.TransportProtocol.TCP);
@@ -161,21 +163,6 @@ namespace WhoYouCalling.ETW
                                             processID: data.ProcessID,
                                             processCommandLine: data.CommandLine);
             }
-            else if (Program.MonitorEverything())
-            {
-                string parentProcessName = ProcessManager.GetPIDProcessName(data.ParentID);
-                Program.AddProcessToMonitor(pid: data.ParentID, processName: parentProcessName);
-                if (!Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName)) // This is to deal with race conditions as the DNS ETW registers before process starts sometimes, where it is added before the actua
-                {
-                    Program.AddProcessToMonitor(pid: data.ProcessID, processName: data.ProcessName, commandLine: data.CommandLine);
-                }
-                Program.CatalogETWActivity(eventType: EventType.StartedChildProcess,
-                                           parentProcessName: parentProcessName,
-                                           parentProcessID: data.ParentID,
-                                           processName: data.ProcessName,
-                                           processID: data.ProcessID,
-                                           processCommandLine: data.CommandLine);
-            }
         }
 
         private void ProcessStop(ProcessTraceData data)
@@ -193,7 +180,7 @@ namespace WhoYouCalling.ETW
                     processName = Program.GetBackupProcessName(data.ProcessID);
                     Program.DeleteOldBackupProcessName(data.ProcessID); 
                 }
-                if (!Program.IsMonitoredProcess(data.ProcessID, processName: processName)) // Required in the rare race condition instances where duplicate PIDs are registered but not cleared and 
+                if (!Program.IsMonitoredProcess(data.ProcessID, processName: processName)) // Required in the rare race condition instances where duplicate PIDs are registered but not cleared 
                 {
                     return;
                 }
