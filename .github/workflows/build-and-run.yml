@@ -58,7 +58,7 @@ jobs:
 
       - name: Run with Execute mode with cmd.exe as privileged user
         run: |
-          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --arguments "/c whoami" --nopcap --killprocesses --timer 10 --privileged 
+          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --nopcap --killprocesses --timer 10 --privileged 
 
   test-executable-unprivileged:
     needs: build
