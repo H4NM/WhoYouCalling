@@ -73,7 +73,7 @@ namespace WhoYouCalling.Utilities.Arguments
         public static string GetHelpText()
         {
             return $@"
-Usage: wyc.exe [{MonitorEverythingFlagShort}/{ExecutableFlagShort }/{ProcessIDFlagShort}] [options]
+Usage: wyc.exe {MonitorEverythingFlagShort}/{ExecutableFlagShort }/{ProcessIDFlagShort} [options]
 Main modes with additions:
   {MonitorEverythingFlagShort}, {MonitorEverythingFlagLong}         : Monitors all outgoing TCPIP activity.  
     {MonitorEverythingWithLoopbackFlagShort}, {MonitorEverythingWithLoopbackFlagLong}     : Record loopback traffic.

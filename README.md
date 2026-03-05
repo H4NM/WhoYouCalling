@@ -76,8 +76,6 @@ wyc.exe -M -i 192.168
 ## Analyze the results
 To analyze and visualize the results, this project includes **CallMapper**, a Python and JavaScript solution that reads the JSON output from WhoYouCalling and hosts a network graph of all processes and their related network activity. **CallMapper** allows for filtering and searching through nodes and performing API lookups of checksums, IPs and domains.
 
-![Example Usage CallMapper](imgs/ExampleUsageCallMapper.gif)
-
 **Simple usage**:
 ```
 python callmapper.py -r ./Result.json
