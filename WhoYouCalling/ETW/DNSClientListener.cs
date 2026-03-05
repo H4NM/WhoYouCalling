@@ -1,8 +1,8 @@
 ﻿using Microsoft.Diagnostics.Tracing;
 using Microsoft.Diagnostics.Tracing.Session;
 using WhoYouCalling.Network.DNS;
-using WhoYouCalling.Utilities;
 using WhoYouCalling.Network;
+using WhoYouCalling.Process;
 
 namespace WhoYouCalling.ETW
 {
@@ -27,15 +27,13 @@ namespace WhoYouCalling.ETW
             string retrievedQuery = data.PayloadByName("QueryName").ToString().Trim();
             string dnsDomainQueried = string.IsNullOrWhiteSpace(retrievedQuery) ? "N/A" : retrievedQuery;
 
-            int queryTypeCode = 0;
-            if (!int.TryParse(data.PayloadByName("QueryType").ToString(), out queryTypeCode))
+            if (!int.TryParse(data.PayloadByName("QueryType").ToString(), out int queryTypeCode))
             {
-                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query type. Failed to parse it", PrintType.Debug);
-                queryTypeCode = 999999; // Non-existing DNS type value. Is later looked up
+                queryTypeCode = Miscellaneous.NotApplicableStatusNumber; // Non-existing DNS type value. Is later looked up
             }
             string dnsRecordTypeCodeName = DnsCodeLookup.GetDnsTypeName(queryTypeCode); // Retrieve the DNS type code name
 
-            DNSQuery dnsQuery = new DNSQuery
+            DNSQuery dnsQuery = new()
             {
                 DomainQueried = dnsDomainQueried,
                 RecordTypeCode = queryTypeCode,
@@ -43,9 +41,9 @@ namespace WhoYouCalling.ETW
             };
 
             Program.CatalogETWActivity(eventType: EventType.DNSQuery,
-                  processName: processName,
-                  processID: data.ProcessID,
-                  dnsQuery: dnsQuery);
+                                      processName: processName,
+                                      pid: data.ProcessID,
+                                      dnsQuery: dnsQuery);
         }
 
         private void ProcessDnsResponse(dynamic data, string processName)
@@ -54,24 +52,20 @@ namespace WhoYouCalling.ETW
             string dnsQuery = string.IsNullOrWhiteSpace(retrievedQuery) ? "N/A" : retrievedQuery;
             string retrievedQueryResults = data.PayloadByName("QueryResults").ToString().Trim();
 
-            int queryTypeCode;
-            int queryStatusCode;
 
-            if (!int.TryParse(data.PayloadByName("QueryStatus").ToString(), out queryStatusCode))
+            if (!int.TryParse(data.PayloadByName("QueryStatus").ToString(), out int queryStatusCode))
             {
-                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query status. Failed to parse it", PrintType.Debug);
-                queryStatusCode = Constants.Miscellaneous.NotApplicableStatusNumber; // Non-existing DNS status value. Is later looked up
+                queryStatusCode = Miscellaneous.NotApplicableStatusNumber; // Non-existing DNS status value. Is later looked up
             }
-            if (!int.TryParse(data.PayloadByName("QueryType").ToString(), out queryTypeCode))
+            if (!int.TryParse(data.PayloadByName("QueryType").ToString(), out int queryTypeCode))
             {
-                ConsoleOutput.Print($"Attempted to parse retrieved DNS Query type. Failed to parse it", PrintType.Debug);
-                queryTypeCode = Constants.Miscellaneous.NotApplicableStatusNumber; // Non-existing DNS type value. Is later looked up
+                queryTypeCode = Miscellaneous.NotApplicableStatusNumber; // Non-existing DNS type value. Is later looked up
             }
 
             string dnsRecordTypeCodeName = DnsCodeLookup.GetDnsTypeName(queryTypeCode); // Retrieve the DNS type code name
             string dnsResponseStatusCodeName = DnsCodeLookup.GetDnsStatusName(queryStatusCode); // Retrieve the DNS response status code name
 
-            DNSResponse dnsResponseQuery = new DNSResponse
+            DNSResponse dnsResponseQuery = new()
             {
                 DomainQueried = retrievedQuery,
                 RecordTypeCode = queryTypeCode,
@@ -83,7 +77,7 @@ namespace WhoYouCalling.ETW
 
             Program.CatalogETWActivity(eventType: EventType.DNSResponse,
                     processName: processName,
-                    processID: data.ProcessID,
+                    pid: data.ProcessID,
                     dnsResponse: dnsResponseQuery);
         }
 
@@ -91,7 +85,7 @@ namespace WhoYouCalling.ETW
         {
             switch (data.EventName)
             {
-                case "EventID(3006)":
+                case "EventID(3006)": // DNS Query
                     {
                         
                         if (Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName))
@@ -99,11 +93,11 @@ namespace WhoYouCalling.ETW
                             string processName = Program.GetMonitoredProcessName(pid: data.ProcessID, processName: data.ProcessName);
                             ProcessDnsQuery(data, processName);
                         }
-                        else if (Program.MonitorEverything() || (Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)))
+                        else if (Program.MonitorEverything())
                         {
-                            string processName = Program.GetNewProcessName(pid: data.ProcessID, processName: data.ProcessName);
+                            string processName = ProcessManager.GetPIDProcessName(data.ProcessID); // Process name is always empty in DNS ETW
 
-                            if (!Program.IsMonitoredProcess(pid: data.ProcessID, processName: processName)) // This is to deal with race conditions as the DNS ETW registers before process starts sometimes, where it is added before the actua
+                            if (!Program.IsMonitoredProcess(pid: data.ProcessID, processName: processName)) // This is to deal with race conditions as the DNS ETW registers before process starts sometimes, where it is added before the actual process is started
                             {
                                 Program.AddProcessToMonitor(pid: data.ProcessID, processName: processName);
                             }
@@ -112,7 +106,7 @@ namespace WhoYouCalling.ETW
                         }
                         break;
                     }
-                case "EventID(3008)":
+                case "EventID(3008)": // DNS Response
                     {
 
                         if (Program.IsMonitoredProcess(pid: data.ProcessID, processName: data.ProcessName))
@@ -120,11 +114,11 @@ namespace WhoYouCalling.ETW
                             string processName = Program.GetMonitoredProcessName(pid: data.ProcessID, processName: data.ProcessName);
                             ProcessDnsResponse(data, processName);
                         }
-                        else if (Program.MonitorEverything() || (Program.TrackProcessesByName() && Program.IsTrackedProcessByName(pid: data.ProcessID, processName: data.ProcessName)))
+                        else if (Program.MonitorEverything())
                         {
-                            string processName = Program.GetNewProcessName(pid: data.ProcessID, processName: data.ProcessName);
+                            string processName = ProcessManager.GetPIDProcessName(data.ProcessID); // Process name is always empty in DNS ETW
 
-                            if (!Program.IsMonitoredProcess(pid: data.ProcessID, processName: processName)) // This is to deal with race conditions as the DNS ETW registers before process starts sometimes, where it is added before the actua
+                            if (!Program.IsMonitoredProcess(pid: data.ProcessID, processName: processName)) // This is to deal with race conditions as the DNS ETW registers before process starts sometimes, where it is added before the actual process is started
                             {
                                 Program.AddProcessToMonitor(pid: data.ProcessID, processName: processName);
                             }
@@ -133,11 +127,17 @@ namespace WhoYouCalling.ETW
                         }
                         break;
                 }
-                default:
-                    {
-                        break;
-                    }
             }
+            /*
+            == Other Events for when eventuelly enriching if responses were cached or remote == 
+            EventID(3009) - Initial event requesting DNS lookup
+            EventID(3010) - DNS query sent to specific DNS server for provided domain name
+            EventID(3011) - A DNS response was received from DNS server for requested domain name 
+            EventID(3016) - DNS Cache query was requested for domain 
+            EventID(3018) - DNS Cache query for domain was made
+            EventID(3019) - DNS Query hread was called for domain 
+            EventID(3020) - DNS Query response for domain returned with result 
+            */
         }
     }
 }

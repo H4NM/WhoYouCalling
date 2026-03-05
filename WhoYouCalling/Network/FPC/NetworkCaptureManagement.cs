@@ -52,7 +52,6 @@ namespace WhoYouCalling.Network.FPC
         {
             if (string.IsNullOrWhiteSpace(ip))
             {
-                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". It was Null or Whitespace", PrintType.Debug);
                 return IPAddress.None;
             }
 
@@ -65,7 +64,6 @@ namespace WhoYouCalling.Network.FPC
             }
             else
             {
-                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". Failed to parse it", PrintType.Debug);
                 return IPAddress.None;
             }
         }
@@ -74,23 +72,42 @@ namespace WhoYouCalling.Network.FPC
         {
             return LibPcapLiveDeviceList.Instance; // Retrieve the device list
         }
-        public static void PrintNetworkInterfaces()
+
+        public static int? MatchIPToNetworkInterface(LibPcapLiveDeviceList networkDevices, string providedIPPart)
         {
-            var devices = GetNetworkInterfaces();
-            if (devices.Count < 1)
+            int deviceId = 0;
+            foreach (var dev in networkDevices)
             {
-                ConsoleOutput.Print("No network interfaces were found on this machine.", PrintType.Error);
-                Environment.Exit(1);
+                foreach (PcapAddress addr in dev.Addresses)
+                {
+                    if (addr.Addr != null && addr.Addr.ipAddress != null)
+                    {
+                        IPAddress ip = addr.Addr.ipAddress;
+                        if (!IsSelfAssignedIPv4(ip) && !IsLinkLocalIPv6(ip))
+                        {
+                            if (ip.ToString().StartsWith(providedIPPart))
+                            {
+                                return deviceId;
+                            }
+                        }
+                    }
+                }
+                deviceId++;
             }
+            return null;
+        }
+
+        public static void PrintNetworkInterfaces(LibPcapLiveDeviceList networkDevices)
+        {
 
             ConsoleOutput.Print("Available interfaces:", PrintType.Info);
-            int i = 0;
+            int deviceId = 0;
             string deviceMsg;
-            foreach (var dev in devices)
+            foreach (var dev in networkDevices)
             {
-                deviceMsg = $"{i}) {dev.Description}";
+                deviceMsg = $"{deviceId}) {dev.Description}";
                 ConsoleOutput.Print(deviceMsg, PrintType.NetworkInterface);
-                i++;
+                deviceId++;
                 foreach (PcapAddress addr in dev.Addresses)
                 {
                     if (addr.Addr != null && addr.Addr.ipAddress != null)

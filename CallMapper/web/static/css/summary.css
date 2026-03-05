@@ -1,0 +1,182 @@
+tr:hover{
+   background-color: #eeeeee;
+} 
+
+#view1 {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;        
+    overflow-x: auto;       
+    padding: 10px;            
+    box-sizing: border-box;
+    align-items: center; 
+}
+
+#summary-metadata-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 10px;
+  box-sizing: border-box;
+
+  max-width: 70%;
+  margin: 20px auto 0;
+}
+
+.summary-section {
+  margin: 0 auto;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgb(131, 131, 131);
+}
+
+.summary-section h1 {
+    text-align: center;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+#metadata-info-table {
+  margin-top: 20px;
+  width: 100%;
+  table-layout: auto;  
+  border-collapse: collapse; 
+  border: 2px solid #333; 
+}
+
+#metadata-info-table th,
+#metadata-info-table td {
+  word-break: break-all;     
+  border: 1px solid #aaa; 
+  padding: 4px 6px;
+  overflow-wrap: anywhere;
+}
+
+#metadata-info-table th{
+  font-size: 14px;
+  white-space: nowrap;
+  background-color: #e7e7e7;
+}
+
+#metadata-info-table td{
+  font-size: 11px;
+}
+
+#metadata-info-table #wyc-summary-capture-cell-id {
+  font-size: 20px;
+  text-align: center;
+}
+
+#summary-tables-container {
+  display: flex;
+  gap: 16px;
+  padding: 10px 0;
+  box-sizing: border-box;
+
+  width: 100%;
+  margin: 20px 0 0;
+
+  align-items: stretch;  
+}
+
+.summary-table-wrapper {
+  flex: 1;
+  min-width: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+  border: 1px solid rgb(73, 73, 73);  
+  padding-bottom: 2px;
+}
+
+.summary-table {
+  width: 100%;
+  border-collapse: separate;   
+  border-spacing: 0;    
+  font-size: 13px;
+  text-align: left;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.summary-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 10px;
+  font-weight: 600;
+  font-size: 12.5px;
+  border-bottom: 1px solid #ccc;
+  letter-spacing: 0.02em;
+  color: #333;
+}
+
+.summary-table tbody tr {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.summary-table th{
+   font-weight: 600;
+}
+
+.summary-table td {
+  padding: 6px 10px;
+  word-break: break-word;
+  color: #111;
+}
+
+#summary-table-processes th{
+   background-color: var(--process-node-color); 
+} 
+
+#summary-table-ips th { 
+  background-color: var(--ip-node-color); 
+}
+
+#summary-table-domains th { 
+  background-color: var(--domain-node-color); 
+}
+
+
+.summary-table-ports {
+
+  width: 100%;
+  border-collapse: separate;   
+  border-spacing: 0;    
+  font-size: 13px;
+  text-align: left;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+
+.summary-table-ports th {
+  position: sticky;
+  background-color: #e7e7e7;
+  top: 0;
+  z-index: 2;
+  padding: 8px 10px;
+  font-weight: 600;
+  font-size: 12.5px;
+  border-bottom: 1px solid #ccc;
+  letter-spacing: 0.02em;
+  color: #333;
+}
+
+.summary-table-ports th,
+.summary-table-ports td {
+  word-break: break-all;     
+  border: 1px solid #e6e6e6; 
+  padding: 4px 6px;
+}
+
+.summary-table-ports th.summary-table-ports-header {
+    text-align: center;
+    font-size: 0.9em;  
+    font-weight: bold;
+    background-color: #dfe6f0; 
+}
+
+.summary-table-ports th#summary-table-ports-header-tcp {
+    background-color: rgb(255, 183, 76); 
+}
+
+.summary-table-ports th#summary-table-ports-header-udp {
+    background-color: rgb(84, 152, 255); 
+}

@@ -1,5 +1,4 @@
-﻿
-using System.Net;
+﻿using System.Net;
 using System.Text.RegularExpressions;
 using WhoYouCalling.Network.DNS;
 using WhoYouCalling.Utilities;
@@ -8,20 +7,18 @@ namespace WhoYouCalling.Network
 {
     internal class NetworkUtils
     {
+
         public static bool IsLocalhostIP(string ip)
         {
-            if (ip == "127.0.0.1" || ip == "::1")
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            if (IPAddress.TryParse(ip, out var address))
+                return IPAddress.IsLoopback(address);
+
+            return false;
         }
+
         public static Dictionary<ConnectionRecordType, List<string>> GetPresentableConnectionRecordsFormat(Dictionary<ConnectionRecordType, HashSet<string>> networkDetails)
         {
-            Dictionary<ConnectionRecordType, List<string>> sortedNetworkDetailsAsList = new();
+            Dictionary<ConnectionRecordType, List<string>> sortedNetworkDetailsAsList = [];
             foreach (KeyValuePair<ConnectionRecordType, HashSet<string>> entry in networkDetails)
             {
                 List<string> sortedList = Generic.ConvertAndSortHashSetToList(entry.Value);
@@ -45,7 +42,8 @@ namespace WhoYouCalling.Network
             
         public static Dictionary<ConnectionRecordType, HashSet<string>> FilterConnectionRecords(HashSet<ConnectionRecord> tcpIPTelemetry)
         {
-            Dictionary<ConnectionRecordType, HashSet<string>> filteredConnectionRecords = new Dictionary<ConnectionRecordType, HashSet<string>> {
+            Dictionary<ConnectionRecordType, HashSet<string>> filteredConnectionRecords = new()
+            {
                                                     {ConnectionRecordType.IPv4TCP, new HashSet<string>()},
                                                     {ConnectionRecordType.IPv6TCP, new HashSet<string>()},
                                                     {ConnectionRecordType.IPv4UDP, new HashSet<string>()},
@@ -58,7 +56,7 @@ namespace WhoYouCalling.Network
                 string endpoint = $"{connectionRecord.DestinationIP}:{connectionRecord.DestinationPort}";
                 if (connectionRecord.IPversion == Network.IPVersion.IPv4)
                 {
-                    if (connectionRecord.DestinationIP == "127.0.0.1")
+                    if (connectionRecord.DestinationIP == "127.0.0.1") 
                     {
                         filteredConnectionRecords[ConnectionRecordType.IPv4Localhost].Add(endpoint);
                     }
@@ -92,22 +90,20 @@ namespace WhoYouCalling.Network
 
         public static string GetActualIP(string ipAdress)
         {
-            string actualIPAdress = "";
             IPAddress address = IPAddress.Parse(ipAdress);
             if (address.IsIPv4MappedToIPv6)
             {
-                actualIPAdress = address.MapToIPv4().ToString();
+                return address.MapToIPv4().ToString();
             }
             else
             {
-                actualIPAdress = ipAdress;
+                return ipAdress;
             }
-            return actualIPAdress;
         }
 
         public static HashSet<ConnectionRecord> GetNetworkAdressesFromDNSResponse(DNSResponse dnsResponses)
         {
-            HashSet<ConnectionRecord> domainIPAdresses = new();
+            HashSet<ConnectionRecord> domainIPAdresses = [];
 
             foreach (string ipAdress in dnsResponses.QueryResult.IPs)
             {
@@ -133,7 +129,7 @@ namespace WhoYouCalling.Network
                     actualIPAdress = ipAdress;
                 }
 
-                ConnectionRecord connectionRecord = new ConnectionRecord
+                ConnectionRecord connectionRecord = new()
                 {
                     IPversion = ipVersion,
                     DestinationIP = actualIPAdress
@@ -146,8 +142,9 @@ namespace WhoYouCalling.Network
 
         public static DNSResponseResult ParseDNSResult(string queryResults)
         {
-            DNSResponseResult responseResult = new DNSResponseResult {
-                IPs = new List<string> ()
+            DNSResponseResult responseResult = new()
+            {
+                IPs = []
             };
 
             if (!queryResults.Contains(";") || string.IsNullOrWhiteSpace(queryResults))
@@ -180,28 +177,6 @@ namespace WhoYouCalling.Network
             }
             return responseResult;
         }
-   
-
-        private static IPAddress CleanIPAdress(string ip)
-        {
-            if (string.IsNullOrWhiteSpace(ip))
-            {
-                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". It was Null or Whitespace", PrintType.Debug);
-                return IPAddress.None;
-            }
-
-            string pattern = @"[^0-9a-fA-F\.:]";
-            string cleanedIpAddress = Regex.Replace(ip, pattern, "").Trim();
-
-            if (IPAddress.TryParse(cleanedIpAddress, out IPAddress? cleanedIPAddressObject)) // Parsing IP address
-            {
-                return cleanedIPAddressObject!;
-            }
-            else
-            {
-                ConsoleOutput.Print($"Attempted to clean ip \"{ip}\". Failed to parse it", PrintType.Debug);
-                return IPAddress.None;
-            }
-        }
+        
     }
 }

@@ -10,10 +10,6 @@ namespace WhoYouCalling.Utilities
             switch (type)
             {
                 case PrintType.Info:
-                    if (Program.Debug())
-                    {
-                        return;
-                    }
                     prefix = "[*]";
                     break;
                 case PrintType.InfoTime:
@@ -21,10 +17,6 @@ namespace WhoYouCalling.Utilities
                     prefix = $"[{currentTimestamp}]";
                     break;
                 case PrintType.RunningMetrics:
-                    if (Program.Debug())
-                    {
-                        return;
-                    }
                     if (!string.IsNullOrEmpty(spinner))
                     {
                         prefix = $"[{spinner}]";
@@ -47,16 +39,6 @@ namespace WhoYouCalling.Utilities
                 case PrintType.Fatal:
                     prefix = "\n[!!!]";
                     break;
-                case PrintType.Debug:
-                    if (Program.Debug())
-                    {
-                        prefix = $"[DEBUG]";
-                    }
-                    else
-                    {
-                        return;
-                    }
-                    break;
                 default:
                     prefix = "";
                     break;
@@ -75,8 +57,8 @@ namespace WhoYouCalling.Utilities
                 int processCount = Program.GetProcessesCount();
                 Print($"Processes: {processCount}. ETW Events: {etwActivities}. DNS Queries: {dnsActivities}. Network Packets: {packetCount}", 
                       PrintType.RunningMetrics, 
-                      spinner: Constants.Miscellaneous.SpinnerChars[spinnerIndex]);
-                spinnerIndex = (spinnerIndex + 1) % Constants.Miscellaneous.SpinnerChars.Count;
+                      spinner: Miscellaneous.SpinnerChars[spinnerIndex]);
+                spinnerIndex = (spinnerIndex + 1) % Miscellaneous.SpinnerChars.Count;
                 Thread.Sleep(Constants.Timeouts.ProcessMonitoringPrintPause);
             }
         }
@@ -88,12 +70,11 @@ namespace WhoYouCalling.Utilities
                 int processOutputCounter = Program.GetProcessOutputCounter();
                 Print($"Processing results for {processesWithNetworkActivity} processes",
                       PrintType.RunningMetrics,
-                      spinner: Constants.Miscellaneous.SpinnerChars[spinnerIndex]);
-                spinnerIndex = (spinnerIndex + 1) % Constants.Miscellaneous.SpinnerChars.Count;
+                      spinner: Miscellaneous.SpinnerChars[spinnerIndex]);
+                spinnerIndex = (spinnerIndex + 1) % Miscellaneous.SpinnerChars.Count;
                 Thread.Sleep(Constants.Timeouts.ProcessMonitoringPrintPause);
             }
         }
-
         public static void PrintBPFFilterValidation(CancellationToken token)
         {
             int spinnerIndex = 0;
@@ -102,24 +83,17 @@ namespace WhoYouCalling.Utilities
 
                 Print($"Validating BPF filter",
                       PrintType.RunningMetrics,
-                      spinner: Constants.Miscellaneous.SpinnerChars[spinnerIndex]);
-                spinnerIndex = (spinnerIndex + 1) % Constants.Miscellaneous.SpinnerChars.Count;
+                      spinner: Miscellaneous.SpinnerChars[spinnerIndex]);
+                spinnerIndex = (spinnerIndex + 1) % Miscellaneous.SpinnerChars.Count;
                 Thread.Sleep(Constants.Timeouts.ProcessMonitoringPrintPause);
             }
         }
 
         public static void PrintStartMonitoringText()
         {
-            Console.Clear();
             string version = Utilities.Generic.GetVersion();
             PrintHeader(version);
             Print($"Starting.. Press CTRL+C to cancel process monitoring.", PrintType.InfoTime);
-        }
-
-        public static void PrintArgumentValues(ArgumentData argumentData)
-        {
-            Print("=== Arguments ===", PrintType.Debug);
-            Generic.PrintObjectProperties(argumentData);      
         }
 
         public static void PrintHeader(string fileVersion)

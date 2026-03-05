@@ -6,7 +6,7 @@ namespace WhoYouCalling.Network
 
         public static string GetCombinedNetworkFilter(HashSet<ConnectionRecord> connectionRecords, FilterType filter, bool strictComsEnabled = false, bool filterPorts = true, bool onlyDestIP = false)
         {
-            HashSet<string> collectedFilterParts = new();
+            HashSet<string> collectedFilterParts = [];
             foreach (ConnectionRecord connectionRecord in connectionRecords) //For each recorded unique network activity
             {
                 string partialFilter = "";

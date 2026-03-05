@@ -1,0 +1,63 @@
+.node-count-wrapper {
+  position: relative;
+}
+
+.cy-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.hidden {
+  display: none;
+}
+
+.node-count-wrapper .spinner {
+  width: 90px;
+  height: 90px;
+}
+
+#loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.spinner {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--domain-node-color) 0deg 120deg,
+    var(--process-node-color) 120deg 240deg,
+    var(--ip-node-color) 240deg 360deg
+  );
+  mask: radial-gradient(farthest-side, transparent 70%, #000 71%);
+  -webkit-mask: radial-gradient(farthest-side, transparent 70%, #000 71%);
+  animation: spin 2s linear infinite;
+}
+
+.loading-text {
+  font-size: 14px;
+  color: #333;
+  letter-spacing: 0.5px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

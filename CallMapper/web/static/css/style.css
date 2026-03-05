@@ -1,0 +1,110 @@
+
+@import './spinner.css';
+@import './summary.css';
+@import './map.css';
+@import './supporters.css';
+
+:root {
+  --process-node-color:  #e659e6;
+  --ip-node-color:  #2ffcf3;
+  --domain-node-color:  #fcf62f;
+
+  --input-bar-color: #f1f1f1;
+  --input-bar-border-color: #333;
+  --input-bar-text-color: #0f0f0f;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    font-family: Verdana;
+}
+
+.mainDiv {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.topBar {
+    display: flex;
+    align-items: stretch; 
+    height: 36px;
+    background: #f1f1f1;
+    border-bottom: 2px solid #000000;
+}
+
+.topLeftInBar,.centerInBar,.topRightInBar {
+    display: flex;
+    align-items: center;
+    display: flex;
+}
+
+.topLeftInBar {
+    padding-left: 10px;
+    gap: 8px;
+}
+
+.logo {
+    height: 18px;         
+    width: auto;
+}
+
+.title {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.slogan {
+    font-size: 11px;
+    font-style: italic;
+    color: #666;
+}
+
+.centerInBar {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: stretch;  
+}
+
+.tab {
+    padding: 0 14px;   
+    height: 100%;      
+    display: flex;
+    align-items: center; 
+    cursor: pointer;
+    font-size: 13px;
+    border-right: 1px solid #ddd;
+    user-select: none;
+    box-sizing: border-box;
+}
+.tab:last-child {
+    border-right: none;
+}
+
+.tab.active {
+    background: #fff;
+    border-top: 2px solid #7c7c7c;
+    border-left: 2px solid #7c7c7c;
+    border-right: 2px solid #7c7c7c;
+}
+
+.content {
+    flex: 1;
+    position: relative;
+    overflow: hidden; 
+}
+
+.view {
+    display: none;    
+    position: absolute;
+    inset: 0;
+}
+
+
+.view.active {
+    display: block;
+}
+
+

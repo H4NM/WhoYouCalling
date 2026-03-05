@@ -43,7 +43,7 @@ jobs:
           path: output
 
       - name: Run with Illuminate mode
-        run: output\wyc.exe --illuminate --nopcap --timer 20 -d
+        run: output\wyc.exe --machine --nopcap --timer 20 
 
   test-executable-privileged:
     needs: build
@@ -58,7 +58,7 @@ jobs:
 
       - name: Run with Execute mode with cmd.exe as privileged user
         run: |
-          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --arguments "/c whoami" --nopcap --killprocesses --timer 10 --privileged -d
+          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --nopcap --killprocesses --timer 10 --privileged 
 
   test-executable-unprivileged:
     needs: build
@@ -74,7 +74,7 @@ jobs:
       - name: Run with Execute mode with cmd.exe as low privileged user
         run: |
           net user ga ETphon3H0me@_1 /add
-          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --user ga --password ETphon3H0me@_1 --arguments "/c whoami" --nopcap --killprocesses --timer 10 -d
+          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --user ga --password ETphon3H0me@_1 --nopcap --killprocesses --timer 10 
 
   test-pid:
     needs: build
@@ -88,5 +88,5 @@ jobs:
           path: output
 
       - name: Run with Listen mode against System process
-        run: output\wyc.exe --PID 4 --nopcap --timer 10 -d
+        run: output\wyc.exe --pid 4 --nopcap --timer 10 
 

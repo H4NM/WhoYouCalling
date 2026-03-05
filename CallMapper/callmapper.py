@@ -7,30 +7,29 @@ from pathlib import Path
 #=====================================
 #  CUSTOM LIBRARIES 
 #========  FUNCTIONS & CLASSES =======
-from lib.functions import *
-from lib.static import SCRIPT_BANNER
-from lib.output import * 
-
-#==========  API LOOKUPS  ============
-from lib.lookups import *
-#from custom.MyCustomAPILookupClass import *
+from lib.cytoscape import  get_visualization_data, get_unique_values, get_destination_ports
+from lib.static.static import SCRIPT_BANNER, DEFAULT_HTTP_HOST_ADRESS, DEFAULT_HTTP_HOST_PORT 
+from lib.static.capture_group_colors import CAPTURE_GROUP_COLORS
+from lib.validation import validate_apis, validate_prerequisites, valid_arguments_were_passed, validate_result_files
+from lib.filesystem import get_results_files_recursively, get_results_file_data, output_visualization_data
+from lib.apis import VirusTotal, AbuseIPDB
+from lib.utils import sort_unique_values, get_comma_separated_results_files
+from lib.output import ConsoleOutputPrint
+from lib.httpserver import start_http_server
 
 #=====================================
 #  CHANGABLE VARIABLES AND FUNCTIONS
 #=====================================
-HTTP_HOST_ADRESS:str = "127.0.0.1"
-HTTP_HOST_PORT:int = 8080
-AVAILABLE_APIS = {
-    'VirusTotal': {
-        'api_key': '', 
-        'api': VirusTotal,
+AVAILABLE_APIS:list = [
+    {
+        'api_class': VirusTotal,
+        'api_key': os.getenv("CALLMAPPER_APIKEY_VIRUSTOTAL", default=''),
     },
-    'AbuseIPDB': {
-        'api_key': '', 
-        'api': AbuseIPDB,
+    {
+        'api_class': AbuseIPDB,
+        'api_key': os.getenv("CALLMAPPER_APIKEY_ABUSEIPDB", default=''),  
     }
-}
-
+]
 
 #==================================================
 #  Dont touch anything below :-) 
@@ -38,69 +37,92 @@ AVAILABLE_APIS = {
 
 def main() -> None:
     SCRIPT_DIRECTORY: Path.parent = Path(__file__).parent
-    DATA_FILE: str = SCRIPT_DIRECTORY / "data.json"
+    WEB_DIRECTORY: Path = SCRIPT_DIRECTORY / "web" 
+    DATA_FILE: Path = WEB_DIRECTORY / "data.json"
+    
+    wyc_result_files: list = []
     
     parser = argparse.ArgumentParser(description="A script demonstrating argparse with flags.")
-    parser.add_argument("-r", "--results-file", type=str, help="Results file")
-    parser.add_argument("-a", "--api-lookup", action="store_true", help="Lookup endpoints against defined APIs")
+    parser.add_argument("-r", "--results", type=str, help="Results file or directory with result files")
+    parser.add_argument("-i", "--ip", type=str, help="IP to serve CallMapper UI", default=DEFAULT_HTTP_HOST_ADRESS)
+    parser.add_argument("-p", "--port", type=int, help="Port to serve CallMapper UI", default=DEFAULT_HTTP_HOST_PORT)
     args = parser.parse_args()
     print(SCRIPT_BANNER)
     
-    if not has_prerequisites():
-        ConsoleOutputPrint(msg=f"Invalid python version. You need atleast python version {MINIMUM_PYTHON_VERSION}. You have {sys.version}", print_type="fatal")
-        sys.exit(1) 
-
-    if not file_exists_in_same_script_folder(SCRIPT_DIRECTORY, "index.html"):
-        ConsoleOutputPrint(msg=f"Unable to find index.html in the same directory as the script", print_type="fatal")
-        sys.exit(1)
+    validate_prerequisites(web_directory=WEB_DIRECTORY)
         
-    if not args.results_file:
-        if not file_exists_in_same_script_folder(SCRIPT_DIRECTORY, "data.json"):
-            ConsoleOutputPrint(msg=f"Unable to find data.json in the same directory as the script. Please supply a Results.json file or move data.json to the same path as the script", print_type="fatal")
-            sys.exit(1)
-        if not valid_data_file_exists(DATA_FILE):
-            ConsoleOutputPrint(msg=f"{DATA_FILE} has an invalid JSON structure", print_type="fatal")
-            sys.exit(1)
+    if not valid_arguments_were_passed(args=args, web_directory=WEB_DIRECTORY, data_file=DATA_FILE):
+        sys.exit(1)
     
-    if args.api_lookup and not requests_is_installed():
-        ConsoleOutputPrint(REQUESTS_LIBRARY_MISSING_MSG, print_type="fatal")
-        sys.exit(1)
+    if os.path.isdir(args.results):
+        wyc_result_files = get_results_files_recursively(args.results)
+        ConsoleOutputPrint(msg=f"Found {len(wyc_result_files)} Result.json files", print_type="info")
+    elif os.path.isfile(args.results):
+        wyc_result_files.append(args.results)
+    else: # Is comma separated string with result files paths
+        wyc_result_files = get_comma_separated_results_files(args.results)
+    
+    validate_result_files(wyc_result_files=wyc_result_files)
+    
+
+    results_file_counter: int = 0
+    callmapper_data:dict = {
+        "elements": {
+            "nodes": [],
+            "edges": []
+        },
+        "summary": {
+            "unique":{
+            },
+            "destination_ports":{
+                
+            }
+        },
+        "alerts": [
+            
+        ],
+        "wyc_results_metadata":{
+            
+        }
+    }
+    unique_values = {
+        'process_names': [],
+        'ips': [],
+        'domains': []
+    }
+    
+    for result_file in wyc_result_files:
+        results_file_counter += 1
+        result_file_id = results_file_counter
+        capture_group_color: str = CAPTURE_GROUP_COLORS[results_file_counter-1]
+        multiple_capture_files: bool = True if len(wyc_result_files) > 1 else False
         
-    if args.results_file:
-        ConsoleOutputPrint(msg=f"Retrieving data from results file", print_type="info")
-        wyc_results: Union[dict, list] = get_results_file_data(args.results_file) # Can be either dict or list due to backwards compatiblity 
-        if type(wyc_results) == dict:
-            metadata: dict = wyc_results['Metadata']
-            monitored_processes: list = wyc_results['MonitoredProcesses']
-        else: # Pre 1.5.3 
-            metadata: dict = {}
-            monitored_processes: list = wyc_results
+        ConsoleOutputPrint(msg=f"Processing results file {results_file_counter}/{len(wyc_result_files)}", print_type="info")
+        wyc_results_json_data: dict = get_results_file_data(result_file) 
+
+        metadata: dict = wyc_results_json_data['Metadata']
+        monitored_processes: list = wyc_results_json_data['MonitoredProcesses']
         
-        if args.api_lookup:
-            unique_process_names: set = get_unique_process_names_with_external_network_activity(monitored_processes)
-            processes_to_lookup_with_network_activity: list = prompt_user_for_processes_to_lookup(unique_process_names)
-            endpoints: dict = get_unique_endpoints_to_lookup(monitored_processes, processes_to_lookup_with_network_activity)
-            apis_to_use: list = prompt_user_for_apis_to_use(AVAILABLE_APIS)
-            lookup_endpoints(AVAILABLE_APIS, endpoints, apis_to_use) 
+        callmapper_data["wyc_results_metadata"][result_file_id] = metadata
+        callmapper_data["wyc_results_metadata"][result_file_id]['callmapper_color'] = capture_group_color
+        unique_values = get_unique_values(unique_values, monitored_processes)
         
-        ConsoleOutputPrint(msg=f"Creating visualization data", print_type="info")
-        visualization_data: dict = get_visualization_data(monitored_processes)
-        
-        if metadata:
-            visualization_data = add_metadata_to_visualization_data(visualization_data, metadata)
-        if os.path.isfile(DATA_FILE):
-            if prompt_user_for_overwrite_of_data_file():
-                ConsoleOutputPrint(msg=f"Overwriting existing data.json.", print_type="info")
-                output_visualization_data(DATA_FILE, visualization_data)
-            else:
-                ConsoleOutputPrint(msg=f"Keeping existing data.json", print_type="info")
-        else:
-            output_visualization_data(DATA_FILE, visualization_data)
-    else:
-        ConsoleOutputPrint(msg=f"Visualizing from existing results file", print_type="info")
-    ConsoleOutputPrint(msg=f"Hosting visualization via http://{HTTP_HOST_ADRESS}:{HTTP_HOST_PORT}", print_type="info")
+        callmapper_data = get_visualization_data(visualization_data=callmapper_data, 
+                                                result_file_id=result_file_id,
+                                                metadata=metadata,
+                                                capture_group_color=capture_group_color,
+                                                monitored_processes=monitored_processes,
+                                                multiple_capture_files=multiple_capture_files)
+    
+    unique_values = sort_unique_values(unique_values)
+    callmapper_data['summary']['unique'] = unique_values
+    callmapper_data['summary']['destination_ports'] = get_destination_ports(callmapper_data['elements']['edges'])
+
+    output_visualization_data(DATA_FILE, callmapper_data)
+    valid_apis:list = validate_apis(available_apis=AVAILABLE_APIS)
+    ConsoleOutputPrint(msg=f"Hosting visualization via http://{args.ip}:{args.port}", print_type="info")
     try:
-        start_http_server(directory=SCRIPT_DIRECTORY, host=HTTP_HOST_ADRESS, port=HTTP_HOST_PORT)
+        start_http_server(directory=WEB_DIRECTORY, host=args.ip, port=args.port, apis=valid_apis)
     except KeyboardInterrupt:
         ConsoleOutputPrint(msg=f"Keyboard interuppt. Goodbye!", print_type="info")
 
