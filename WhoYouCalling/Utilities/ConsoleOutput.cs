@@ -57,8 +57,8 @@ namespace WhoYouCalling.Utilities
                 int processCount = Program.GetProcessesCount();
                 Print($"Processes: {processCount}. ETW Events: {etwActivities}. DNS Queries: {dnsActivities}. Network Packets: {packetCount}", 
                       PrintType.RunningMetrics, 
-                      spinner: Constants.Miscellaneous.SpinnerChars[spinnerIndex]);
-                spinnerIndex = (spinnerIndex + 1) % Constants.Miscellaneous.SpinnerChars.Count;
+                      spinner: Miscellaneous.SpinnerChars[spinnerIndex]);
+                spinnerIndex = (spinnerIndex + 1) % Miscellaneous.SpinnerChars.Count;
                 Thread.Sleep(Constants.Timeouts.ProcessMonitoringPrintPause);
             }
         }
@@ -70,8 +70,8 @@ namespace WhoYouCalling.Utilities
                 int processOutputCounter = Program.GetProcessOutputCounter();
                 Print($"Processing results for {processesWithNetworkActivity} processes",
                       PrintType.RunningMetrics,
-                      spinner: Constants.Miscellaneous.SpinnerChars[spinnerIndex]);
-                spinnerIndex = (spinnerIndex + 1) % Constants.Miscellaneous.SpinnerChars.Count;
+                      spinner: Miscellaneous.SpinnerChars[spinnerIndex]);
+                spinnerIndex = (spinnerIndex + 1) % Miscellaneous.SpinnerChars.Count;
                 Thread.Sleep(Constants.Timeouts.ProcessMonitoringPrintPause);
             }
         }
@@ -83,8 +83,8 @@ namespace WhoYouCalling.Utilities
 
                 Print($"Validating BPF filter",
                       PrintType.RunningMetrics,
-                      spinner: Constants.Miscellaneous.SpinnerChars[spinnerIndex]);
-                spinnerIndex = (spinnerIndex + 1) % Constants.Miscellaneous.SpinnerChars.Count;
+                      spinner: Miscellaneous.SpinnerChars[spinnerIndex]);
+                spinnerIndex = (spinnerIndex + 1) % Miscellaneous.SpinnerChars.Count;
                 Thread.Sleep(Constants.Timeouts.ProcessMonitoringPrintPause);
             }
         }

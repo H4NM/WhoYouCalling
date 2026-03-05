@@ -1,0 +1,26 @@
+
+#supporters{
+  text-align: center
+}
+
+#supporters ul {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 5rem;
+}
+
+#supporters li {
+  text-align: center;
+}
+
+#supporters li::before {
+  content: "❤️ ";
+}
+
+#support-bottom-text{
+  max-width: 30%; 
+  white-space: normal;       
+  word-break: break-word;   
+  margin: 0 auto;
+  font-style: italic; 
+}

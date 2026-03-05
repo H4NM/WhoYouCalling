@@ -7,31 +7,29 @@ from pathlib import Path
 #=====================================
 #  CUSTOM LIBRARIES 
 #========  FUNCTIONS & CLASSES =======
-from lib.functions import *
-from lib.static import SCRIPT_BANNER, DEFAULT_HTTP_HOST_ADRESS, DEFAULT_HTTP_HOST_PORT
-from lib.output import * 
-from lib.httpserver import *
-from lib.validation import *
-from lib.prompts import *
-from lib.files_and_folders import get_results_files_recursively, get_comma_separated_results_files
-
-#==========  API LOOKUPS  ============
-from lib.lookups import *
-#from custom.MyCustomAPILookupClass import *
+from lib.cytoscape import  get_visualization_data, get_unique_values, get_destination_ports
+from lib.static.static import SCRIPT_BANNER, DEFAULT_HTTP_HOST_ADRESS, DEFAULT_HTTP_HOST_PORT 
+from lib.static.capture_group_colors import CAPTURE_GROUP_COLORS
+from lib.validation import validate_apis, validate_prerequisites, valid_arguments_were_passed, validate_result_files
+from lib.filesystem import get_results_files_recursively, get_results_file_data, output_visualization_data
+from lib.apis import VirusTotal, AbuseIPDB
+from lib.utils import sort_unique_values, get_comma_separated_results_files
+from lib.output import ConsoleOutputPrint
+from lib.httpserver import start_http_server
 
 #=====================================
 #  CHANGABLE VARIABLES AND FUNCTIONS
 #=====================================
-AVAILABLE_APIS:dict = {
-    'VirusTotal': {
-        'api_key': '', 
-        'api': VirusTotal,
+AVAILABLE_APIS:list = [
+    {
+        'api_class': VirusTotal,
+        'api_key': os.getenv("CALLMAPPER_APIKEY_VIRUSTOTAL", default=''),
     },
-    'AbuseIPDB': {
-        'api_key': '', 
-        'api': AbuseIPDB,
+    {
+        'api_class': AbuseIPDB,
+        'api_key': os.getenv("CALLMAPPER_APIKEY_ABUSEIPDB", default=''),  
     }
-}
+]
 
 #==================================================
 #  Dont touch anything below :-) 
@@ -48,7 +46,6 @@ def main() -> None:
     parser.add_argument("-r", "--results", type=str, help="Results file or directory with result files")
     parser.add_argument("-i", "--ip", type=str, help="IP to serve CallMapper UI", default=DEFAULT_HTTP_HOST_ADRESS)
     parser.add_argument("-p", "--port", type=int, help="Port to serve CallMapper UI", default=DEFAULT_HTTP_HOST_PORT)
-    parser.add_argument("-a", "--api-lookup", action="store_true", help="Lookup endpoints against defined APIs")
     args = parser.parse_args()
     print(SCRIPT_BANNER)
     
@@ -74,11 +71,12 @@ def main() -> None:
             "nodes": [],
             "edges": []
         },
-        "summary":{
-            
-        },
-        "stats":{
-            
+        "summary": {
+            "unique":{
+            },
+            "destination_ports":{
+                
+            }
         },
         "alerts": [
             
@@ -87,39 +85,44 @@ def main() -> None:
             
         }
     }
+    unique_values = {
+        'process_names': [],
+        'ips': [],
+        'domains': []
+    }
     
     for result_file in wyc_result_files:
         results_file_counter += 1
         result_file_id = results_file_counter
+        capture_group_color: str = CAPTURE_GROUP_COLORS[results_file_counter-1]
+        multiple_capture_files: bool = True if len(wyc_result_files) > 1 else False
         
         ConsoleOutputPrint(msg=f"Processing results file {results_file_counter}/{len(wyc_result_files)}", print_type="info")
         wyc_results_json_data: dict = get_results_file_data(result_file) 
-    
+
         metadata: dict = wyc_results_json_data['Metadata']
         monitored_processes: list = wyc_results_json_data['MonitoredProcesses']
         
-        callmapper_data[result_file_id] = metadata
+        callmapper_data["wyc_results_metadata"][result_file_id] = metadata
+        callmapper_data["wyc_results_metadata"][result_file_id]['callmapper_color'] = capture_group_color
+        unique_values = get_unique_values(unique_values, monitored_processes)
         
-        ### £ OLD API LOOKUPS
-        """
-        if args.api_lookup:
-            unique_process_names: set = get_unique_process_names_with_external_network_activity(monitored_processes)
-            processes_to_lookup_with_network_activity: list = prompt_user_for_processes_to_lookup(unique_process_names)
-            endpoints: dict = get_unique_endpoints_to_lookup(monitored_processes, processes_to_lookup_with_network_activity)
-            apis_to_use: list = prompt_user_for_apis_to_use(AVAILABLE_APIS)
-            lookup_endpoints(AVAILABLE_APIS, endpoints, apis_to_use) 
-        """
-
         callmapper_data = get_visualization_data(visualization_data=callmapper_data, 
                                                 result_file_id=result_file_id,
-                                                results_file_counter=results_file_counter,
-                                                monitored_processes=monitored_processes)
-        
-    output_visualization_data(DATA_FILE, callmapper_data)
+                                                metadata=metadata,
+                                                capture_group_color=capture_group_color,
+                                                monitored_processes=monitored_processes,
+                                                multiple_capture_files=multiple_capture_files)
     
+    unique_values = sort_unique_values(unique_values)
+    callmapper_data['summary']['unique'] = unique_values
+    callmapper_data['summary']['destination_ports'] = get_destination_ports(callmapper_data['elements']['edges'])
+
+    output_visualization_data(DATA_FILE, callmapper_data)
+    valid_apis:list = validate_apis(available_apis=AVAILABLE_APIS)
     ConsoleOutputPrint(msg=f"Hosting visualization via http://{args.ip}:{args.port}", print_type="info")
     try:
-        start_http_server(directory=WEB_DIRECTORY, host=args.ip, port=args.port)
+        start_http_server(directory=WEB_DIRECTORY, host=args.ip, port=args.port, apis=valid_apis)
     except KeyboardInterrupt:
         ConsoleOutputPrint(msg=f"Keyboard interuppt. Goodbye!", print_type="info")
 

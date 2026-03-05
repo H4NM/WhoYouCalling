@@ -1,5 +1,5 @@
 ﻿
-namespace WhoYouCalling.Constants
+namespace WhoYouCalling
 {
     internal class SecurityFlags
     {

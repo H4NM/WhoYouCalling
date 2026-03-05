@@ -45,6 +45,6 @@ namespace WhoYouCalling.Network.DNS
         UnsecuredDnsPacket = 9505,
 
         // Custom value for non-existent DNS status
-        NA = Constants.Miscellaneous.NotApplicableStatusNumber
+        NA = Miscellaneous.NotApplicableStatusNumber
     }
 }

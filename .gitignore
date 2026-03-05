@@ -11,6 +11,7 @@ requirements.txt
 autobadge.py
 requesttest.py
 TestApplication.py
+test.bat
 
 Result.json
 Summary.txt

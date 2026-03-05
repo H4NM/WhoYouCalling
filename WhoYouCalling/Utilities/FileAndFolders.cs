@@ -1,7 +1,7 @@
 ﻿using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using WhoYouCalling.Constants;
+using System.Diagnostics;
 
 namespace WhoYouCalling.Utilities
 {
@@ -60,7 +60,7 @@ namespace WhoYouCalling.Utilities
             }
         }
 
-        public static string? CalculateFileMD5(string filePath)
+        public static string? GetFileMD5(string filePath)
         {
             try { 
                 using (var md5 = MD5.Create())
@@ -77,7 +77,7 @@ namespace WhoYouCalling.Utilities
                 return null;
             }
         }
-        public static string? CalculateFileSHA1(string filePath)
+        public static string? GetFileSHA1(string filePath)
         {
             try
             {
@@ -94,7 +94,7 @@ namespace WhoYouCalling.Utilities
             }
         }
 
-        public static string? CalculateFileSHA256(string filePath)
+        public static string? GetFileSHA256(string filePath)
         {
             try
             {
@@ -110,6 +110,70 @@ namespace WhoYouCalling.Utilities
                 return null;
             }
         }
+        public static long? GetFileSize(string filePath)
+        {
+            try
+            {
+                return new FileInfo(filePath).Length;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public static (string? Vendor, string? Product, string? Version) GetFileMetadata(string filePath)
+        {
+            try
+            {
+                var info = FileVersionInfo.GetVersionInfo(filePath);
+
+                return (
+                    info.CompanyName,
+                    info.ProductName,
+                    info.ProductVersion
+                );
+            }
+            catch
+            {
+                return (null, null, null);
+            }
+        }
+
+
+
+        // https://stackoverflow.com/a/35077990
+        public static double? GetFileEntropy(string filePath)
+        {
+            try
+            {
+
+            int range = byte.MaxValue + 1;
+            byte[] values = File.ReadAllBytes(filePath);
+
+            long[] counts = new long[range];
+            foreach (byte value in values)
+            {
+                counts[value]++;
+            }
+
+            double entropy = 0;
+            foreach (long count in counts)
+            {
+                if (count != 0)
+                {
+                    double probability = (double)count / values.LongLength;
+                    entropy -= probability * Math.Log(probability, 2);
+                }
+            }
+            return entropy;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
 
         public static string? GetFileCreationTime(string filePath)
         {

@@ -1,13 +1,24 @@
 
+@import './spinner.css';
+@import './summary.css';
+@import './map.css';
+@import './supporters.css';
+
+:root {
+  --process-node-color:  #e659e6;
+  --ip-node-color:  #2ffcf3;
+  --domain-node-color:  #fcf62f;
+
+  --input-bar-color: #f1f1f1;
+  --input-bar-border-color: #333;
+  --input-bar-text-color: #0f0f0f;
+}
+
 html, body {
     height: 100%;
     margin: 0;
     font-family: Verdana;
 }
-
-/* 
-================ TOP BAR AND TABS ================================
-*/
 
 .mainDiv {
     display: flex;
@@ -17,18 +28,16 @@ html, body {
 
 .topBar {
     display: flex;
-    align-items: stretch; /* <-- was center, now stretch */
-    height: 32px;
-    background: #f2f2f2;
-    border-bottom: 1px solid #ccc;
+    align-items: stretch; 
+    height: 36px;
+    background: #f1f1f1;
+    border-bottom: 2px solid #000000;
 }
 
-.topLeftInBar,
-.centerInBar,
-.topRightInBar {
-    flex: 1;
+.topLeftInBar,.centerInBar,.topRightInBar {
     display: flex;
     align-items: center;
+    display: flex;
 }
 
 .topLeftInBar {
@@ -50,7 +59,6 @@ html, body {
     font-size: 11px;
     font-style: italic;
     color: #666;
-    font-family: cursive;
 }
 
 .centerInBar {
@@ -77,384 +85,26 @@ html, body {
 
 .tab.active {
     background: #fff;
-    border-top: 2px solid #cc00cc;
-    border-left: 2px solid #cc00cc;
-    border-right: 2px solid #cc00cc;
+    border-top: 2px solid #7c7c7c;
+    border-left: 2px solid #7c7c7c;
+    border-right: 2px solid #7c7c7c;
 }
 
 .content {
     flex: 1;
     position: relative;
+    overflow: hidden; 
 }
 
 .view {
-    display: none;
+    display: none;    
     position: absolute;
     inset: 0;
-    padding: 0;
-    box-sizing: border-box;
 }
+
 
 .view.active {
     display: block;
 }
 
-/* 
-================ Cytoscape ================================
-*/
 
-#cy {
-    position: relative; 
-    width: 100%;
-    height: 100%;
-}
-
-#cytoscape-view {
-    display: flex; 
-    height: 100vh;
-}
-
-#label-hide-orphaned, #label-select-all {
-    font-weight: bold;
-    border-width: 2px !important; 
-    border-color: #000000 !important;
-    justify-content: center !important;
-    text-align: center !important;
-}
-
-/* 
-================ Left pane - Filtering ================================
-*/
-#cytoscape-left-pane{
-    padding: 10px; 
-    border-right: 1px solid #ccc; 
-    width: 12%; 
-    overflow-y: auto;
-}
-
-.filter-section {
-  margin-bottom: 20px;
-}
-
-.filter-section h3 {
-  margin: 0 0 10px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #9cdcfe;
-  border-bottom: 1px solid #333;
-  padding-bottom: 4px;
-}
-
-.filter-item {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 10px;
-  font-size: 13px;
-}
-
-.filter-item label {
-  margin-bottom: 4px;
-  color: #bbb;
-}
-
-.filter-item input[type="text"],
-.filter-item input[type="number"]{
-  background: #1e1e1e;
-  border: 1px solid #333;
-  color: #eee;
-  padding: 5px 6px;
-  border-radius: 4px;
-}
-
-.filter-item span {
-  display: inline-block;
-}
-
-.filter-item select {
-  background: #1e1e1e;
-  border: 1px solid #333;
-  color: #eee;
-  padding: 5px 6px;
-  border-radius: 2px;
-  font-size: 13px;
-  font-family: inherit;
-  appearance: none;
-  cursor: pointer;
-}
-
-.filter-item select:hover {
-  border-color: #555;
-}
-
-.filter-item select:focus {
-  outline: none;
-  border-color: #9cdcfe;
-}
-
-/* ================= FILTER ACTION BUTTON ROW ================= */
-
-.filter-actions-row {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 20px;
-}
-
-/* Base button */
-.filter-actions-row .filter-btn {
-  padding: 7px 6px;
-  font-size: 12.5px;
-  font-weight: 600;
-  border-radius: 5px;
-  border: 1px solid #333;
-  background: #2a2a2a;
-  color: #eee;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-/* Widths */
-.filter-btn.danger {
-  flex: 1;   /* 25% */
-}
-
-.filter-btn.apply {
-  flex: 2;   /* 50% */
-}
-
-/* Primary (Filter) */
-.filter-btn.primary {
-  background: #cc00cc;
-  border-color: #990099;
-  color: #fff;
-}
-
-/* Reset */
-.filter-btn.danger {
-  background: #2a2a2a;
-  border-color: #333;
-  color: #ccc;
-}
-
-/* Minimal interaction feedback */
-.filter-btn:hover {
-  background: #333;
-}
-
-.filter-btn:active {
-  background: #222;
-}
-
-
-/* ================= AUTO FILTER TOGGLE ================= */
-
-.filter-toggle {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #333;
-  border-radius: 5px;
-  background: #2a2a2a;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: #eee;
-  cursor: pointer;
-}
-
-.filter-toggle input {
-  margin-right: 6px;
-  cursor: pointer;
-}
-
-.filter-toggle input:checked {
-  accent-color: #cc00cc; /* modern browsers */
-}
-
-
-
-/* 
-================ Right pane - Node info ================================
-*/
-#tooltip {
-    display: none;
-    position: absolute;
-    right: 0; 
-    border: 1px solid #ccc;
-    height: 100%;
-    width: 300px;
-    padding: 10px;
-    border-left: 1px solid #929292; 
-    box-shadow: 0px 4px 8px rgba(255, 110, 110, 0.1);
-    z-index: 100;
-    pointer-events: auto;
-
-    font-size: 14px;
-    color: #000000;
-    background-color: rgb(255, 255, 255);
-    word-wrap: break-word; 
-    overflow-wrap: break-word; 
-
-    white-space: normal;
-    overflow: hidden;
-}
-
-/* 
-================ Right pane endpoint details ================================
-*/
-#invalid-endpoint-title{
-    display: flex;
-    justify-content: center; 
-    margin-bottom: -18px;
-    margin-top: 5px;
-    font-weight: bold;
-    font-size: 16px;
-    color: #5f5f5f;
-}
-
-#api-source-title{
-    display: flex;
-    justify-content: center; 
-    margin-bottom: -18px;
-    margin-top: 5px;
-    font-weight: bold;
-    font-size: 16px;
-    color: #000000;
-}
-
-#endpoint-type{
-    display: flex;
-    justify-content: center; 
-    margin-bottom: -30px;
-    margin-top: -5px;
-    font-size: 30px;
-    color: #000000;
-}
-
-#endpoint-value{
-    display: flex;
-    justify-content: center; 
-    color: rgb(0, 0, 0);
-    margin-bottom: -2px;
-    max-width: 100%; 
-    word-break: break-all; 
-}
-
-/* 
-================ Process node deselect button ================================
-*/
-#deselect-button{
-    margin-top: 5px;
-    display: flex;
-    justify-content: center; 
-    color: white;
-    background-color: #cc00cc; 
-    padding: 10px 0px;
-    width: 100%;
-    border-radius: 5px;
-    border-width: 1px; 
-    border-color: #000000;
-    transition: background-color 0.2s ease, transform 0.1s ease;
-    font-weight: bold;
-}
-
-#deselect-button:hover{
-    background-color: #cc00ccab; 
-    transform: translateY(-1px); 
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
-}    
-
-#deselect-button:active {
-    background-color: #cc00cc62; 
-    transform: translateY(0); 
-}
-
-
-/* 
-================ IP and DOMAIN lookup links ================================
-*/
-#ip-lookup-link {
-    margin-top: 5px;
-    margin-bottom: -10px;
-    display: flex;
-    justify-content: center; 
-    color: black;
-    background-color: #2ffcf3; 
-    border: 1px solid #4b4b4b;
-    padding: 10px 0px;
-    width: 100%;
-    border-radius: 5px; 
-    text-decoration: none; 
-    transition: background-color 0.3s ease, transform 0.2s ease;
-}
-
-#ip-lookup-link:hover {
-    background-color: #2ffcf283; 
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
-}
-
-#ip-lookup-link:active {
-    color: rgb(165, 165, 165);
-    background-color: rgba(47, 252, 242, 0.226)83; 
-    transform: translateY(0); 
-}
-
-#domain-lookup-link {
-    margin-top: 5px;
-    margin-bottom: -10px;
-    display: flex;
-    justify-content: center; 
-    color: black;
-    background-color: #fcf62f; 
-    border: 1px solid #4b4b4b;
-    padding: 10px 0px;
-    width: 100%;
-    border-radius: 5px; 
-    text-decoration: none; 
-    transition: background-color 0.3s ease, transform 0.2s ease;
-}
-
-#domain-lookup-link:hover {
-    background-color: #fcf52f81; 
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
-}
-
-#domain-lookup-link:active {
-    color: rgb(165, 165, 165);
-    background-color: #fcf52f3b; 
-    transform: translateY(0); 
-}
-
-/* 
-
-#cytoscape-left-pane input[type="checkbox"] {
-    display: none;  
-}
-
-
-#cytoscape-left-pane label {
-    display: block;
-    width: calc(100% - 10px); 
-    box-sizing: border-box;
-    cursor: pointer;
-    padding: 8px 12px; 
-    margin: 4px 0;
-    border: 1px solid #4b4b4b;
-    border-radius: 5px;
-    font-size: 14px;
-    color: #cc00cc;
-    background-color: white;
-    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
-    text-align: left; 
-    white-space: normal;
-    word-wrap: break-word; 
-}
-
-#cytoscape-left-pane input[type="checkbox"]:checked + label {
-    background-color: #cc00cc;
-    color: white;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-*/

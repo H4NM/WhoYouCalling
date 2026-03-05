@@ -19,6 +19,9 @@
         public bool OutputDirectoryFlagSet;
         public bool OutputDirectoryCustomNameSet;
         public bool MonitorEverythingFlagSet;
+        public bool MonitorEverythingLoopbackTrafficFlagSet;
+        public bool MonitorEverythingProcessStartsFlagSet;
+
         public bool CompressOutputFolderFlagSet;
 
         // Value holders
@@ -57,6 +60,9 @@
             OutputDirectoryFlagSet = false;
             OutputDirectoryCustomNameSet = false;
             MonitorEverythingFlagSet = false;
+            MonitorEverythingLoopbackTrafficFlagSet = false;
+            MonitorEverythingProcessStartsFlagSet = false;
+
             CompressOutputFolderFlagSet = false;
             CollectFullPacketCapture = false;
             ProcessesNamesToMonitor = new List<string>();

@@ -25,6 +25,8 @@ namespace WhoYouCalling.Utilities.Arguments
                         else
                         {
                             ConsoleOutput.Print($"No arguments specified after {ArgumentFlags.ExecutableFlagShort}/{ArgumentFlags.ExecutableFlagLong} flag", PrintType.Warning);
+                            argumentData.InvalidArgumentValueProvided = true;
+                            return argumentData;
                         }
                     }
                     else if (args[i] == ArgumentFlags.ExecutableArgsFlagShort || args[i] == ArgumentFlags.ExecutableArgsFlagLong) 
@@ -72,6 +74,14 @@ namespace WhoYouCalling.Utilities.Arguments
                     else if (args[i] == ArgumentFlags.MonitorEverythingFlagShort || args[i] == ArgumentFlags.MonitorEverythingFlagLong) 
                     {
                         argumentData.MonitorEverythingFlagSet = true;
+                    }
+                    else if (args[i] == ArgumentFlags.MonitorEverythingWithLoopbackFlagShort || args[i] == ArgumentFlags.MonitorEverythingWithLoopbackFlagLong)
+                    {
+                        argumentData.MonitorEverythingLoopbackTrafficFlagSet = true;
+                    }
+                    else if (args[i] == ArgumentFlags.MonitorEverythingWithProcessStartFlagShort || args[i] == ArgumentFlags.MonitorEverythingWithProcessStartFlagLong)
+                    {
+                        argumentData.MonitorEverythingProcessStartsFlagSet = true;
                     }
                     else if (args[i] == ArgumentFlags.ExecutePrivilegedFlagShort || args[i] == ArgumentFlags.ExecutePrivilegedFlagLong)
                     {
@@ -291,14 +301,11 @@ namespace WhoYouCalling.Utilities.Arguments
 
         public bool IsValidCombinationOfArguments(ArgumentData argumentData)
         {
-            if (!argumentData.ExecutableFlagSet && !argumentData.PIDFlagSet && !argumentData.MonitorEverythingFlagSet)
+            if ((argumentData.ExecutableFlagSet && argumentData.PIDFlagSet && argumentData.MonitorEverythingFlagSet) ||
+                (!argumentData.ExecutableFlagSet && !argumentData.PIDFlagSet && !argumentData.MonitorEverythingFlagSet) ||
+                (argumentData.ExecutableFlagSet && argumentData.PIDFlagSet) || (argumentData.ExecutableFlagSet && argumentData.MonitorEverythingFlagSet) || (argumentData.PIDFlagSet && argumentData.MonitorEverythingFlagSet))
             {
-                ConsoleOutput.Print($"You need to either supply {ArgumentFlags.ExecutableFlagShort} ({ArgumentFlags.ExecutableFlagLong}) or {ArgumentFlags.ProcessIDFlagShort} ({ArgumentFlags.ProcessIDFlagLong}) or {ArgumentFlags.MonitorEverythingFlagShort} ({ArgumentFlags.MonitorEverythingFlagLong})", PrintType.Error);
-                return false;
-            }
-            else if ((argumentData.ExecutableFlagSet && argumentData.PIDFlagSet) && !argumentData.MonitorEverythingFlagSet) 
-            {
-                ConsoleOutput.Print($"Only one of {ArgumentFlags.ExecutableFlagShort} ({ArgumentFlags.ExecutableFlagLong}) and {ArgumentFlags.ProcessIDFlagShort} ({ArgumentFlags.ProcessIDFlagLong}) can be supplied, not both", PrintType.Error);
+                ConsoleOutput.Print($"You need to either supply {ArgumentFlags.ExecutableFlagShort}({ArgumentFlags.ExecutableFlagLong}), {ArgumentFlags.ProcessIDFlagShort}({ArgumentFlags.ProcessIDFlagLong}) or {ArgumentFlags.MonitorEverythingFlagShort}({ArgumentFlags.MonitorEverythingFlagLong})", PrintType.Error);
                 return false;
             }
             else if (argumentData.ExecutableArgsFlagSet && !argumentData.ExecutableFlagSet)
@@ -331,6 +338,11 @@ namespace WhoYouCalling.Utilities.Arguments
                      !Win32.WinAPI.HasShellWindow())
             {
                 ConsoleOutput.Print("You need to specify a username and password when running unprivileged from an uninteractive session. Provide local account details or run as privileged or get desktop access", PrintType.Error);
+                return false;
+            }
+            else if ((argumentData.MonitorEverythingLoopbackTrafficFlagSet || argumentData.MonitorEverythingProcessStartsFlagSet) && !argumentData.MonitorEverythingFlagSet)
+            {
+                ConsoleOutput.Print($"Including loopback or process starts is only applicable for when monitoring everything", PrintType.Error);
                 return false;
             }
             return true;
