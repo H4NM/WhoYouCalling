@@ -74,7 +74,7 @@ jobs:
       - name: Run with Execute mode with cmd.exe as low privileged user
         run: |
           net user ga ETphon3H0me@_1 /add
-          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --user ga --password ETphon3H0me@_1 --arguments "/c whoami" --nopcap --killprocesses --timer 10 
+          output\wyc.exe --executable "C:\Windows\System32\cmd.exe" --user ga --password ETphon3H0me@_1 --nopcap --killprocesses --timer 10 
 
   test-pid:
     needs: build
@@ -88,5 +88,5 @@ jobs:
           path: output
 
       - name: Run with Listen mode against System process
-        run: output\wyc.exe --PID 4 --nopcap --timer 10 
+        run: output\wyc.exe --pid 4 --nopcap --timer 10 
 
