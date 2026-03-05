@@ -6,7 +6,7 @@ CallMapper offers a network graph with analytics of looking up domains and IP ad
 2. `callmapper.py` hosts a HTTP server in the same directory as the script with `index.html` and other related resources (css & js).
 3. You can now view the visualization via http://127.0.0.1:8080 or at specified IP and port in a standard web browser 
 
-> *CallMapper supports reading up to 10 result files from WhoYouCalling, enabling for a more in depth understanding to if there's a common IP being contacted for multiple captures.*
+> CallMapper supports reading up to 10 result files from WhoYouCalling, enabling for a more in depth understanding to if there's a common IP being contacted for multiple captures. In order to load multiple result files, either specify a folder to the `-r` flag and CallMapper will automatically recursively look for files named "Result.json" and attempt to load and parse them. If specific files are wanted, you may provide with a comma separated value to the `-r` argument. 
 
 ## Usage:
 
