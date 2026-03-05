@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <em>A Windows commandline tool that monitors process TCPIP and DNS activity using [Windows Event Tracing (ETW)](https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/event-tracing-for-windows--etw-). A packet capture file (.pcap) can be generated and filtered based on the recorded TCPIP activity, allowing for a full packet capture per process.</em> 
+  <em>A Windows commandline tool that monitors process TCPIP and DNS activity using Windows API and Event Tracing (ETW). A packet capture file (.pcap) can be generated and filtered based on the recorded TCPIP activity, allowing for a full packet capture per process.</em> 
 </p>
 
 This tool is for anyone that would like to know what network traffic is coming from processes in Windows:
@@ -74,7 +74,7 @@ wyc.exe -M -i 192.168
 *if there are multiple interfaces with the provided partial IP it will select the first one it encounters.*
 
 ## Analyze the results
-To analyze and visualize the results, this project includes **CallMapper**, a Python and JavaScript solution that reads the JSON output from WhoYouCalling and hosts a network graph of all processes and their related network activity. **CallMapper** allows for filtering and searching through nodes and performing API lookups of checksums, IPs and domains.
+To analyze the results, this project includes **CallMapper**, a Python and JavaScript solution that reads the JSON output from WhoYouCalling and hosts a network graph of all processes and their related network activity. **CallMapper** allows for visualization, filtering and searching through Processes, IPs and domains as well as performing API lookups of related values.
 
 **Simple usage**:
 ```
@@ -86,9 +86,8 @@ See [CallMapper README.md](https://github.com/H4NM/WhoYouCalling/blob/main/CallM
 
 ### Limitations
 - **DNS**: In ETW, `Microsoft-Windows-DNS-Client` only logs A and AAAA queries, neglecting other DNS query types such as PTR, TXT, MX, SOA etc. It does capture CNAME and it's respective adresses, which are part of the DNS response. However, with the FPC the requests are captured either way, just not portrayed as in registered DNS traffic by the application. The FPC and registered TCPIP activity helps identify processes that do not utilize **Windows DNS Client Service** (e.g. `nslookup`) since they're not logged in the DNS ETW.
-- **Execution integrity**: Since WhoYouCalling requires elevated privileges to run (*ETW + FPC*), spawned processes naturally inherits the security token making them also posess the same integrity level - and .NET api does not work too well with creating less privileged processes from an already elevated state.
-  The best and most reliable approach was to duplicate the low privileged token of the desktop shell in an interactive logon (explorer.exe).
-  However, there may be use cases in which WhoYouCalling is executed via a remote management tool like PowerShell, SSH or PsExec, where there is no instance of a desktop shell, in these case you need to provide a username and password of a user that may execute it. It's also not currently possible to delegate the privilege of executing applications in an elevated state to other users, meaning that if you want to start another application with WYC in an elevated state, you need to be signed in as the user with administrator rights and provide the flag for running elevated.  
+- **Execution integrity**: Since WhoYouCalling requires elevated privileges to run (*ETW + FPC*), spawned processes naturally inherits the security token. However, to allow for executing binaries in a lower privilege the token of the desktop shell in an interactive logon (explorer.exe) is duplicated and added to the started process.
+  There may be use cases in which WhoYouCalling is executed via a remote management tool like PowerShell, SSH or PsExec, where there is no instance of a desktop shell, in these case you need to provide a username and password of a user that may execute it. It's also not currently possible to delegate the privilege of executing applications in an elevated state to other users, meaning that if you want to start another application with WYC in an elevated state, you need to be signed in as the user with administrator rights and provide the flag for running elevated.  
 
 ### Dependencies
 Nuget packages: 
