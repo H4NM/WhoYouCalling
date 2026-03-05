@@ -31,7 +31,11 @@ This tool is for anyone that would like to know what network traffic is coming f
 - Perform API lookups to VirusTotal and AbuseIPDB. 
 
 ## Usage:
+
+![CallmapperUsage](imgs/wyc-terminal.png)
+
 > WhoYouCalling must be run as **administrator** (for packet capture and listening to ETW).
+
 
 WhoYouCalling can be run with **three** different modes:
 - **Machine**: Registers outgoing TCPIP and DNS traffic from the machine. 
@@ -75,6 +79,9 @@ wyc.exe -M -i 192.168
 
 ## Analyze the results
 To analyze the results, this project includes **CallMapper**, a Python and JavaScript solution that reads the JSON output from WhoYouCalling and hosts a network graph of all processes and their related network activity. **CallMapper** allows for visualization, filtering and searching through Processes, IPs and domains as well as performing API lookups of related values.
+
+
+![CallmapperUsage](imgs/callmapper-web.png)
 
 **Simple usage**:
 ```
