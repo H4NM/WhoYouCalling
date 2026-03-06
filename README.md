@@ -111,7 +111,6 @@ Follow these steps for compiling from source:
 
 2. **(Optional) Install Npcap**  
    Download and install [Npcap](https://npcap.com/#download) to enable packet capture in Windows.  
-   > **Note:** Npcap is not required and you may provide the flag to disable packet capture when running the program.
 
 3. **Clone the Repository**  
    Download the source code by cloning this repository:
