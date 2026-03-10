@@ -13,7 +13,7 @@ from lib.static.capture_group_colors import CAPTURE_GROUP_COLORS
 from lib.validation import validate_apis, validate_prerequisites, valid_arguments_were_passed, validate_result_files
 from lib.filesystem import get_results_files_recursively, get_results_file_data, output_visualization_data
 from lib.apis import VirusTotal, AbuseIPDB
-from lib.utils import sort_unique_values, get_comma_separated_results_files
+from lib.utils import sort_unique_values, get_comma_separated_results_files, requests_is_installed
 from lib.output import ConsoleOutputPrint
 from lib.httpserver import start_http_server
 
@@ -41,6 +41,7 @@ def main() -> None:
     DATA_FILE: Path = WEB_DIRECTORY / "data.json"
     
     wyc_result_files: list = []
+    valid_apis:list = []
     
     parser = argparse.ArgumentParser(description="A script demonstrating argparse with flags.")
     parser.add_argument("-r", "--results", type=str, help="Results file or directory with result files")
@@ -119,7 +120,8 @@ def main() -> None:
     callmapper_data['summary']['destination_ports'] = get_destination_ports(callmapper_data['elements']['edges'])
 
     output_visualization_data(DATA_FILE, callmapper_data)
-    valid_apis:list = validate_apis(available_apis=AVAILABLE_APIS)
+    if requests_is_installed():
+        valid_apis = validate_apis(available_apis=AVAILABLE_APIS)
     ConsoleOutputPrint(msg=f"Hosting visualization via http://{args.ip}:{args.port}", print_type="info")
     try:
         start_http_server(directory=WEB_DIRECTORY, host=args.ip, port=args.port, apis=valid_apis)
