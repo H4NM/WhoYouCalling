@@ -846,7 +846,7 @@ namespace WhoYouCalling
                     ""
             ];
 
-            if (monitoredProcess.Executable != null)
+            if (monitoredProcess.IsolatedProcess == false)
             {
                 processDetails.Add("====== Executable ======");
                 processDetails.Add($"File path: {monitoredProcess.Executable.FilePath}");
