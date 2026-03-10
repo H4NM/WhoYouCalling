@@ -15,6 +15,27 @@ CallMapper offers a network graph with analytics of looking up domains and IP ad
 python callmapper.py -r ./Result.json
 ```
 
+### Filtering
+
+In the `Map` tab in the hosted Web UI, you may filter the nodes in the network graph in the left side pane. The filtering works by only showing data related to the specified filter. For instance, if you specifiy destination IP to be 8.8.8.8, only that IP node will be visible if it's included.  
+
+The input fields, selection boxes and "free text", can either filter nodes or the edges. The edges can be filtered based on the transport protocol or the destination port. When filtered, there may be nodes that are "isolated", e.g. do not have any edge to another node. In this case, it's recommended to check the `Isolated nodes` checkbox under `General exclusion`. 
+
+For all of the "free text" fields, you may also negate the filter with prepending the exclamation character before the value (`!`). For instance, you do NOT want to see traffic going to port 443, in which you can specifiy `!443` in the destination port field. Or perhaps, you do not want to see domains ending with .com, you add `!.com`, etc.
+
+Some of the fields filter a bit differently than others, as i've adjusted them based on what they're filtering.
+
+| Field | Filtering Logic | Filters |  
+| --- | --- | --- | 
+| `External or local IPs` | wasd | |
+| `Destination IP` | Poor mans CIDR filtering. Checks that the provided value starts with the IP. Allows for narrowing down traffic to specific networks | 
+| `Destination Port` | Checks that the provided value exactly matches | 
+| `Domain name` | Checks that the provided value contains within the domain names | 
+| `Process name` | Checks that the provided value contains within the process names |
+| `Executable Path` | Checks that the provided value contains within the executable paths | 
+| `Executable created after` | Can check the provided date or with full time. For instance, `2026-01-01` works, as well as `2026-01-01 13:14:24` |
+| `Executable created before` | Can check the provided date or with full time. For instance, `2026-01-01` works, as well as `2026-01-01 13:14:24`  |
+
 ## Dependencies
 **CallMapper** has been tested and works with Python version 3.11 or later. The packages that are used: 
 - Visualization: 
