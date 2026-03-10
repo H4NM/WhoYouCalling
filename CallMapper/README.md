@@ -25,16 +25,22 @@ For all of the "free text" fields, you may also negate the filter with prependin
 
 Some of the fields filter a bit differently than others, as i've adjusted them based on what they're filtering.
 
-| Field | Filtering Logic | Filters |  
-| --- | --- | --- | 
-| `External or local IPs` | wasd | |
-| `Destination IP` | Poor mans CIDR filtering. Checks that the provided value starts with the IP. Allows for narrowing down traffic to specific networks | 
-| `Destination Port` | Checks that the provided value exactly matches | 
-| `Domain name` | Checks that the provided value contains within the domain names | 
-| `Process name` | Checks that the provided value contains within the process names |
-| `Executable Path` | Checks that the provided value contains within the executable paths | 
-| `Executable created after` | Can check the provided date or with full time. For instance, `2026-01-01` works, as well as `2026-01-01 13:14:24` |
-| `Executable created before` | Can check the provided date or with full time. For instance, `2026-01-01` works, as well as `2026-01-01 13:14:24`  |
+| Type | Field | Logic | Filters |  
+| --- | --- | --- | --- | 
+| General | `Processes without telemetry` | Filters processes that do not have any TCIP activity. Useful when filtering for IPs, Ports or transport protocol.  | Nodes |
+| General | `IPs and domains without process` | Filters IPs and domains that are not connected to a process. Useful when filtering for processes. | Nodes |
+| General | `Isolated nodes` | Filters nodes that are isolated. Works just like the general exclusion for `Processes without telemetry` and `IPs and domains without process` but it captures all nodes | Nodes |
+| General | `Loopback or linklocal` | Filters IPs that are either loopback or linklocal | Nodes |   
+| TCPIP | `External or local IPs` | Filters if the IP is a external (Public) or local (Private) IP | Nodes |
+| TCPIP | `IP Version` | Filters IPs that's either IPv4 or IPv6 | Nodes | 
+| TCPIP | `Transport Protocol` | Filters traffic that's either TCP or UDP | Edges | 
+| TCPIP | `Destination IP` | Filters IPs that starts with the provided value. Allows for narrowing down traffic to specific networks. I'd like to call it poor mans CIDR filtering | Nodes | 
+| TCPIP | `Destination Port` | Filters traffic going to the provided value with an exact match | Edges | 
+| DNS | `Domain name` | Filters domains that contain the provided value as domain name| Nodes |  
+| Process | `Process name` | Filters processes that contain the provided value as process name | Nodes |
+| Process | `Executable Path` | Filters processes that contain the provided value as executable path | Nodes |
+| Process | `Executable created after` | Filters processes for the provided date or with full time for executables creation time. For instance, `2026-01-01` works, as well as `2026-01-01 13:14:24` | Nodes | 
+| Process | `Executable created before` | Filters processes for the provided date or with full time for executables creation time. For instance, `2026-01-01` works, as well as `2026-01-01 13:14:24`  | Nodes | 
 
 ## Dependencies
 **CallMapper** has been tested and works with Python version 3.11 or later. The packages that are used: 
