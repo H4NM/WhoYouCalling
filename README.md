@@ -32,7 +32,6 @@ This tool is for anyone that would like to know what network traffic is coming f
 
 ## Usage:
 
-![CallmapperUsage](imgs/wyc-terminal.png)
 
 > WhoYouCalling must be run as **administrator** (for packet capture and listening to ETW).
 
@@ -65,7 +64,7 @@ wyc.exe --getinterfaces
 
 To chose an interface, you can either supply the number in the left list, or provide with the assigned IP of that interface or part of it. For instance,
 
-```
+```powershell
 # The interface number specified with the main mode machine 
 wyc.exe --machine -i 4
 
@@ -130,12 +129,12 @@ dotnet restore
 
 6. **Build the project**
 ```
-dotnet publish -c Release -r win-x64 --self-contained true
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:DebugSymbols=false
 ```
 
 7. **Run it**
 ```
-bin\Release\net8.0\win-x64\wyc.exe [arguments]...
+bin\Release\net8.0\win-x64\publish\wyc.exe [arguments]...
 ```
 
 ## What about ProcMon, TCPView and Pktmon??
